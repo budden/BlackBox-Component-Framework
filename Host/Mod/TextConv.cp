@@ -1160,4 +1160,3 @@ MODULE HostTextConv;
 	END ImportHex;
 
 END HostTextConv.
- 
