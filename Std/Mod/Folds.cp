@@ -33,7 +33,7 @@ MODULE StdFolds;
 
 	TYPE
 		Label* = ARRAY 32 OF CHAR;
-		
+
 		Fold* = POINTER TO RECORD (Views.View)
 			leftSide-: BOOLEAN;
 			collapsed-: BOOLEAN;
@@ -49,16 +49,16 @@ MODULE StdFolds;
 			text: TextModels.Model; (* containing text *)
 			leftpos, rightpos: INTEGER (* position of left and right Fold *)
 		END;
-		
+
 		SetLabelOp = POINTER TO RECORD (Domains.Operation)
 			text: TextModels.Model; (* containing text *)
 			pos: INTEGER; (* position of fold in text *)
 			oldlabel: Label
 		END;
-		
+
 		Action = POINTER TO RECORD (Services.Action) END;
 
-		
+
 	VAR
 		dir-, stdDir-: Directory;
 
@@ -70,7 +70,7 @@ MODULE StdFolds;
 		END;
 
 		iconFont: Fonts.Typeface;
-		leftExp, rightExp, leftColl, rightColl: ARRAY 8 OF SHORTCHAR;
+		leftExp, rightExp, leftColl, rightColl: ARRAY 3 OF CHAR;
 		coloredBackg: BOOLEAN;
 		action: Action;
 		fingerprint: INTEGER;	(* for the property inspector *)
@@ -128,7 +128,7 @@ MODULE StdFolds;
 		END
 	END MatchingFold;
 
-	PROCEDURE GetIcon (fold: Fold; VAR icon: ARRAY OF SHORTCHAR);
+	PROCEDURE GetIcon (fold: Fold; VAR icon: ARRAY OF CHAR);
 	BEGIN
 		IF fold.leftSide THEN
 			IF fold.collapsed THEN icon := leftColl$ ELSE icon := leftExp$ END
@@ -138,7 +138,7 @@ MODULE StdFolds;
 	END GetIcon;
 
 	PROCEDURE CalcSize (f: Fold; VAR w, h: INTEGER);
-		VAR icon: ARRAY 8 OF SHORTCHAR; c: Models.Context; a: TextModels.Attributes; font: Fonts.Font;
+		VAR icon: ARRAY 3 OF CHAR; c: Models.Context; a: TextModels.Attributes; font: Fonts.Font;
 			asc, dsc, fw: INTEGER;
 	BEGIN
 		GetIcon(f, icon);
@@ -148,7 +148,7 @@ MODULE StdFolds;
 			font := Fonts.dir.This(iconFont, a.font.size, {}, Fonts.normal)
 		ELSE font := Fonts.dir.Default()
 		END;
-		w := font.SStringWidth(icon);
+		w := font.StringWidth(icon);
 		font.GetBounds(asc, dsc, fw);
 		h := asc + dsc
 	END CalcSize;
@@ -174,7 +174,7 @@ MODULE StdFolds;
 			text := cl(TextModels.Context).ThisModel();
 			lpos := cl(TextModels.Context).Pos() + 1; rpos := cr(TextModels.Context).Pos();
 			ASSERT(lpos <= rpos, 104);
-			hidden := TextModels.CloneOf(text); 
+			hidden := TextModels.CloneOf(text);
 			hidden.Insert(0, text, lpos, rpos);
 			text.Insert(lpos, l.hidden, 0, l.hidden.Length());
 			l.hidden := hidden; Stores.Join(l, hidden);
@@ -372,7 +372,7 @@ MODULE StdFolds;
 
 	PROCEDURE (fold: Fold) Restore* (f: Views.Frame; l, t, r, b: INTEGER);
 		VAR a: TextModels.Attributes; color: Ports.Color; c: Models.Context; font: Fonts.Font;
-			icon: ARRAY 8 OF SHORTCHAR; w, h: INTEGER; asc, dsc, fw: INTEGER;
+			icon: ARRAY 8 OF CHAR; w, h: INTEGER; asc, dsc, fw: INTEGER;
 	BEGIN
 		GetIcon(fold, icon); c := fold.context;
 		IF (c # NIL) & (c IS TextModels.Context) THEN
@@ -387,7 +387,7 @@ MODULE StdFolds;
 			color := Ports.white
 		END;
 		font.GetBounds(asc, dsc, fw);
-		f.DrawSString(0, asc, color, icon, font)
+		f.DrawString(0, asc, color, icon + 0X, font)
 	END Restore;
 
 	PROCEDURE (fold: Fold) CopyFromSimpleView- (source: Views.View);
@@ -451,7 +451,7 @@ MODULE StdFolds;
 			IF fold.leftSide & fold.collapsed THEN
 				IF (label = "") OR (label = fold.label) THEN
 					fold.Flip;
-					IF ~nested THEN 
+					IF ~nested THEN
 						GetPair(fold, l, r);
 						rd.SetPos(r.context(TextModels.Context).Pos())
 					END
@@ -526,7 +526,7 @@ MODULE StdFolds;
 	BEGIN
 		par.disabled := (TextViews.Focus() = NIL) OR foldData.all
 	END FindLabelGuard;
-		
+
 	PROCEDURE SetLabelGuard* ( VAR p : Dialog.Par );
 		VAR v: Views.View;
 	BEGIN
@@ -565,12 +565,12 @@ MODULE StdFolds;
 	END CollapseLabel;
 
 	PROCEDURE FindFold(first: BOOLEAN);
-	VAR c : TextControllers.Controller; r: TextModels.Reader; 
+	VAR c : TextControllers.Controller; r: TextModels.Reader;
 		v : Views.View; pos, i : INTEGER;
 	BEGIN
 		c := TextControllers.Focus();
 		IF c # NIL THEN
-			IF first THEN pos := 0 
+			IF first THEN pos := 0
 			ELSE
 				pos := c.CaretPos();
 				IF pos = TextControllers.none THEN
@@ -602,12 +602,12 @@ MODULE StdFolds;
 	BEGIN
 		FindFold(FALSE)
 	END FindNextFold;
-	
+
 	PROCEDURE FindFirstFold*;
 	BEGIN
 		FindFold(TRUE)
 	END FindFirstFold;
-	
+
 	PROCEDURE SetLabel*;
 		VAR v: Views.View;
 	BEGIN
@@ -626,12 +626,12 @@ MODULE StdFolds;
 	BEGIN
 		Controllers.SetCurrentPath(Controllers.targetPath);
 		v := Containers.FocusSingleton();
-		IF (v = NIL) OR ~(v IS Fold) THEN 
+		IF (v = NIL) OR ~(v IS Fold) THEN
 			fingerprint := 0;
 			foldData.newLabel := ""
-		ELSE 
+		ELSE
 			fp := Services.AdrOf(v);
-			IF fp # fingerprint THEN 
+			IF fp # fingerprint THEN
 				foldData.newLabel := v(Fold).label;
 				fingerprint := fp;
 				Dialog.Update(foldData)
@@ -642,7 +642,7 @@ MODULE StdFolds;
 	END Do;
 
 	(* ------------------------ inserting folds ------------------------ *)
-		
+
 	PROCEDURE Overlaps* (text: TextModels.Model; beg, end: INTEGER): BOOLEAN;
 		VAR n, level: INTEGER; rd: TextModels.Reader; v: Views.View;
 	BEGIN
@@ -730,17 +730,15 @@ MODULE StdFolds;
 
 	BEGIN
 		IF Dialog.platform = Dialog.linux THEN (* Linux *)
-			DefaultAppearance; 
+			DefaultAppearance;
 			coloredBackg := FALSE
 		ELSIF Dialog.platform DIV 10 = 1 THEN (* Windows *)
 			iconFont := "Wingdings";
 			font := Fonts.dir.This(iconFont, 10*Fonts.point (*arbitrary*), {}, Fonts.normal);
 			IF font.IsAlien() THEN DefaultAppearance
 			ELSE
-				leftExp[0] := SHORT(CHR(240)); leftExp[1] := 0X;
-				rightExp[0] := SHORT(CHR(239)); rightExp[1] := 0X;
-				leftColl[0] := SHORT(CHR(232)); leftColl[1] := 0X;
-				rightColl[0] := SHORT(CHR(231)); rightColl[1] := 0X;
+				leftExp  := 0F0F0X;    rightExp := 0F0EFX;
+				leftColl := 0F0E8X;    rightColl := 0F0E7X;
 				coloredBackg := FALSE
 			END
 		ELSIF Dialog.platform DIV 10 = 2 THEN (* Mac *)
@@ -749,7 +747,7 @@ MODULE StdFolds;
 			IF font.IsAlien() THEN DefaultAppearance
 			ELSE
 				leftExp := ">"; rightExp := "<";
-				leftColl := "»"; rightColl := "«";
+				leftColl := "Â»"; rightColl := "Â«";
 				coloredBackg := TRUE
 			END
 		ELSE
@@ -762,7 +760,7 @@ MODULE StdFolds;
 		VAR fold: Fold;
 	BEGIN
 		NEW(fold); fold.leftSide := hiddenText # NIL; fold.collapsed := collapsed;
-		fold.label := label; fold.hidden := hiddenText; 
+		fold.label := label; fold.hidden := hiddenText;
 		IF hiddenText # NIL THEN Stores.Join(fold, fold.hidden) END;
 		RETURN fold
 	END  New;

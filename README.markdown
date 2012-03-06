@@ -21,7 +21,7 @@ Currently we have only one publicly available open-source implementation (Window
 
 ## Download ##
 
-The original open source code was taken from distribution of BlackBox Component Builder 1.6 RC6 at  ![www.oberon.ch](http://www.oberon.ch/blackbox.html "www.oberon.ch")
+The original open source code was taken from distribution of BlackBox Component Builder 1.6 RC6 at [www.oberon.ch](http://www.oberon.ch/blackbox.html)
 
 ## To developers ##
 

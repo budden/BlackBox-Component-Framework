@@ -7,9 +7,6 @@ MODULE DevCPC486;
 	copyright	= "System/Rsrc/About"
 	license	= "Docu/BB-License"
 	references	= "ftp://ftp.inf.ethz.ch/pub/software/Oberon/OberonV4/Docu/OP2.Paper.ps"
-	changes	= ""
-	issues	= ""
-
 **)
 
 	IMPORT SYSTEM, DevCPM, DevCPT, DevCPE, DevCPL486;
@@ -1144,6 +1141,7 @@ MODULE DevCPC486;
 			END
 		(* largeint support *)
 		| div:
+			IF y.mode # Reg THEN LoadR(y); rev := ~rev END;
 			IF rev THEN DevCPL486.GenFDOp(FDIVR, y) ELSE DevCPL486.GenFDOp(FDIV, y) END;
 			Floor(y, FALSE)
 		| mod:
