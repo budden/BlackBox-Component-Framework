@@ -83,9 +83,9 @@ MODULE DevRBrowser;
 			ch := s[i]; INC(i)
 		UNTIL (ch < "0")
 					OR ("9" < ch) & (CAP(ch) < "A")
-					OR ("Z" < CAP(ch)) & (ch # "_") & (ch < "À")
-					OR (ch = "×")
-					OR (ch = "÷")
+					OR ("Z" < CAP(ch)) & (ch # "_") & (ch < "Ã€")
+					OR (ch = "Ã—")
+					OR (ch = "Ã·")
 					OR (i = MaxIdLen);
 		RETURN ch = 0X
 	END Ident;

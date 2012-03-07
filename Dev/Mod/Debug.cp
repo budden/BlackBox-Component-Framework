@@ -160,10 +160,10 @@ MODULE DevDebug;
 		VAR i: SHORTINT; ch: CHAR;
 	BEGIN
 		ch := s[0];
-		IF ("A" <= CAP(ch)) & (CAP(ch) <= "Z") OR (ch = "_") OR (ch >= 0C0X) & (ch < 100X) & (ch # "×") & (ch # "÷") THEN
+		IF ("A" <= CAP(ch)) & (CAP(ch) <= "Z") OR (ch = "_") OR (ch >= 0C0X) & (ch < 100X) & (ch # "Ã—") & (ch # "Ã·") THEN
 			i := 1; ch := s[1];
 			WHILE ("A" <= CAP(ch)) & (CAP(ch) <= "Z") OR ("0" <= ch) & (ch <= "9")
-					OR (ch = "_") OR (ch >= 0C0X) & (ch < 100X) & (ch # "×") & (ch # "÷") DO
+					OR (ch = "_") OR (ch >= 0C0X) & (ch < 100X) & (ch # "Ã—") & (ch # "Ã·") DO
 				INC(i); ch := s[i]
 			END;
 			RETURN (s[i] = 0X) & (i < 256)

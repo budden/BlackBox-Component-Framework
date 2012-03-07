@@ -13,7 +13,7 @@ MODULE ObxPDBRep2;
 
 	IMPORT Ports, Views, TextModels, TextMappers, TextViews, TextRulers, ObxPhoneDB;
 
-	PROCEDURE WriteRuler (VAR f: TextMappers.Formatter);
+	PROCEDURE WriteRuler (VAR f: TextMappers.Formatter);
 		CONST cm = 10 * Ports.mm;	(* universal units *)
 		VAR ruler: TextRulers.Ruler;
 	BEGIN

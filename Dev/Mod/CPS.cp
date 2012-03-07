@@ -102,9 +102,9 @@ MODULE DevCPS;
 			name[i] := ch; INC(i); DevCPM.Get(ch)
 		UNTIL (ch < "0")
 			OR ("9" < ch) & (CAP(ch) < "A")
-			OR ("Z" < CAP(ch)) & (ch # "_") & (ch < "À")
-			OR (ch = "×")
-			OR (ch = "÷")
+			OR ("Z" < CAP(ch)) & (ch # "_") & (ch < "Ã€")
+			OR (ch = "Ã—")
+			OR (ch = "Ã·")
 			OR (i = MaxIdLen);
 		IF i = MaxIdLen THEN err(240); DEC(i) END ;
 		name[i] := 0X; sym := ident
@@ -353,7 +353,7 @@ MODULE DevCPS;
 						IF name = "WHILE" THEN s := while
 						ELSIF name = "WITH" THEN s := with
 						END
-			| "G".."H", "J", "K", "Q", "S", "X".."Z", "a".."z", "_", "À".."Ö", "Ø".."ö", "ø".."ÿ": Identifier(s)
+			| "G".."H", "J", "K", "Q", "S", "X".."Z", "a".."z", "_", "Ã€".."Ã–", "Ã˜".."Ã¶", "Ã¸".."Ã¿": Identifier(s)
 			| "["  : s := lbrak; DevCPM.Get(ch)
 			| "]"  : s := rbrak; DevCPM.Get(ch)
 			| "^"  : s := arrow; DevCPM.Get(ch)
