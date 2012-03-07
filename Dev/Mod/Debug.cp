@@ -14,7 +14,7 @@ MODULE DevDebug;
 	IMPORT SYSTEM,
 		Kernel, Strings, Dates, Files, Fonts, Services, Ports, Stores, Converters,
 		Models, Views, Controllers, Properties, Dialog, Containers, Controls,
-		HostFonts, Windows, HostFiles, StdDialog, StdFolds, StdLinks,
+		HostFonts, Windows, HostFiles, Utils, StdFolds, StdLinks,
 		TextModels, TextMappers, TextControllers, TextViews, TextRulers, StdLog,
 		DevCommanders;
 	
@@ -160,10 +160,10 @@ MODULE DevDebug;
 		VAR i: SHORTINT; ch: CHAR;
 	BEGIN
 		ch := s[0];
-		IF ("A" <= CAP(ch)) & (CAP(ch) <= "Z") OR (ch = "_") OR (ch >= 0C0X) & (ch < 100X) & (ch # "×") & (ch # "÷") THEN
+		IF ("A" <= CAP(ch)) & (CAP(ch) <= "Z") OR (ch = "_") OR (ch >= 0C0X) & (ch < 100X) & (ch # "Ð§") & (ch # "Ñ‡") THEN
 			i := 1; ch := s[1];
 			WHILE ("A" <= CAP(ch)) & (CAP(ch) <= "Z") OR ("0" <= ch) & (ch <= "9")
-					OR (ch = "_") OR (ch >= 0C0X) & (ch < 100X) & (ch # "×") & (ch # "÷") DO
+					OR (ch = "_") OR (ch >= 0C0X) & (ch < 100X) & (ch # "Ð§") & (ch # "Ñ‡") DO
 				INC(i); ch := s[i]
 			END;
 			RETURN (s[i] = 0X) & (i < 256)
@@ -581,17 +581,17 @@ MODULE DevDebug;
 		m := Kernel.modList;
 		WHILE m # NIL DO
 			IF m.refcnt >= 0 THEN
-				n := m.name$; Kernel.SplitName(n, h, t);
+				n := m.name$; Utils.SplitName(n, h, t);
 				m1 := Kernel.modList; h1 := "*";
 				WHILE (m1 # m) & (h1 # h) DO
-					IF m1.refcnt >= 0 THEN n := m1.name$; Kernel.SplitName(n, h1, t) END;
+					IF m1.refcnt >= 0 THEN n := m1.name$; Utils.SplitName(n, h1, t) END;
 					m1 := m1.next
 				END;
 				IF h1 # h THEN
 					out.WriteLn;
 					m1 := m;
 					WHILE m1 # NIL DO
-						n := m1.name$; Kernel.SplitName(n, h1, t);
+						n := m1.name$; Utils.SplitName(n, h1, t);
 						IF (h1 = h) & (m1.refcnt >= 0) THEN
 							out.WriteSString(m1.name); out.WriteTab;
 							out.WriteIntForm(m1.csize + m1.dsize + m1.rsize, 10, 6, TextModels.digitspace, TextMappers.hideBase);
@@ -777,7 +777,7 @@ MODULE DevDebug;
 			n: ARRAY 256 OF CHAR;
 	BEGIN
 		(* search source by name heuristic *)
-		n := name$; StdDialog.GetSubLoc(n, "Mod", loc, fname);
+		n := name$; Utils.GetSubLoc(n, "Mod", loc, fname);
 		v := Views.OldView(loc, fname); m := NIL;
 		IF v # NIL THEN
 			Views.Open(v, loc, fname, NIL);
@@ -1263,7 +1263,7 @@ MODULE DevDebug;
 			DEC(a, mod.code); ref := mod.refs;
 			REPEAT Kernel.GetRefProc(ref, end, name) UNTIL (end = 0) OR (a < end);
 			IF a < end THEN
-				Kernel.SplitName (mod.name$, head, tail);
+				Utils.SplitName (mod.name$, head, tail);
 				IF head = "" THEN head := "System" END;
 				Strings.IntToString(Kernel.err, errstr);
 				key := tail + "." + name + "." + errstr;

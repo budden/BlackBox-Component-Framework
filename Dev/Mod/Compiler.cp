@@ -15,7 +15,7 @@ MODULE DevCompiler;
 	IMPORT Kernel,
 		Files, Views, Dialog, Controls,
 		TextModels, TextMappers, TextViews, TextControllers,
-		StdLog, StdDialog,
+		StdLog, Utils,
 		DevMarkers, DevCommanders, DevSelectors,
 		DevCPM, DevCPT, DevCPB, DevCPP, DevCPE, DevCPV := DevCPV486;
 
@@ -253,7 +253,7 @@ MODULE DevCompiler;
 			s.SetPos(beg); s.Scan; error := FALSE;
 			WHILE (s.start < end) & (s.type = TextMappers.string) & ~error DO
 				i := 0; WHILE i < LEN(name) DO name[i] := 0X; INC(i) END;
-				StdDialog.GetSubLoc(s.string, "Mod", loc, name);
+				Utils.GetSubLoc(s.string, "Mod", loc, name);
 				t := NIL;
 				IF loc # NIL THEN
 					v := Views.OldView(loc, name);

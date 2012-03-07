@@ -15,7 +15,7 @@ MODULE DevCmds;
 		Services, Files, Fonts, Ports, Stores, Models, Views, Controllers, Dialog,
 		Containers, Controls, Properties, Documents,
 		TextModels, TextMappers, TextRulers, TextViews, TextControllers,
-		StdDialog, StdCmds,
+		Utils, StdDialog, StdCmds,
 		HostMenus;
 
 
@@ -38,7 +38,7 @@ MODULE DevCmds;
 			IF one & ((s.start >= end) OR (s.type = TextMappers.eot)) THEN
 				s.SetPos(beg); s.Scan; error := FALSE;
 				WHILE (s.start < end) & (s.type = TextMappers.string) & ~error DO
-					StdDialog.GetSubLoc(s.string, "Mod", loc, name);
+					Utils.GetSubLoc(s.string, "Mod", loc, name);
 					IF loc # NIL THEN
 						v := Views.OldView(loc, name);
 						IF v # NIL THEN

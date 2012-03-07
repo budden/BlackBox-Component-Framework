@@ -13,7 +13,7 @@ MODULE DevReferences;
 	
 	IMPORT
 		Kernel, Files, Fonts, Models, Views, Dialog, Containers,
-		StdDialog,
+		Utils,
 		TextModels, TextMappers, TextViews, TextControllers;
 	
 	CONST
@@ -64,7 +64,7 @@ MODULE DevReferences;
 		VAR title: Views.Title; loc: Files.Locator; name: Files.Name;
 			v: Views.View; m: Models.Model; t: TextModels.Model; beg, end: INTEGER; c: Containers.Controller;
 	BEGIN
-		StdDialog.GetSubLoc(module, category, loc, name); title := name$;
+		Utils.GetSubLoc(module, category, loc, name); title := name$;
 		Kernel.MakeFileName(name, "");
 		IF category = "Docu" THEN
 			loc.res := 77; v := Views.OldView(loc, name); loc.res := 0;
