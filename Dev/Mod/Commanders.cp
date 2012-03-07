@@ -99,11 +99,11 @@ MODULE DevCommanders;
 		VAR i: INTEGER; ch: CHAR;
 	BEGIN
 		ch := s[0]; i := 1;
-		IF ("A" <= CAP(ch)) & (CAP(ch) <= "Z") OR (ch >= 0C0X) & (ch # "×") & (ch # "÷") & (ch <= 0FFX) OR (ch = "_") THEN
+		IF ("A" <= CAP(ch)) & (CAP(ch) <= "Z") OR (ch >= 0C0X) & (ch # "Ã—") & (ch # "Ã·") & (ch <= 0FFX) OR (ch = "_") THEN
 			REPEAT
 				ch := s[i]; INC(i)
 			UNTIL ~( ("0" <= ch) & (ch <= "9") OR ("A" <= CAP(ch)) & (CAP(ch) <= "Z")
-						OR (ch >= 0C0X) & (ch # "×") & (ch # "÷") & (ch <= 0FFX) OR (ch = "_") );
+						OR (ch >= 0C0X) & (ch # "Ã—") & (ch # "Ã·") & (ch <= 0FFX) OR (ch = "_") );
 			RETURN (ch = 0X) & (i <= LEN(Kernel.Name))
 		ELSE
 			RETURN FALSE
