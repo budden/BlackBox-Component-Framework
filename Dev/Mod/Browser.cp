@@ -12,7 +12,7 @@ MODULE DevBrowser;
 **)
 
 	IMPORT
-		Kernel, Files, Fonts, Dates, Ports, Stores, Views, Properties, Dialog, Documents,
+		Kernel, Files, Utils, Fonts, Dates, Ports, Stores, Views, Properties, Dialog, Documents,
 		TextModels, TextMappers, TextRulers, TextViews, TextControllers, StdDialog, StdFolds,
 		DevCPM, DevCPT, HostRegistry;
 
@@ -1267,7 +1267,7 @@ MODULE DevBrowser;
 		GetQualIdent(mod, ident, t);
 		IF mod # "" THEN
 			str := mod$;
-			StdDialog.GetSubLoc(str, "Code", loc, name);
+			Utils.GetSubLoc(str, Utils.OFdir, loc, name);
 			f := Files.dir.Old(loc, name, Files.shared);
 			IF f # NIL THEN
 				ReadHeader(f, v, title);

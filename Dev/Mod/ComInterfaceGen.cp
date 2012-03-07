@@ -12,7 +12,7 @@ MODULE DevComInterfaceGen;
 **)
 
 	IMPORT COM, WinApi, WinOle, WinOleAut, 
-		Files, HostFiles, Strings, Dialog, StdDialog, Views, TextModels, TextViews, DevTypeLibs; 
+		Files, HostFiles, Strings, Dialog, Utils, Views, TextModels, TextViews, DevTypeLibs; 
 
 	TYPE
 		Entry = POINTER TO RECORD	(* registry typelib entry *)
@@ -47,7 +47,7 @@ MODULE DevComInterfaceGen;
 		VAR fn: Files.Name; loc: Files.Locator; t: TextModels.Model;
 	BEGIN
 		t := DevTypeLibs.AutomationInterface(dialog.fileName$, dialog.modName$);
-		StdDialog.GetSubLoc(dialog.modName, "Mod", loc, fn); loc.res := 77;
+		Utils.GetSubLoc(dialog.modName, "Mod", loc, fn); loc.res := 77;
 		Views.Open(TextViews.dir.New(t), loc, fn, NIL)		
 	END GenAutomationInterface;
 	
@@ -55,7 +55,7 @@ MODULE DevComInterfaceGen;
 		VAR fn: Files.Name; loc: Files.Locator; t: TextModels.Model;
 	BEGIN
 		t := DevTypeLibs.CustomInterface(dialog.fileName$, dialog.modName$);
-		StdDialog.GetSubLoc(dialog.modName, "Mod", loc, fn); loc.res := 77;
+		Utils.GetSubLoc(dialog.modName, "Mod", loc, fn); loc.res := 77;
 		Views.Open(TextViews.dir.New(t), loc, fn, NIL)		
 	END GenCustomInterface;	
 	

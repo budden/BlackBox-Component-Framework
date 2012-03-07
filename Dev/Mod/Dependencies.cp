@@ -12,7 +12,7 @@ MODULE DevDependencies;
 **)
 
 	IMPORT
-		Kernel, Files, Dialog, TextMappers, TextControllers, StdDialog, StdFolds, Strings, Views, Ports, 
+		Files, Utils, Dialog, TextMappers, TextControllers, StdDialog, StdFolds, Strings, Views, Ports, 
 		Fonts, Properties, Controllers, Stores, HostMenus, HostPorts, StdCmds, Math, 
 		TextModels, TextViews, Dates, DevCommanders;
 	
@@ -262,7 +262,7 @@ MODULE DevDependencies;
 				NEW(tmpList); Stores.Join(v, tmpList); INC(v.nofMods);
 				tmpList.name := name; 
 				(* if subsystem exists then use it otherwise create a new one *) 
-				Kernel.SplitName(name, head, tail); IF head = "" THEN head := "System" END;
+				Utils.SplitName(name, head, tail); IF head = "" THEN head := "System" END;
 				sslist := v.subsystems;
 				WHILE (sslist # NIL) & (sslist.name # head) DO sslist := sslist.next END;
 				IF sslist = NIL THEN
@@ -1203,7 +1203,7 @@ MODULE DevDependencies;
 		l := v.list; col := 0;
 		WHILE l # NIL DO
 			IF l.onlyImplicit THEN SetGray(f) ELSE SetDefColor(f) END;
-			Kernel.SplitName(l.name, head, tail); IF head = "" THEN head := "System" END;
+			Utils.SplitName(l.name, head, tail); IF head = "" THEN head := "System" END;
 			f.WriteString(head + "/Code/" + tail + ".ocf ");
 			INC(col); IF col >= colsPerRow THEN f.WriteLn; col := 0 END;
 			l := l.next
@@ -1393,9 +1393,9 @@ MODULE DevDependencies;
 			WHILE s.type # TextMappers.eot DO
 				IF s.type = TextMappers.string THEN
 					sl := v.startList;
-					Kernel.SplitName(sl.name, sub, mod); IF sub = "" THEN sub := "System" END;
+					Utils.SplitName(sl.name, sub, mod); IF sub = "" THEN sub := "System" END;
 					WHILE (sl # NIL) & (sub # s.string) DO
-						Kernel.SplitName(sl.name, sub, mod); IF sub = "" THEN sub := "System" END;
+						Utils.SplitName(sl.name, sub, mod); IF sub = "" THEN sub := "System" END;
 						sl := sl.next
 					END;
 					IF sl = NIL THEN NEW(n); n.name := s.string$; n.next := l;  l := n END

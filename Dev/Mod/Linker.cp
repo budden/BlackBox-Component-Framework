@@ -12,7 +12,7 @@ MODULE DevLinker;
 **)
 	
 	IMPORT
-		Kernel, Files, Dates, Dialog, Strings,
+		Utils, Files, Dates, Dialog, Strings,
 		TextModels, TextViews, TextMappers,
 		Log := StdLog, DevCommanders;
 	
@@ -27,8 +27,6 @@ MODULE DevLinker;
 
 		FixLen = 30000;
 		
-		OFdir = "Code";
-		SYSdir = "System";
 		RsrcDir = "Rsrc";
 		WinDir = "Win";
 
@@ -99,20 +97,6 @@ MODULE DevLinker;
 		a := a DIV 12 * 1461 DIV 4 + (a MOD 12 * 153 + 2) DIV 5 + d.day + 59;
 		RETURN ((a * 24 + t.hour) * 60 + t.minute) * 60 + t.second;
 	END TimeStamp;
-
-	PROCEDURE ThisFile (modname: ARRAY OF CHAR): Files.File;
-		VAR dir, name: Files.Name; loc: Files.Locator; f: Files.File;
-	BEGIN
-		Kernel.SplitName(modname, dir, name);
-		Kernel.MakeFileName(name, Kernel.objType);
-		loc := Files.dir.This(dir); loc := loc.This(OFdir);
-		f := Files.dir.Old(loc, name, TRUE);
-		IF (f = NIL) & (dir = "") THEN
-			loc := Files.dir.This(SYSdir); loc := loc.This(OFdir);
-			f := Files.dir.Old(loc, name, TRUE)
-		END;
-		RETURN f
-	END ThisFile;
 	
 	PROCEDURE ThisResFile (VAR name: Files.Name): Files.File;
 		VAR loc: Files.Locator; f: Files.File;
@@ -380,7 +364,7 @@ MODULE DevLinker;
 		mod := modList;
 		WHILE mod # NIL DO
 			IF ~mod.dll THEN
-				mod.file := ThisFile(mod.name);
+				mod.file := Utils.ThisObjFile(mod.name);
 				IF mod.file # NIL THEN
 					R := mod.file.NewReader(R); R.SetPos(0); Read4(x);
 					IF x = 6F4F4346H THEN
@@ -907,7 +891,7 @@ MODULE DevLinker;
 		mod := modList;
 		WHILE mod # NIL DO impg := mod; impd := mod;
 			IF ~mod.dll THEN
-				mod.file := ThisFile(mod.name);
+				mod.file := Utils.ThisObjFile(mod.name);
 				R := mod.file.NewReader(R); R.SetPos(mod.hs);
 				NEW(mod.data, mod.ms + mod.ds);
 				R.ReadBytes(mod.data^, 0, mod.ms + mod.ds);
@@ -1337,7 +1321,7 @@ MODULE DevLinker;
 				IF (S.type = TextMappers.char) & (S.char = ".") THEN S.Scan;
 					IF S.type = TextMappers.string THEN
 						IF (S.string = "tlb") OR (S.string = "TLB") THEN res.typ := -1 END;
-						Kernel.MakeFileName(res.name, S.string); S.Scan
+						Utils.MakeFileName(res.name, S.string); S.Scan
 					END
 				END;
 				IF (S.type = TextMappers.char) & (S.char = "(") THEN S.Scan;
@@ -1376,9 +1360,9 @@ MODULE DevLinker;
 			name := S.string$; S.Scan;
 			IF (S.type = TextMappers.char) & (S.char = ".") THEN S.Scan;
 				IF S.type = TextMappers.string THEN
-					Kernel.MakeFileName(name, S.string); S.Scan
+					Utils.MakeFileName(name, S.string); S.Scan
 				END
-			ELSE Kernel.MakeFileName(name, "EXE");
+			ELSE Utils.MakeFileName(name, "EXE");
 			END;
 			IF (S.type = TextMappers.char) & (S.char = ":") THEN S.Scan;
 				IF (S.type = TextMappers.char) & (S.char = "=") THEN S.Scan;

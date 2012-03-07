@@ -12,7 +12,7 @@ MODULE DevCPM;
 
 **)
 
-	IMPORT SYSTEM, Kernel, Files, Stores, Models, Views, TextModels, TextMappers, StdLog, DevMarkers;
+	IMPORT SYSTEM, Files, Utils, Stores, Models, Views, TextModels, TextMappers, StdLog, DevMarkers;
 
 	CONST
 		ProcSize* = 4;	(* PROCEDURE type *)
@@ -683,8 +683,8 @@ TYPE
 		IF modName = "@file" THEN
 			oldSymFile := file
 		ELSE
-			name := modName$; Kernel.SplitName(name, dir, name);
-			Kernel.MakeFileName(name, Kernel.symType); 
+			name := modName$; Utils.SplitName(name, dir, name);
+			Utils.MakeFileName(name, Utils.symType); 
 			loc := Files.dir.This(dir); loc := loc.This(symDir);
 			oldSymFile := Files.dir.Old(loc, name, Files.shared);
 			IF (oldSymFile = NIL) & (dir = "") THEN
@@ -743,7 +743,7 @@ TYPE
 	PROCEDURE NewSym* (VAR modName: ARRAY OF SHORTCHAR);
 		VAR loc: Files.Locator; dir: Files.Name;
 	BEGIN
-		ObjFName := modName$; Kernel.SplitName(ObjFName, dir, ObjFName);
+		ObjFName := modName$; Utils.SplitName(ObjFName, dir, ObjFName);
 		loc := Files.dir.This(dir); loc := loc.This(symDir);
 		symFile := Files.dir.New(loc, Files.ask);
 		IF symFile # NIL THEN
@@ -759,8 +759,8 @@ TYPE
 	BEGIN
 		IF symFile # NIL THEN
 			name := ObjFName$;
-			Kernel.MakeFileName(name, Kernel.symType);
-			symFile.Register(name, Kernel.symType, Files.ask, res);
+			Utils.MakeFileName(name, Utils.symType);
+			symFile.Register(name, Utils.symType, Files.ask, res);
 			symFile := NIL
 		END
 	END RegisterNewSym;
@@ -817,7 +817,7 @@ TYPE
 		VAR loc: Files.Locator; dir: Files.Name;
 	BEGIN
 		errpos := 0;
-		ObjFName := modName$; Kernel.SplitName(ObjFName, dir, ObjFName);
+		ObjFName := modName$; Utils.SplitName(ObjFName, dir, ObjFName);
 		loc := Files.dir.This(dir); loc := loc.This(codeDir);
 		objFile := Files.dir.New(loc, Files.ask);
 		IF objFile # NIL THEN
@@ -833,8 +833,8 @@ TYPE
 	BEGIN
 		IF objFile # NIL THEN
 			name := ObjFName$;
-			Kernel.MakeFileName(name, Kernel.objType);
-			objFile.Register(name, Kernel.objType, Files.ask, res);
+			Utils.MakeFileName(name, Utils.objType);
+			objFile.Register(name, Utils.objType, Files.ask, res);
 			objFile := NIL; outObj := NIL
 		END
 	END RegisterObj;

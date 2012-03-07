@@ -14,7 +14,7 @@ MODULE DevPacker;
 	(* !!! HostPackedFiles depends on the way files are packed into the exe file by DevPacker. !!!! *)
 
 	IMPORT
-		Kernel, Services, Strings, Files, Dialog, Stores, Views, HostFiles, HostPackedFiles,
+		Kernel, Utils, Services, Strings, Files, Dialog, Stores, Views, HostFiles, HostPackedFiles,
 		TextModels, TextViews, TextMappers, StdLog, DevCommanders;
 
 	CONST
@@ -191,7 +191,7 @@ MODULE DevPacker;
 		f.WriteView(DevCommanders.dir.New()); f.WriteString(' DevPacker.PackThis exefilename.exe :='); f.WriteLn;
 		m := Kernel.modList;
 		WHILE m # NIL DO
-			Kernel.SplitName(m.name$, path, name);
+			Utils.SplitName(m.name$, path, name);
 			IF path = "" THEN path := 'System' END;
 			path := path + '/Code/';
 			f.WriteString(path + name + '.ocf ');

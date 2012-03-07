@@ -1,4 +1,4 @@
-MODULE DevDebug;
+﻿MODULE DevDebug;
 (**
 	project	= "BlackBox"
 	organization	= "www.oberon.ch"
@@ -160,17 +160,10 @@ MODULE DevDebug;
 		VAR i: SHORTINT; ch: CHAR;
 	BEGIN
 		ch := s[0];
-<<<<<<< HEAD
-		IF ("A" <= CAP(ch)) & (CAP(ch) <= "Z") OR (ch = "_") OR (ch >= 0C0X) & (ch < 100X) & (ch # "Ч") & (ch # "ч") THEN
-			i := 1; ch := s[1];
-			WHILE ("A" <= CAP(ch)) & (CAP(ch) <= "Z") OR ("0" <= ch) & (ch <= "9")
-					OR (ch = "_") OR (ch >= 0C0X) & (ch < 100X) & (ch # "Ч") & (ch # "ч") DO
-=======
 		IF ("A" <= CAP(ch)) & (CAP(ch) <= "Z") OR (ch = "_") OR (ch >= 0C0X) & (ch < 100X) & (ch # "×") & (ch # "÷") THEN
 			i := 1; ch := s[1];
 			WHILE ("A" <= CAP(ch)) & (CAP(ch) <= "Z") OR ("0" <= ch) & (ch <= "9")
 					OR (ch = "_") OR (ch >= 0C0X) & (ch < 100X) & (ch # "×") & (ch # "÷") DO
->>>>>>> master
 				INC(i); ch := s[i]
 			END;
 			RETURN (s[i] = 0X) & (i < 256)

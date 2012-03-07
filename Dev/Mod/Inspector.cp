@@ -11,7 +11,7 @@ MODULE DevInspector;
 
 **)
 
-	IMPORT Kernel, Services, Stores, Views, Controllers, Properties, Containers, Dialog, Controls;
+	IMPORT Utils, Services, Stores, Views, Controllers, Properties, Containers, Dialog, Controls;
 	
 	CONST
 		multiView = TRUE;
@@ -45,7 +45,7 @@ MODULE DevInspector;
 			END
 		END;
 		IF v # NIL THEN
-			Services.GetTypeName(v, t); Kernel.SplitName(t, subs, cntr);
+			Services.GetTypeName(v, t); Utils.SplitName(t, subs, cntr);
 			Dialog.MapString("#" + subs + ":" + cntr, s);
 			IF s = cntr THEN Dialog.MapString("#Dev:" + t, s) END
 		END
@@ -173,7 +173,7 @@ MODULE DevInspector;
 	);
 		VAR l, k, subs, cntr: Dialog.String; si: ARRAY 2 OF CHAR;
 	BEGIN
-		Kernel.SplitName(control, subs, cntr);
+		Utils.SplitName(control, subs, cntr);
 		si[0] := CHR(i + ORD("0")); si[1] := 0X;
 		k := cntr + "." + type + si;
 		Dialog.MapString("#" + subs + ":" + k, l);
