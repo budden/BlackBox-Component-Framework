@@ -12,7 +12,7 @@ MODULE StdApi;
 **)
 	
 	IMPORT
-		Kernel, Views, Files, Dialog, Converters, Windows, Sequencers, Stores, Meta,
+		Utils, Views, Files, Dialog, Converters, Windows, Sequencers, Stores, Meta,
 		Containers, StdDialog, Documents;
 
 	(* Auxiliary procedures *)
@@ -66,10 +66,10 @@ MODULE StdApi;
 			Meta.LookupPath(dialog, var);
 			IF var.obj = Meta.varObj THEN	(* variable exists *)
 				canCreate := TRUE;
-				Kernel.SplitName(submod, sub, mod);
+				Utils.SplitName(submod, sub, mod);
 				loc := Files.dir.This(sub);
 				IF loc # NIL THEN
-					Kernel.MakeFileName(fname, "");
+					Utils.MakeFileName(fname, "");
 					loc := loc.This("Rsrc");
 					IF loc # NIL THEN file := Files.dir.Old(loc, fname, Files.shared) END;
 					IF (file = NIL) & (sub = "") THEN
@@ -85,12 +85,12 @@ MODULE StdApi;
 		IF (file = NIL) & ~canCreate THEN	(* try file name *)
 			PathToSpec(dialog, loc, fname);
 			IF loc.res = 0 THEN
-				Kernel.MakeFileName(fname, "");
+				Utils.MakeFileName(fname, "");
 				file := Files.dir.Old(loc, fname, Files.shared)
 			END
 		END;
 		IF file # NIL THEN
-			Kernel.MakeFileName(fname, "");
+			Utils.MakeFileName(fname, "");
 			conv := NIL; Converters.Import(loc, fname, conv, s);
 			IF s # NIL THEN
 				v := s(Views.View)

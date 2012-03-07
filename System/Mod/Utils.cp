@@ -3,34 +3,15 @@ MODULE Utils;
 	IMPORT (*Kernel,*) Files;
 	
 	CONST
-		OFdir = "Code";
-		SYSdir = "System";
-		initMod = "Init";
+		OFdir* = "Code";
+		SYSdir* = "System";
 		
-		objType = "ocf";
-		symType = "osf";
+		objType* = "ocf";
+		symType* = "osf";
 		
-		codeType = "cp";
-		docType = "odc";
-		
-	(*TYPE
-
-	VAR
+		codeType* = "cp";
+		docType* = "odc";
 	
-	PROCEDURE ;
-	BEGIN
-	END ;
-	
-	PROCEDURE Append (VAR s: ARRAY OF CHAR; t: ARRAY OF CHAR);
-		VAR len, i, j: INTEGER; ch: CHAR;
-	BEGIN
-		len := LEN(s);
-		i := 0; WHILE s[i] # 0X DO INC(i) END;
-		j := 0; REPEAT ch := t[j]; s[i] := ch; INC(j); INC(i) UNTIL (ch = 0X) OR (i = len);
-		s[len - 1] := 0X
-	END Append;
-	*)
-
 	PROCEDURE SplitName* (name: ARRAY OF CHAR; VAR head, tail: ARRAY OF CHAR);
 		(* portable *)
 		VAR i, j: INTEGER; ch, lch: CHAR;
@@ -89,7 +70,7 @@ MODULE Utils;
 					IF file = NIL THEN loc := NIL END
 				END;
 				IF loc = NIL THEN
-					loc := Files.dir.This("System");
+					loc := Files.dir.This(SYSdir);
 					IF loc # NIL THEN loc := loc.This(cat) END
 				END
 			END

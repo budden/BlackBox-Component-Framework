@@ -11,8 +11,6 @@ MODULE Files;
 
 **)
 
-	IMPORT Kernel;
-
 	CONST 
 		shared* = TRUE; exclusive* = FALSE;
 		dontAsk* = FALSE; ask* = TRUE; (** File.Register, Directory.New and Directory.Rename  **)
@@ -61,7 +59,6 @@ MODULE Files;
 		Directory* = POINTER TO ABSTRACT RECORD END;
 
 	VAR dir-, stdDir-: Directory;
-		objType-, symType-, docType- : Type;	(* file types *)
 
 
 	PROCEDURE (l: Locator) This* (IN path: ARRAY OF CHAR): Locator, NEW, ABSTRACT;
@@ -103,16 +100,12 @@ MODULE Files;
 	PROCEDURE (d: Directory) FileList* (loc: Locator): FileInfo, NEW, ABSTRACT;
 	PROCEDURE (d: Directory) LocList* (loc: Locator): LocInfo, NEW, ABSTRACT;
 	PROCEDURE (d: Directory) GetFileName* (name: Name; type: Type; OUT filename: Name), NEW, ABSTRACT;
-			
+	
 	PROCEDURE SetDir* (d: Directory);
 	BEGIN
 		ASSERT(d # NIL, 20);
 		dir := d;
 		IF stdDir = NIL THEN stdDir := d END
 	END SetDir;
-
-BEGIN
-	objType := Kernel.objType;
-	symType := Kernel.symType;
-	docType := Kernel.docType;
+	
 END Files.

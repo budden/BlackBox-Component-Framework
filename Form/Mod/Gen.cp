@@ -13,8 +13,8 @@ MODULE FormGen;
 **)
 	
 	IMPORT
-		Strings, Meta, Dates, Files, Ports, Views, Properties, Dialog, Containers, Documents,
-		Controls, StdDialog, StdCmds, FormModels, FormViews, FormControllers;
+		Strings, Meta, Dates, Files, Utils, Ports, Views, Properties, Dialog, Containers, Documents,
+		Controls, StdCmds, FormModels, FormViews, FormControllers;
 
 	CONST
 		defaultDelta = 4 * Ports.point;
@@ -198,7 +198,7 @@ MODULE FormGen;
 					WHILE mod[i] # 0X DO name[j] := mod[i]; INC(i); INC(j) END;
 					name[j] := 0X
 				END;
-				StdDialog.GetSubLoc(mod, "Rsrc", loc, mod);
+				Utils.GetSubLoc(mod, "Rsrc", loc, mod);
 				IF name = "" THEN name := mod$ END;
 				loc.res := 77
 			ELSE

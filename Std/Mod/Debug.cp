@@ -12,7 +12,7 @@ MODULE StdDebug;
 **)
 
 	IMPORT SYSTEM,
-		Kernel, Strings, Fonts, Services, Ports, Views, Properties, Dialog, Containers, StdFolds,
+		Kernel, Utils, Strings, Fonts, Services, Ports, Views, Properties, Dialog, Containers, StdFolds,
 		TextModels, TextMappers, TextViews, TextRulers;
 	
 	CONST
@@ -544,8 +544,8 @@ MODULE StdDebug;
 			DEC(a, mod.code); ref := mod.refs;
 			REPEAT Kernel.GetRefProc(ref, end, name) UNTIL (end = 0) OR (a < end);
 			IF a < end THEN
-				Kernel.SplitName (mod.name$, head, tail);
-				IF head = "" THEN head := "System" END;
+				Utils.SplitName (mod.name$, head, tail);
+				IF head = "" THEN head := Utils.SYSdir END;
 				Strings.IntToString(Kernel.err, errstr);
 				key := tail + "." + name + "." + errstr;
 				Dialog.MapString("#" + head + ":" + key, msg);

@@ -15,7 +15,6 @@ MODULE HostFiles;
 
 	CONST
 		tempName = "odcxxxxx.tmp";
-		docType = "odc";
 
 		serverVersion = TRUE;
 

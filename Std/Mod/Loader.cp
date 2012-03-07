@@ -11,7 +11,7 @@ MODULE StdLoader;
 
 **)
 
-	IMPORT S := SYSTEM, Kernel, Files;
+	IMPORT S := SYSTEM, Kernel, Files, Utils;
 	
 	CONST
 		done = Kernel.done;
@@ -72,20 +72,6 @@ MODULE StdLoader;
 		j := 0; REPEAT ch := t[j]; s[i] := ch; INC(j); INC(i) UNTIL (ch = 0X) OR (i = len);
 		s[len - 1] := 0X
 	END Append;
-
-	PROCEDURE ThisObjFile (VAR name: ARRAY OF CHAR): Files.File;
-		VAR f: Files.File; loc: Files.Locator; dir, fname: Files.Name;
-	BEGIN
-		Kernel.SplitName(name, dir, fname);
-		Kernel.MakeFileName(fname, Kernel.objType);
-		loc := Files.dir.This(dir); loc := loc.This(OFdir);
-		f := Files.dir.Old(loc, fname, TRUE);
-		IF (f = NIL) & (dir = "") THEN
-			loc := Files.dir.This(SYSdir); loc := loc.This(OFdir);
-			f := Files.dir.Old(loc, fname, TRUE)
-		END;
-		RETURN f
-	END ThisObjFile;
 	
 	PROCEDURE RWord (VAR x: INTEGER);
 		VAR b: BYTE; y: INTEGER;
@@ -152,10 +138,10 @@ MODULE StdLoader;
 	PROCEDURE ReadHeader (mod: ModSpec);
 		VAR n, p: INTEGER; name: Name; imp, last: ModSpec;
 	BEGIN
-		mod.file := ThisObjFile(mod.name);
+		mod.file := Utils.ThisObjFile(mod.name);
 		IF (mod.file = NIL) & (mod.link # NIL) THEN	(* try closing importing obj file *)
 			mod.link.file.Close; mod.link.file := NIL;
-			mod.file := ThisObjFile(mod.name)
+			mod.file := Utils.ThisObjFile(mod.name)
 		END;
 		IF mod.file # NIL THEN
 			inp := mod.file.NewReader(inp);
@@ -186,7 +172,7 @@ MODULE StdLoader;
 		VAR imptab, x, fp, ofp, opt, a: INTEGER;
 			name: Name; dp, mp: BlockPtr; imp: ModSpec; obj: Kernel.Object; in, n: Kernel.Name;
 	BEGIN
-		IF mod.file = NIL THEN mod.file := ThisObjFile(mod.name) END;
+		IF mod.file = NIL THEN mod.file := Utils.ThisObjFile(mod.name) END;
 		inp := mod.file.NewReader(inp);
 		IF inp # NIL THEN
 			inp.SetPos(mod.hs);
@@ -341,4 +327,3 @@ BEGIN
 		Kernel.FatalError(res, imported)
 	END
 END StdLoader.
-

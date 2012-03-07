@@ -14,7 +14,7 @@ MODULE HostDialog;
 
 	IMPORT
 		WinApi, WinDlg,  SYSTEM,
-		Kernel, Strings, Dates, Fonts, Ports, Files, Stores, Views, Controllers, Properties,
+		Utils, Strings, Dates, Fonts, Ports, Files, Stores, Views, Controllers, Properties,
 		Printers, Dialog, Windows, Converters, Services,
 		HostFonts, HostFiles, HostRegistry, HostPorts, HostWindows, HostPrinters,
 		StdCmds,
@@ -113,8 +113,8 @@ MODULE HostDialog;
 		str := cmd$; i := 0;
 		WHILE str[i] >= "0" DO INC(i) END;
 		str[i] := 0X;
-		Kernel.SplitName(str, sub, str);
-		IF sub = "" THEN sub := "System" END;
+		Utils.SplitName(str, sub, str);
+		IF sub = "" THEN sub := Utils.SYSdir END;
 		str := "#"; i := 1;
 		Append(str, i, sub);
 		Append(str, i, ":");
