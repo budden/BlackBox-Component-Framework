@@ -1,0 +1,199 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/strict.dtd">
+
+<html>
+	<head>
+		<title>DevElfLinker documentation</title>
+	</head>
+
+	<body>
+		<h1>DevElfLinker</h1>
+
+		<p/>
+
+		<p><em>DevElfLinker</em> is the <a href="http://en.wikipedia.org/wiki/BlackBox_Component_Builder">BlackBox</a> linker for <a href="http://en.wikipedia.org/wiki/Shared_libraries#Shared_libraries">Shared Object libraries</a> in the <a href="http://en.wikipedia.org/wiki/Executable_and_Linkable_Format">ELF</a> file format, for the Linux operating system.</p>
+
+		<p/>
+
+		<p>The linker can be run with one of the commands described below. Each of the commands needs a parameter text with the syntax:</p>
+
+		<p/>
+
+		<p>&lt;destFile&gt; := {&lt;module&gt; {option}}.</p>
+
+		<p/>
+
+		<p><em>destFile</em> is the name of the shared object file to be created.</p>
+
+		<p><em>module</em> is a Component Pascal module, the code file is loaded from the corresponding directory.</p>
+
+		<p><em>option</em> is one of the following characters:</p>
+
+		<p>&nbsp;&nbsp;&nbsp;$ main module: the body of this module is called when the library is loaded.</p>
+
+		<p>&nbsp;&nbsp;&nbsp;+ identifies the kernel. A kernel must be present if the standard function <em>NEW</em> is used in some module. The kernel must export the procedures <em>NewRec</em> and <em>NewArr</em>.</p>
+
+		<p>&nbsp;&nbsp;&nbsp;# interface module: the exported procedures of this module are added to the export list.</p>
+
+		<p/>
+
+		<p>The module list must be sorted such that an imported module textually precedes the module importing it. This rule also applies to the implicit kernel import when using <em>NEW</em>.</p>
+
+		<p/>
+
+		<p>Currently, the ELF linker only supports shared object libraries (DLLs).</p>
+
+		<p/>
+
+		<p/>
+
+		<p><strong>DevElfLinker.LinkDll</strong></p>
+
+		<p>Links an unextensible module set to a shared object file.</p>
+
+		<p>When the shared library is attached to a process, the bodies of all modules are called in the correct order.</p>
+
+		<p>When the shared library is released from the process, the terminators (CLOSE sections) of all modules are called in reverse order.</p>
+
+		<p>No runtime system (e.g. Module Kernel) is needed for initialization and termination.</p>
+
+		<p>Legal options: + #</p>
+
+		<p/>
+
+		<p><strong>DevElfLinker.LinkDynDll</strong></p>
+
+		<p>Links a module set containing a dynamic module loader to a shared library file.</p>
+
+		<p>When the shared library is attached to a process, the body of the main module is called.</p>
+
+		<p>When the shared library is released from the process, the terminator (CLOSE section) of the main module is called.</p>
+
+		<p>Initialization and termination of the other modules must be done by the runtime system.</p>
+
+		<p>Legal options: $ + #</p>
+
+		<p/>
+
+		<p>The reason for the different commands for static and dynamic systems is that there is no statically defined initialization sequence in a system that includes a dynamic loader. In BlackBox the <em>Kernel</em> (which is the lowest module in the module hierarchy) is specified as the main module. The body of the kernel then calls the bodies of all linked modules dynamically in the correct sequence. If there are no calls to the dynamic loader (via <em>Dialog.Call</em>) in the module bodies, the modules are initialized in the order in which they appear in the parameter text.</p>
+
+		<p/>
+
+		<p/>
+
+		<p><strong>Platform dependent modules</strong></p>
+
+		<p>For linking libraries running on Linux, you may need to include special versions of the non-portable BlackBox module, such as, Kernel and HostFiles. These modules are available in the Lin subsystem.</p>
+
+		<p/>
+
+		<p><em>LinKernel</em>: Linux specific Kernel module. See the example below on how to link it. The modules that need the Kernel must import it as usual, that is as Kernel and not as LinKernel.</p>
+
+		<p/>
+
+		<p><em>LinHostFiles</em>: The Linux specific implementation of HostFiles. See below for an example on how to link it.</p>
+
+		<p/>
+
+		<p><em>LinInit</em>: This is an empty Init module. link it whenever you link StdLoader to load modules dynamically.</p>
+
+		<p/>
+
+		<p><strong>Libraries that load modules dynamically</strong></p>
+
+		<p>If you want your library to be able to load modules dynamically (with Meta or StdLoader) you should follow these guidelines:</p>
+
+		<p/>
+
+		<ul>
+			<li>When linking Meta you have to link StdLoader too.</li>
+			<li>To make StdLoader work, you have to link LinInit.</li>
+			<li>StdLoader needs also Files and HostFiles.</li>
+		</ul>
+		<p/>
+
+		<p>Here is the best sequence to link all these modules:</p>
+
+		<p>&nbsp;&nbsp;&nbsp;LinInit Meta Files LinHostFiles StdLoader</p>
+
+		<p/>
+
+		<p/>
+
+		<p><strong>Examples</strong></p>
+
+		<p/>
+
+		<p>Simple Shared Object library:</p>
+
+		<p/>
+
+		<p>DevElfLinker.LinkDll libMySo.so := MySo# ~</p>
+
+<pre>
+MODULE MySo;
+    <em>(* sample module to be linked into a shared object library *)</em>
+
+    IMPORT SYSTEM;
+
+    PROCEDURE [ccall] <strong>Gcd</strong>* (a, b: INTEGER): INTEGER;
+    BEGIN
+        WHILE a # b DO
+            IF a &gt; b THEN a := a - b ELSE b := b - a END
+        END;
+        <strong>RETURN</strong> a
+    END Gcd;
+    
+    PROCEDURE [ccall] <strong>Lcm</strong>* (a, b: INTEGER): INTEGER;
+    BEGIN
+        <strong>RETURN</strong> a * b DIV Gcd(a, b)
+    END Lcm;
+    
+    END MySo.
+</pre>
+		<p/>
+
+		<p/>
+
+		<p>Shared object library that uses Kernel and Files/HostFiles:</p>
+
+		<p/>
+
+		<p>DevElfLinker.LinkDynDll libMyDynSo.so := LinKernel$+ Files LinHostFiles LinInit Math Strings MyDynSo# ~</p>
+
+		<p/>
+		
+<pre>MODULE MyDynSo;
+    IMPORT SYSTEM, Kernel, Files, Strings;
+    
+    PROCEDURE [ccall] <strong>TestDynSo</strong>* (OUT str: ARRAY [untagged] OF SHORTCHAR; OUT len: INTEGER);
+        VAR f: Files.File; loc: Files.Locator; info: Files.FileInfo; year, month, day, hour, min, second: INTEGER;
+                num, out: ARRAY 256 OF CHAR;
+    BEGIN
+        str := &quot;&quot;; len := 0;
+        loc := Files.dir.This(&quot;/etc&quot;);
+        IF loc.res = 0 THEN
+            info := Files.dir.FileList(loc);
+            WHILE (info # NIL) &amp; (info.name # &quot;passwd&quot;) DO
+                info := info.next
+            END;
+            IF info # NIL THEN
+                Strings.IntToString(info.modified.day, out);
+                Strings.IntToString(info.modified.month, num); out := out$ + &quot;.&quot; + num$;
+                Strings.IntToString(info.modified.year, num); out := out$ + &quot;.&quot; + num$;
+                Strings.IntToString(info.modified.hour, num); out := out$ + &quot; &quot; + num$;
+                Strings.IntToString(info.modified.minute, num); out := out$ + &quot;:&quot; + num$;
+                Kernel.Beep
+            ELSE
+                out := &quot;File /etc/passwd not found&quot;
+            END
+        ELSE
+            out:= &quot;Invalid directory&quot;
+        END;
+        str := SHORT(out);
+        len := LEN(out$)
+    END TestDynSo;
+
+END MyDynSo.</pre>
+	</body>
+</html>

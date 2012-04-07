@@ -8,7 +8,6 @@ MODULE HostPorts;
 	license	= "Docu/BB-License"
 	changes	= ""
 	issues	= ""
-
 **)
 
 	IMPORT
@@ -76,6 +75,13 @@ MODULE HostPorts;
 		REPEAT UNTIL Kernel.Time() > t
 	END Wait;
 	
+	PROCEDURE Length(IN s: ARRAY OF CHAR): INTEGER;
+		VAR i: INTEGER;
+	BEGIN
+		i := 0;
+		WHILE (i < LEN(s) - 1) & (s[i] # 0X) DO INC(i) END;
+		RETURN i
+	END Length;
 		
 	(** Port **)
 
@@ -527,6 +533,20 @@ MODULE HostPorts;
 		VAR res, i, a, b, c, w, u, n: INTEGER; p: Port; dc, old: WinApi.HANDLE; ch: SHORTCHAR;
 			df: HostFonts.DevFont; dx: ARRAY 1024 OF INTEGER;
 			s1: ARRAY 1024 OF SHORTCHAR; fsp: BOOLEAN;
+		
+		PROCEDURE HasFigureSpace (OUT k: INTEGER): BOOLEAN;
+		(* Figure space equal to tabular width of a font.
+		This is equivalent to the digit width of fonts with fixed-width digits *)
+			VAR found: BOOLEAN;
+		BEGIN
+			k := 0; found := FALSE;
+			WHILE ~found & (k < n) & (s[k] # 0X) DO
+				IF s[k] = figureSpace THEN found := TRUE END;
+				INC(k)
+			END;
+			RETURN found
+		END HasFigureSpace;
+		
 	BEGIN
 		ASSERT(rd.port # NIL, 100);
 		WITH font: HostFonts.Font DO
@@ -544,11 +564,8 @@ MODULE HostPorts;
 			res := WinApi.SetTextColor(dc, col);
 			IF df.noGap THEN INC(x) END;	(* caret pos optimization *)
 			INC(x, font.ftab[ORD(s[0])] DIV u);
-			a := LEN(s) - 1; n := 0; ch := s[0]; fsp := FALSE;
-			WHILE (n < a) & (ch # 0X) DO
-				IF ch = figureSpace THEN fsp := TRUE END;
-				INC(n); ch := s[n]
-			END;
+			n := LEN(s) - 1;
+			fsp := HasFigureSpace(i);
 			IF (df.id = font.id) & ~fsp THEN	(* native metric *)
 				res := WinApi.TextOutA(dc, x, y, s, n)
 			ELSE	(* adapt to meta metric *)
@@ -629,6 +646,20 @@ MODULE HostPorts;
 		VAR res, i, a, b, c, n, w, u: INTEGER; p: Port; dc, old: WinApi.HANDLE;
 			df: HostFonts.DevFont; dx: ARRAY 1024 OF INTEGER;
 			s1: ARRAY 1024 OF CHAR; fsp: BOOLEAN;
+		
+		PROCEDURE HasFigureSpace (OUT k: INTEGER): BOOLEAN;
+		(* Figure space equal to tabular width of a font.
+		This is equivalent to the digit width of fonts with fixed-width digits *)
+			VAR found: BOOLEAN;
+		BEGIN
+			k := 0; found := FALSE;
+			WHILE ~found & (k < n) & (s[k] # 0X) DO
+				IF s[k] = figureSpace THEN found := TRUE END;
+				INC(k)
+			END;
+			RETURN found
+		END HasFigureSpace;
+		
 	BEGIN
 		ASSERT(rd.port # NIL, 100);
 		WITH font: HostFonts.Font DO
@@ -640,14 +671,10 @@ MODULE HostPorts;
 			IF col = Ports.defaultColor THEN col := textCol END;
 			df := font.dev;
 			WHILE (df # NIL) & (df.unit # u) DO df := df.next END;
-			n := LEN(s) - 1; i := 0; fsp := FALSE;
-			WHILE (i < n) & (s[i] # 0X) DO
-				IF s[i] = figureSpace THEN fsp := TRUE END;
-				INC(i)
-			END;
+			n := LEN(s) - 1;
+			fsp := HasFigureSpace(i);
 			IF (df # NIL) & (df.id = font.id) & ~fsp THEN	(* native metric *)
-				i := 0;
-				WHILE (i < n) & (s[i] # 0X) DO INC(i) END;
+				i := Length(s);
 				res := WinApi.SelectObject(dc, df.id);
 				IF df.noGap THEN INC(x) END;	(* caret pos optimization *)
 				res := WinApi.SetTextColor(dc, col);
