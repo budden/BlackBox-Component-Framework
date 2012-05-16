@@ -7,9 +7,6 @@ MODULE DevCPM;
 	copyright	= "System/Rsrc/About"
 	license	= "Docu/BB-License"
 	references	= "ftp://ftp.inf.ethz.ch/pub/software/Oberon/OberonV4/Docu/OP2.Paper.ps"
-	changes	= ""
-	issues	= ""
-
 **)
 
 	IMPORT SYSTEM, Files, Utils, Stores, Models, Views, TextModels, TextMappers, StdLog, DevMarkers;
@@ -94,9 +91,6 @@ MODULE DevCPM;
 		sys386 = 10; sys68k = 20;	(* processor type in options if system imported *)
 		
 	CONST
-		SFdir = "Sym";
-		OFdir = "Code";
-		SYSdir = "System";
 		SFtag = 6F4F5346H;	(* symbol file tag *)
 		OFtag = 6F4F4346H;	(* object file tag *)
 		maxErrors = 64;
@@ -146,7 +140,7 @@ TYPE
 		DevMarkers.Unmark(in.Base());
 		noerr := TRUE; options := {};
 		curpos := in.Pos(); errpos := curpos; lastpos := curpos - 11; errors := 0;
-		codeDir := OFdir; symDir := SFdir
+		codeDir := Utils.OFdir; symDir := Utils.SFdir
 	END Init;
 	
 	PROCEDURE Close*;
@@ -688,7 +682,7 @@ TYPE
 			loc := Files.dir.This(dir); loc := loc.This(symDir);
 			oldSymFile := Files.dir.Old(loc, name, Files.shared);
 			IF (oldSymFile = NIL) & (dir = "") THEN
-				loc := Files.dir.This(SYSdir); loc := loc.This(symDir);
+				loc := Files.dir.This(Utils.SYSdir); loc := loc.This(symDir);
 				oldSymFile := Files.dir.Old(loc, name, Files.shared)
 			END
 		END;

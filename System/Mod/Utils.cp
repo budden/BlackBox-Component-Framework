@@ -1,9 +1,10 @@
-MODULE Utils;
+﻿MODULE Utils;
 
-	IMPORT (*Kernel,*) Files;
+	IMPORT Files;
 	
 	CONST
 		OFdir* = "Code";
+		SFdir* = "Sym";
 		SYSdir* = "System";
 		
 		objType* = "ocf";

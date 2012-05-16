@@ -346,7 +346,7 @@ MODULE DevCompiler;
 	PROCEDURE Init;
 		VAR loc: Files.Locator; f: Files.File;
 	BEGIN
-		loc := Files.dir.This("Dev"); loc := loc.This("Code");
+		loc := Files.dir.This("Dev"); loc := loc.This(Utils.OFdir);
 		f := Files.dir.Old(loc, "ComDebug.ocf", TRUE);
 		found := f # NIL;
 		IF f # NIL THEN f.Close END
