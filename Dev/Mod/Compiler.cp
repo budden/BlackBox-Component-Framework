@@ -180,7 +180,7 @@ MODULE DevCompiler;
 
 	PROCEDURE CompileText* (text: TextModels.Model; beg: INTEGER; OUT error: BOOLEAN);
 	BEGIN
-		ASSERT(text # NIL, 20); ASSERT((beg >= 0) & (beg < text.Length()), 21);
+		ASSERT(text # NIL, 20); ASSERT((beg >= 0) & (beg <= text.Length()), 21);
 		Open;
 		Do(text, StdLog.text, beg, defopt, error);
 		IF error THEN DevMarkers.ShowFirstError(text, TextViews.focusOnly) END;

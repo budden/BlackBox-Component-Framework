@@ -1,4 +1,4 @@
-﻿MODULE DevDebug;
+MODULE DevDebug;
 (**
 	project	= "BlackBox"
 	organization	= "www.oberon.ch"
@@ -1126,10 +1126,10 @@
 		END
 	END Unload;
 	
-	PROCEDURE UnloadList(beg, end: INTEGER; c: TextControllers.Controller);
+	PROCEDURE UnloadList(beg, end: INTEGER; text: TextModels.Model);
 		VAR s: TextMappers.Scanner; res: INTEGER; ok, num: BOOLEAN; linked: ARRAY 16 OF CHAR;
 	BEGIN
-		s.ConnectTo(c.text); s.SetPos(beg); s.Scan; ok := TRUE; num := FALSE;
+		s.ConnectTo(text); s.SetPos(beg); s.Scan; ok := TRUE; num := FALSE;
 		WHILE (s.start < end) & (s.type # TextMappers.invalid) DO
 			Dialog.MapString("#Dev:Linked", linked);
 			IF (s.type = TextMappers.string) & (s.string # linked) THEN
@@ -1153,19 +1153,18 @@
 		c := TextControllers.Focus();
 		IF (c # NIL) & c.HasSelection() THEN
 			c.GetSelection(beg, end);
-			UnloadList(beg, end, c)
+			UnloadList(beg, end, c.text)
 		END
 	END UnloadModuleList;
 
 	PROCEDURE UnloadThis*;
-		VAR p: DevCommanders.Par; beg, end: INTEGER; c: TextControllers.Controller;
+		VAR p: DevCommanders.Par; beg, end: INTEGER;
 	BEGIN
 		p := DevCommanders.par;
 		IF p # NIL THEN
 			DevCommanders.par := NIL;
 			beg := p.beg; end := p.end;
-			c := TextControllers.Focus();
-			IF c # NIL THEN UnloadList(beg, end, c) END
+			UnloadList(beg, end, p.text)
 		ELSE Dialog.ShowMsg("#Dev:NoTextViewFound")
 		END
 	END UnloadThis;

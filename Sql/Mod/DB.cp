@@ -179,7 +179,7 @@ MODULE SqlDB;
 		VAR j: INTEGER;
 	BEGIN	(* extract the designator that describes a global variable *)
 		j := 0;
-		IF (CAP(ch) >= "A") & (CAP(ch) < "Z") THEN
+		IF (CAP(ch) >= "A") & (CAP(ch) <= "Z") THEN
 			REPEAT
 				t[j] := ch; INC(j);
 				INC(i); ch := s[i]

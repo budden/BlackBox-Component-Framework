@@ -19,8 +19,8 @@ MODULE StdLinks;
 	CONST
 		kind* = 0; cmd* = 1; close* = 2;	(* constants for Prop.valid *)
 		always* = 0; ifShiftDown* = 1; never* = 2;	(* constants for close attrubute *)
-		minLinkVersion = 0; maxLinkVersion = 1;
-		minTargVersion = 0; maxTargVersion = 0;
+		minLinkVersion = 0; maxLinkVersion = 2;
+		minTargVersion = 0; maxTargVersion = 1;
 
 	TYPE
 		Directory* = POINTER TO ABSTRACT RECORD END;
@@ -472,11 +472,14 @@ MODULE StdLinks;
 		rd.ReadBool(v.leftSide);
 		rd.ReadInt(len);
 		IF len = 0 THEN v.cmd := NIL
+		ELSIF version = 2 THEN
+			NEW(v.cmd, len);
+			rd.ReadString(v.cmd^)
 		ELSE NEW(v.cmd, len); rd.ReadXString(v.cmd^)
 		END;
 		v.leftSide := v.cmd # NIL;
 		IF v.leftSide THEN
-			IF version = 1 THEN
+			IF version >= 1 THEN
 				rd.ReadInt(v.close)
 			ELSE
 				Strings.Find(v.cmd, "StdLinks.ShowTarget", 0, pos);
@@ -487,13 +490,25 @@ MODULE StdLinks;
 		END
 	END Internalize;
 
-	PROCEDURE (v: Link) Externalize- (VAR wr: Stores.Writer);
+	PROCEDURE HaveWideChars (IN s: ARRAY OF CHAR): BOOLEAN;
+		VAR i: INTEGER;
+	BEGIN
+		i := 0;
+		WHILE (s[i] # 0X) & ~( ORD(s[i]) > 255 ) DO
+			INC(i)
+		END;
+		RETURN s[i] # 0X
+	END HaveWideChars;
+
+	PROCEDURE(v: Link) Externalize- (VAR wr: Stores.Writer);
 		VAR pos, version: INTEGER;
 	BEGIN
 		v.Externalize^(wr);
 		IF v.leftSide THEN
 			Strings.Find(v.cmd, "StdLinks.ShowTarget", 0, pos);
-			IF (pos = 0) & (v.close = never) OR (v.close = ifShiftDown) THEN version := 0
+			IF HaveWideChars(v.cmd) THEN
+				version := 2
+			ELSIF(pos = 0) & (v.close = never) OR (v.close = ifShiftDown) THEN version := 0
 			ELSE version := 1
 			END
 		ELSE
@@ -502,9 +517,11 @@ MODULE StdLinks;
 		wr.WriteVersion(version);
 		wr.WriteBool(v.cmd # NIL);
 		IF v.cmd = NIL THEN wr.WriteInt(0)
-		ELSE wr.WriteInt(LEN(v.cmd^)); wr.WriteXString(v.cmd^)
+		ELSIF version = 2 THEN wr.WriteInt(LEN(v.cmd^)); wr.WriteString(v.cmd^)
+		ELSE
+			wr.WriteInt(LEN(v.cmd^)); wr.WriteXString(v.cmd^)
 		END;
-		IF version = 1 THEN wr.WriteInt(v.close) END
+		IF version >= 1 THEN wr.WriteInt(v.close) END
 	END Externalize;
 
 	PROCEDURE (t: Target) Internalize- (VAR rd: Stores.Reader);
@@ -517,18 +534,28 @@ MODULE StdLinks;
 		rd.ReadBool(t.leftSide);
 		rd.ReadInt(len);
 		IF len = 0 THEN t.ident := NIL
+		ELSIF version = 1 THEN
+			NEW(t.ident, len); rd.ReadString(t.ident^)
 		ELSE NEW(t.ident, len); rd.ReadXString(t.ident^)
 		END;
 		t.leftSide := t.ident # NIL
 	END Internalize;
 
 	PROCEDURE (t: Target) Externalize- (VAR wr: Stores.Writer);
+	VAR version: INTEGER;
 	BEGIN
 		t.Externalize^(wr);
-		wr.WriteVersion(maxTargVersion);
+		IF  t.leftSide & HaveWideChars(t.ident) THEN
+			version := 1
+		ELSE
+			version := 0
+		END;
+		wr.WriteVersion(version);
 		wr.WriteBool(t.ident # NIL);
 		IF t.ident = NIL THEN wr.WriteInt(0)
-		ELSE wr.WriteInt(LEN(t.ident^)); wr.WriteXString(t.ident^)
+		ELSIF version = 1 THEN wr.WriteInt(LEN(t.ident^)); wr.WriteString(t.ident^)
+		ELSE
+			wr.WriteInt(LEN(t.ident^)); wr.WriteXString(t.ident^)
 		END
 	END Externalize;
 

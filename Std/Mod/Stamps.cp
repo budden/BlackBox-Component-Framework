@@ -36,7 +36,7 @@ MODULE StdStamps;
 	CONST
 		setCommentKey = "#Std:Set Comment";
 		maxHistoryEntries = 25;
-		minVersion = 0; origStampVersion = 0; thisVersion = 2;
+		minVersion = 0; origStampVersion = 0; thisVersion = 3;
 		
 	TYPE
 		History = ARRAY maxHistoryEntries OF RECORD
@@ -142,12 +142,29 @@ MODULE StdStamps;
 		END;
 	END Update;
 
+	PROCEDURE HaveWideChars (IN s: ARRAY OF CHAR): BOOLEAN;
+		VAR i: INTEGER; ch: CHAR;
+	BEGIN
+		i := 0; ch := s[0];
+		WHILE (ch # 0X) & ~(ch >= 100X) DO
+			INC(i); ch := s[i]
+		END;
+		RETURN ch # 0X
+	END HaveWideChars;
+
 	PROCEDURE (v: StdView) Externalize (VAR wr: Stores.Writer);
-		VAR i, len: INTEGER;
+		VAR i, len: INTEGER; version: INTEGER;
 	BEGIN
 		Update(v, FALSE);
 		v.Externalize^(wr);
-		wr.WriteVersion(thisVersion);
+		i := 0; 
+		WHILE (i < v.nentries) & ~( (v.history[i].comment # NIL) &
+			HaveWideChars(v.history[i].comment^) )
+		DO
+			INC(i)
+		END;
+		IF i < v.nentries THEN version := thisVersion ELSE version := 2 END;
+		wr.WriteVersion(version);
 		(*--wr.WriteLInt(v.snr);*)
 		wr.WriteXInt(v.nentries);
 		FOR i := 0 TO v.nentries-1 DO
@@ -158,7 +175,11 @@ MODULE StdStamps;
 			IF v.history[i].comment # NIL THEN
 				len := LEN(v.history[i].comment$);
 				wr.WriteXInt(len);
-				wr.WriteXString(v.history[i].comment^);
+				IF version = thisVersion THEN
+					wr.WriteString(v.history[i].comment^)
+				ELSE
+					wr.WriteXString(v.history[i].comment^)
+				END;
 			ELSE wr.WriteXInt(0);
 			END
 		END;
@@ -194,7 +215,11 @@ MODULE StdStamps;
 						rd.ReadXInt(len);
 						IF len > 0 THEN
 							NEW(v.history[i].comment, len + 1);
-							rd.ReadXString(v.history[i].comment^);
+							IF version = thisVersion THEN
+								rd.ReadString(v.history[i].comment^)
+							ELSE
+								rd.ReadXString(v.history[i].comment^)
+							END;
 						ELSE v.history[i].comment := NIL;
 						END
 					END;
@@ -393,7 +418,7 @@ MODULE StdStamps;
 				fprint := v.history[entryno].fprint;
 				Dates.DayToDate(v.history[entryno].date, date);
 				time.minute := v.history[entryno].time MOD 64;
-				time.minute := v.history[entryno].time DIV 64;
+				time.hour := v.history[entryno].time DIV 64;
 				time.second := 0;
 			END
 		END

@@ -318,11 +318,13 @@ MODULE DevSelectors;
 			selector.position := source.position;
 			IF source.leftHidden # NIL THEN
 				selector.leftHidden := TextModels.CloneOf(source.leftHidden);
-				selector.leftHidden.InsertCopy(0, source.leftHidden, 0, source.leftHidden.Length())
+				selector.leftHidden.InsertCopy(0, source.leftHidden, 0, source.leftHidden.Length());
+				Stores.Join(selector, selector.leftHidden)
 			END;
 			IF source.rightHidden # NIL THEN
 				selector.rightHidden := TextModels.CloneOf(source.rightHidden);
-				selector.rightHidden.InsertCopy(0, source.rightHidden, 0, source.rightHidden.Length())
+				selector.rightHidden.InsertCopy(0, source.rightHidden, 0, source.rightHidden.Length());
+				Stores.Join(selector, selector.rightHidden)
 			END
 		END
 	END CopyFromSimpleView;
