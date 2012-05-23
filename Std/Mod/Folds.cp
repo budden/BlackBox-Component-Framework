@@ -19,7 +19,7 @@ MODULE StdFolds;
 
 	CONST
 		expanded* = FALSE; collapsed* = TRUE;
-		minVersion = 0; currentVersion = 0;
+		minVersion = 0; currentVersion = 1;
 
 		collapseFoldKey = "#Std:Collapse Fold";
 		expandFoldKey = "#Std:Expand Fold";
@@ -70,7 +70,7 @@ MODULE StdFolds;
 		END;
 
 		iconFont: Fonts.Typeface;
-		leftExp, rightExp, leftColl, rightColl: ARRAY 3 OF CHAR;
+		leftExp, rightExp, leftColl, rightColl: ARRAY 8 OF CHAR;
 		coloredBackg: BOOLEAN;
 		action: Action;
 		fingerprint: INTEGER;	(* for the property inspector *)
@@ -138,7 +138,7 @@ MODULE StdFolds;
 	END GetIcon;
 
 	PROCEDURE CalcSize (f: Fold; VAR w, h: INTEGER);
-		VAR icon: ARRAY 3 OF CHAR; c: Models.Context; a: TextModels.Attributes; font: Fonts.Font;
+		VAR icon: ARRAY 8 OF CHAR; c: Models.Context; a: TextModels.Attributes; font: Fonts.Font;
 			asc, dsc, fw: INTEGER;
 	BEGIN
 		GetIcon(f, icon);
@@ -387,7 +387,7 @@ MODULE StdFolds;
 			color := Ports.white
 		END;
 		font.GetBounds(asc, dsc, fw);
-		f.DrawString(0, asc, color, icon + 0X, font)
+		f.DrawString(0, asc, color, icon, font)
 	END Restore;
 
 	PROCEDURE (fold: Fold) CopyFromSimpleView- (source: Views.View);
@@ -414,7 +414,11 @@ MODULE StdFolds;
 		IF rd.cancelled THEN RETURN END;
 		rd.ReadXInt(xint);fold.leftSide := xint = 0;
 		rd.ReadXInt(xint); fold.collapsed := xint = 0;
-		rd.ReadXString(fold.label);
+		IF version = 1 THEN
+			rd.ReadString(fold.label)
+		ELSE
+			rd.ReadXString(fold.label)
+		END;
 		rd.ReadStore(store);
 		IF store # NIL THEN fold.hidden := store(TextModels.Model); Stores.Join(fold.hidden, fold)
 		ELSE fold.hidden := NIL
@@ -422,16 +426,32 @@ MODULE StdFolds;
 		fold.leftSide := store # NIL
 	END Internalize;
 
-	PROCEDURE (fold: Fold) Externalize- (VAR wr: Stores.Writer);
+	PROCEDURE HaveWideChars (IN s: ARRAY OF CHAR): BOOLEAN;
+		VAR i: INTEGER; ch: CHAR;
+	BEGIN
+		i := 0; ch := s[0];
+		WHILE (ch # 0X) & ~(ch >= 100X) DO
+			INC(i); ch := s[i]
+		END;
+		RETURN ch # 0X
+	END HaveWideChars;
+
+	PROCEDURE(fold: Fold) Externalize- (VAR wr: Stores.Writer);
 		VAR xint: INTEGER;
+	version: INTEGER;
 	BEGIN
 		fold.Externalize^(wr);
-		wr.WriteVersion(currentVersion);
+		IF HaveWideChars(fold.label) THEN version := 1 ELSE version := 0 END;
+		wr.WriteVersion(version);
 		IF fold.hidden # NIL THEN xint := 0 ELSE xint := 1 END;
 		wr.WriteXInt(xint);
 		IF fold.collapsed THEN xint := 0 ELSE xint := 1 END;
 		wr.WriteXInt(xint);
-		wr.WriteXString(fold.label);
+		IF version = 1 THEN
+			wr.WriteString(fold.label)
+		ELSE
+			wr.WriteXString(fold.label)
+		END;
 		wr.WriteStore(fold.hidden)
 	END Externalize;
 
@@ -737,8 +757,10 @@ MODULE StdFolds;
 			font := Fonts.dir.This(iconFont, 10*Fonts.point (*arbitrary*), {}, Fonts.normal);
 			IF font.IsAlien() THEN DefaultAppearance
 			ELSE
-				leftExp  := 0F0F0X;    rightExp := 0F0EFX;
-				leftColl := 0F0E8X;    rightColl := 0F0E7X;
+				leftExp[0] := 0F0F0X; leftExp[1] := 0X;	(* "" *)
+				rightExp[0] := 0F0EFX; rightExp[1] := 0X;	(* "" *)
+				leftColl[0] := 0F0E8X; leftColl[1] := 0X;	(* "" *)
+				rightColl[0] := 0F0E7X; rightColl[1] := 0X;	(* "" *)
 				coloredBackg := FALSE
 			END
 		ELSIF Dialog.platform DIV 10 = 2 THEN (* Mac *)

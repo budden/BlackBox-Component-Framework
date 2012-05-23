@@ -148,7 +148,7 @@ MODULE HostFiles;
 			END
 (*
 			IF (cha = chb)
-				OR ~caseSens & (CAP(cha) = CAP(chb)) & (CAP(cha) >= "A") & ((CAP(cha) <= "Z") OR (cha >= "À"))
+				OR ~caseSens & (CAP(cha) = CAP(chb)) & (CAP(cha) >= "A") & ((CAP(cha) <= "Z") OR (cha >= "Ã€"))
 				OR ((cha = "/") OR (cha = "\")) & ((chb = "/") OR (chb = "\")) THEN	(* ok *)
 			ELSE RETURN 1
 			END
@@ -422,12 +422,16 @@ MODULE HostFiles;
 	PROCEDURE (f: File) NewWriter (old: Files.Writer): Files.Writer;
 		VAR w: Writer;
 	BEGIN	(* portable *)
-		ASSERT(f.state # closed, 20); ASSERT(f.state # shared, 21);
-		IF (old # NIL) & (old IS Writer) THEN w := old(Writer) ELSE NEW(w) END;
-		IF w.base # f THEN
-			w.base := f; w.buf := NIL; w.SetPos(f.len)
-		END;
-		RETURN w
+		ASSERT(f.state # closed, 20);
+		IF f.state # shared THEN
+			IF (old # NIL) & (old IS Writer) THEN w := old(Writer) ELSE NEW(w) END;
+			IF w.base # f THEN
+				w.base := f; w.buf := NIL; w.SetPos(f.len)
+			END;
+			RETURN w
+		ELSE
+			RETURN NIL
+		END
 	END NewWriter;
 
 	PROCEDURE (f: File) Length (): INTEGER;

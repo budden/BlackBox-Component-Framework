@@ -451,7 +451,7 @@ MODULE SqlOdbc3;
 			Check(WinSql.SQLDescribeColW(t.stmt, SHORT(column + 1), str, LEN(str), a, b, i, scale, c), NIL, t.stmt, res);
 			IF scale < 0 THEN scale := 0 END;
 			Check(WinSql.SQLGetData(t.stmt, SHORT(column + 1), WinSql.SQL_C_WCHAR,
-														SYSTEM.ADR(str), LEN(str), len), NIL, t.stmt, res);
+														SYSTEM.ADR(str), LEN(str)*SIZE(CHAR), len), NIL, t.stmt, res);
 			IF len # WinSql.SQL_NULL_DATA THEN
 				x := 0; i := 0;
 				IF str[0] < "." THEN INC(i) END;
@@ -482,7 +482,7 @@ MODULE SqlOdbc3;
 		SetPos(t, row, column, res);
 		IF res = 0 THEN
 			Check(WinSql.SQLGetData(t.stmt, SHORT(column + 1), WinSql.SQL_C_WCHAR,
-														SYSTEM.ADR(str), LEN(str), len),
+														SYSTEM.ADR(str), LEN(str)*SIZE(CHAR), len),
 					NIL, t.stmt, res);
 			IF (len = 0) OR (len = WinSql.SQL_NULL_DATA) THEN str := "" END
 		END;
@@ -498,7 +498,7 @@ MODULE SqlOdbc3;
 		SetPos(t, row, column, res);
 		IF res = 0 THEN
 			Check(WinSql.SQLGetData(t.stmt, SHORT(column + 1), WinSql.SQL_C_WCHAR,
-														SYSTEM.ADR(s), LEN(s), len),
+														SYSTEM.ADR(s), LEN(s)*SIZE(CHAR), len),
 					NIL, t.stmt, res);
 			IF res # noData THEN
 				IF (len = 0) OR (len = WinSql.SQL_NULL_DATA) THEN
@@ -509,11 +509,12 @@ MODULE SqlOdbc3;
 					IF (str = NIL) OR (LEN(str^) < LEN(s)) THEN NEW(str, LEN(s)) END;
 					str^ := s$
 				ELSE
+					ASSERT(len MOD SIZE(CHAR) = 0, 100); len := len DIV SIZE(CHAR);
 					IF (str = NIL) OR (LEN(str^) < len + 1) THEN NEW(str, len + 1) END;
 					IF len >= LEN(s) THEN
 						str^ := s$;
 						Check(WinSql.SQLGetData(t.stmt, SHORT(column + 1), WinSql.SQL_C_WCHAR,
-												SYSTEM.ADR(str^) + (LEN(s) - 1), LEN(str^) - (LEN(s) - 1), len), NIL, t.stmt, res);
+												SYSTEM.ADR(str^) + (LEN(s) - 1)*SIZE(CHAR), (LEN(str^) - (LEN(s) - 1))*SIZE(CHAR), len), NIL, t.stmt, res);
 					ELSE
 						str^ := s$
 					END

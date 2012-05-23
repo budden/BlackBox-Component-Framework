@@ -246,7 +246,7 @@ MODULE DevPacker;
 
 	PROCEDURE RemoveWhiteSpaces (rd: TextModels.Reader; end: INTEGER);
 	BEGIN
-		WHILE (rd.Pos() <= end) & (rd.char <= 20X) DO GetCh(rd) END
+		WHILE ~rd.eot & (rd.Pos() <= end) & (rd.char <= 20X) DO GetCh(rd) END
 	END RemoveWhiteSpaces;
 
 	PROCEDURE FileName (rd: TextModels.Reader; end: INTEGER;

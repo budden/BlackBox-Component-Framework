@@ -126,15 +126,12 @@ MODULE DevCommanders;
 	END Scan;
 
 	PROCEDURE GetParExtend (r: TextModels.Reader; VAR end: INTEGER);
-		VAR v, v1: Views.View;
+		VAR v: Views.View;
 	BEGIN
-		REPEAT r.ReadView(v); 
-			IF v # NIL THEN 
-				v1 := v;
-				v := Properties.ThisType(v1, "DevCommanders.View") ;
-				IF v = NIL THEN v := Properties.ThisType(v1, "DevCommanders.EndView")  END
-			END
-		UNTIL r.eot OR (v # NIL);
+		IF r.view # NIL THEN v := r.view ELSE r.ReadView(v) END;
+		WHILE ~r.eot & ~( Services.Is(v, "DevCommanders.View") OR Services.Is(v, "DevCommanders.EndView") ) DO
+			r.ReadView(v)
+		END;
 		end := r.Pos(); IF ~r.eot THEN DEC(end) END
 	END GetParExtend;
 

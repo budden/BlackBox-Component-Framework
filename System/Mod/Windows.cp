@@ -525,14 +525,18 @@ MODULE Windows;
 		ELSIF (s.entryLevel = 0)	(* don't record when called from within op.Do *)
 		& AffectsDoc(s, st) THEN	(* don't record when Do affected child window only *)
 			s.lastSt := st; s.lastOp := op;
-			s.redo := NIL;	(* clear redo stack *)
+			IF s.notRecordedLevel = 0 THEN
+				s.redo := NIL;	(* clear redo stack *)
+			END;
 			IF s.script # NIL THEN
 				Prepend(s.script, st, name, op)
 			ELSE
 				IF (s.invisibleLevel = 0) & (s.transparentLevel = 0) & (s.notRecordedLevel = 0) THEN INC(s.modLevel) END;
-				NEW(e); e.st := st; e.op := op; e.name := name;
-				e.invisible := s.invisibleLevel > 0; e.transparent := s.transparentLevel > 0;
-				IF (s.notRecordedLevel=0) THEN Push(s.undo, e) END
+				IF s.notRecordedLevel = 0 THEN
+					NEW(e); e.st := st; e.op := op; e.name := name;
+					e.invisible := s.invisibleLevel > 0; e.transparent := s.transparentLevel > 0;
+					Push(s.undo, e)
+				END
 			END
 		END
 	END Do;
