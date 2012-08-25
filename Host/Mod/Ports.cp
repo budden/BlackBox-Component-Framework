@@ -11,7 +11,7 @@ MODULE HostPorts;
 **)
 
 	IMPORT
-		SYSTEM, WinApi, Kernel, Fonts, Ports, Dialog, Services, HostFonts;
+		SYSTEM, WinApi, Kernel, Fonts, Ports, Dialog, Services, HostFonts, C := LibsCairo, Cwin := LibsCairoWin32, Log;
 	
 	CONST
 		resizeHCursor* = 16; resizeVCursor* = 17; resizeLCursor* = 18; resizeRCursor* = 19; resizeCursor* = 20;
@@ -246,41 +246,47 @@ MODULE HostPorts;
 		;IF debug THEN Wait END
 	END DrawRect;
 
+
 	PROCEDURE (rd: Rider) DrawOval* (l, t, r, b, s: INTEGER; col: Ports.Color);
-		VAR res, h: INTEGER; p: Port; dc, oldb, oldp: WinApi.HANDLE; pt: WinApi.POINT; rect: WinApi.RECT;
+		VAR
+			res, h: INTEGER; p: Port; oldb, oldp, dc: WinApi.HANDLE; pt: WinApi.POINT; rect: WinApi.RECT;
+			surface: C.cairo_surface_t;
+			ctx: C.cairo_t;
+			rad : INTEGER;
 	BEGIN
 		ASSERT(rd.port # NIL, 100);
 		p := rd.port; dc := p.dc;
-		IF p.wnd = 0 THEN res := WinApi.SaveDC(dc)
-		ELSE res := WinApi.SelectClipRgn(dc, 0);
+		IF p.wnd = 0 THEN
+			res := WinApi.SaveDC(dc)
+		ELSE
+			res := WinApi.SelectClipRgn(dc, 0)
 		END;
 		res := WinApi.IntersectClipRect(dc, rd.l, rd.t, rd.r, rd.b);
 		IF col = Ports.defaultColor THEN col := textCol END;
-		IF s < 0 THEN
-			INC(r); INC(b);
-			IF (col # textCol) & (col # Ports.background) THEN
-				res := WinApi.SetBrushOrgEx(dc, (rd.dx - p.bx) MOD 8, (rd.dy - p.by) MOD 8, NIL)
-			END;
-			oldb := WinApi.SelectObject(dc, WinApi.CreateSolidBrush(col));
-			oldp := WinApi.SelectObject(dc, nullPen);
-			res := WinApi.Ellipse(dc, l, t, r, b);
-			res := WinApi.DeleteObject(WinApi.SelectObject(dc, oldb));
-			res := WinApi.SelectObject(dc, oldp)
-		ELSE
+		surface := Cwin.cairo_win32_surface_create(dc);
+		ctx := C.cairo_create(surface);
+		C.cairo_set_source_rgb(ctx, (col MOD 65536) MOD 256 / 256 ,
+			(col MOD 65536) DIV 256 / 256, col DIV 65536 / 256);
+		rad := (r - l) DIV 2;
+		C.cairo_arc(ctx, l + rad, t + rad, rad, 0, 2 * 3.14);
+		IF s > 0 THEN
 			IF s = 0 THEN s := 1 END;
-			h := s DIV 2; INC(l, h); INC(t, h); h := (s-1) DIV 2; DEC(r, h); DEC(b, h);
-			oldb := WinApi.SelectObject(dc, nullBrush);
-			oldp := WinApi.SelectObject(dc, WinApi.CreatePen(WinApi.PS_SOLID, s, col));
-			res := WinApi.Ellipse(dc, l, t, r, b);
-			res := WinApi.SelectObject(dc, oldb);
-			res := WinApi.DeleteObject(WinApi.SelectObject(dc, oldp))
+			C.cairo_set_line_width(ctx, s);
+			C.cairo_stroke(ctx)
+		ELSE
+			C.cairo_fill(ctx)
 		END;
+		C.cairo_destroy(ctx);
+		C.cairo_surface_destroy(surface);
+		
 		IF p.wnd = 0 THEN res := WinApi.RestoreDC(dc, -1) END
 		;IF debug THEN Wait END
 	END DrawOval;
 
 	PROCEDURE (rd: Rider) DrawLine* (x0, y0, x1, y1, s: INTEGER; col: Ports.Color);
 		VAR res: INTEGER; pt: WinApi.POINT; p: Port; dc, oldb, oldp: WinApi.HANDLE;
+			surface: C.cairo_surface_t;
+			ctx: C.cairo_t;
 	BEGIN
 		ASSERT(s >= 0, 20);
 		ASSERT(rd.port # NIL, 100);
@@ -291,10 +297,16 @@ MODULE HostPorts;
 		res := WinApi.IntersectClipRect(dc, rd.l, rd.t, rd.r, rd.b);
 		IF col = Ports.defaultColor THEN col := textCol END;
 		IF s <= 0 THEN s := 1 END;
-		oldp := WinApi.SelectObject(dc, WinApi.CreatePen(WinApi.PS_SOLID, s, col));
-		res := WinApi.MoveToEx(dc, x0, y0, pt);
-		res := WinApi.LineTo(dc, x1, y1);
-		res := WinApi.DeleteObject(WinApi.SelectObject(dc, oldp));
+		surface := Cwin.cairo_win32_surface_create(dc);
+		ctx := C.cairo_create(surface);
+		C.cairo_set_source_rgb(ctx, (col MOD 65536) MOD 256 / 256,
+			(col MOD 65536) DIV 256 / 256, col DIV 65536 / 256);
+		C.cairo_move_to(ctx, x0, y0);
+          C.cairo_line_to(ctx, x1, y1);
+		C.cairo_set_line_width(ctx, s);
+		C.cairo_stroke(ctx);
+		C.cairo_destroy(ctx);
+		C.cairo_surface_destroy(surface);
 		IF p.wnd = 0 THEN res := WinApi.RestoreDC(dc, -1) END
 		;IF debug THEN Wait END
 	END DrawLine;
@@ -310,7 +322,8 @@ MODULE HostPorts;
 			res, i, j, k: INTEGER; p: Port; dc, oldp, oldb: WinApi.HANDLE;
 			pap: PAP; pt: WinApi.POINT; poly: ARRAY 256 OF WinApi.POINT;
 			polyPtr: POINTER TO ARRAY OF Ports.Point; polyLen: INTEGER;
-
+			surface: C.cairo_surface_t;
+			ctx: C.cairo_t;
 		PROCEDURE Bezier(x0, y0, xd0, yd0, x1, y1, xd1, yd1: INTEGER);
 			VAR x, y, xd, yd, i: INTEGER;
 		BEGIN
@@ -330,7 +343,13 @@ MODULE HostPorts;
 				Bezier(x, y, xd, yd, x1, y1, xd1 DIV 2, yd1 DIV 2)
 			END
 		END Bezier;
-	
+		PROCEDURE Poly;
+		BEGIN
+			C.cairo_move_to(ctx, pts[0].x, pts[0].y);
+			FOR i := 1 TO n-1 DO
+				C.cairo_line_to(ctx, pts[i].x, pts[i].y)
+			END;
+		END Poly;
 	BEGIN
 		ASSERT(rd.port # NIL, 100);
 		p := rd.port; dc := p.dc;
@@ -341,20 +360,31 @@ MODULE HostPorts;
 		IF col = Ports.defaultColor THEN col := textCol END;
 		pap := SYSTEM.VAL(PAP, SYSTEM.ADR(pts));
 		
+		surface := Cwin.cairo_win32_surface_create(dc);
+		ctx := C.cairo_create(surface);
+		
+		IF col = Ports.defaultColor THEN col := textCol END;
+		
 		ASSERT(n >= 0, 20); ASSERT(n <= LEN(pts), 21);
 		ASSERT(s >= Ports.fill, 23);
-		IF s < 0 THEN
-			res := WinApi.SetBrushOrgEx(dc, (rd.dx - p.bx) MOD 8, (rd.dy - p.by) MOD 8, NIL);
-			oldb := WinApi.SelectObject(dc, WinApi.CreateSolidBrush(col));
-			oldp := WinApi.SelectObject(dc, nullPen);
+		
+		C.cairo_set_source_rgb(ctx, 
+			(col MOD 65536) MOD 256 / 256,
+			(col MOD 65536) DIV 256 / 256,
+			col DIV 65536 / 256);
+		
+		IF s < 0 THEN (* filled by color col *)
 			IF path = Ports.closedPoly THEN
-				ASSERT(n >= 2, 20);
-				res := WinApi.Polygon(dc, pap[0], n)
-			ELSE
+				Poly;
+				C.cairo_close_path (ctx);
+				C.cairo_fill(ctx)
+			ELSE (* closed Bezier *)
 				ASSERT(n >= 3, 20);
 				ASSERT(path = Ports.closedBezier, 22);
 				ASSERT(n MOD 3 = 0, 24);
-				pap := SYSTEM.VAL(PAP, SYSTEM.ADR(poly)); polyLen := LEN(poly);
+				res := WinApi.SetBrushOrgEx(dc, (rd.dx - p.bx) MOD 8, (rd.dy - p.by) MOD 8, NIL);
+				oldb := WinApi.SelectObject(dc, WinApi.CreateSolidBrush(col));
+				oldp := WinApi.SelectObject(dc, nullPen);
 				i := 0; k := 0;
 				WHILE i < n DO
 					j := i+3;
@@ -363,20 +393,22 @@ MODULE HostPorts;
 							pts[j].x, pts[j].y, (pts[j].x - pts[i+2].x) * 3, (pts[j].y - pts[i+2].y) * 3);
 					INC(i, 3)
 				END;
-				res := WinApi.Polygon(dc, pap[0], k)
-			END;
-			res := WinApi.DeleteObject(WinApi.SelectObject(dc, oldb));
-			res := WinApi.SelectObject(dc, oldp)
-		ELSE
-			IF s = 0 THEN s := 1 END;
-			oldb := WinApi.SelectObject(dc, nullBrush);
-			oldp := WinApi.SelectObject(dc, WinApi.CreatePen(WinApi.PS_SOLID, s, col));
+				res := WinApi.DeleteObject(WinApi.SelectObject(dc, oldb));
+				res := WinApi.SelectObject(dc, oldp)
+			END
+		ELSE (* stroked with thickness s inside of the path *)
+			IF s <= 0 THEN s := 1 END;
 			IF path = Ports.closedPoly THEN
 				ASSERT(n >= 2, 20);
-				res := WinApi.Polygon(dc, pap[0], n)
+				Poly;
+				C.cairo_close_path (ctx);
+				C.cairo_set_line_width(ctx, s);
+				C.cairo_stroke(ctx)
 			ELSIF path = Ports.openPoly THEN
 				ASSERT(n >= 2, 20);
-				res := WinApi.Polyline(dc, pap[0], n)
+				Poly;
+				C.cairo_set_line_width(ctx, s);
+				C.cairo_stroke(ctx)
 			ELSE
 				IF path = Ports.closedBezier THEN
 					ASSERT(n >= 3, 20);
@@ -386,6 +418,8 @@ MODULE HostPorts;
 					ASSERT(path = Ports.openBezier, 25);
 					ASSERT(n MOD 3 = 1, 24)
 				END;
+				oldb := WinApi.SelectObject(dc, nullBrush);
+				oldp := WinApi.SelectObject(dc, WinApi.CreatePen(WinApi.PS_SOLID, s, col));
 				pap := SYSTEM.VAL(PAP, SYSTEM.ADR(poly)); polyLen := LEN(poly);
 				i := 0;
 				WHILE i < n-2 DO
@@ -396,11 +430,15 @@ MODULE HostPorts;
 					pap[k].x := pts[j].x; pap[k].y := pts[j].y; INC(k);
 					res := WinApi.Polyline(dc, pap[0], k);
 					INC(i, 3)
-				END
+				END;
+				res := WinApi.SelectObject(dc, oldb);
+				res := WinApi.DeleteObject(WinApi.SelectObject(dc, oldp))
 			END;
-			res := WinApi.SelectObject(dc, oldb);
-			res := WinApi.DeleteObject(WinApi.SelectObject(dc, oldp))
 		END;
+		
+		C.cairo_destroy(ctx);
+		C.cairo_surface_destroy(surface);
+		
 		IF p.wnd = 0 THEN res := WinApi.RestoreDC(dc, -1) END
 		;IF debug THEN Wait END
 	END DrawPath;
