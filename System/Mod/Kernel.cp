@@ -6,7 +6,17 @@ MODULE Kernel;
 	version	= "System/Rsrc/About"
 	copyright	= "System/Rsrc/About"
 	license	= "Docu/BB-License"
-	changes	= ""
+	changes	= "
+	- 20070123, bh, Beep using MessageBeep
+	- 20070125, bh, Support for procedure signatures added
+	- 20070130, bh, KERNEL32 & USER32 eliminated
+	- 20070220, bh, comSig eliminated
+	- 20070307, bh, improved Ctrl-Break handling
+	- 20070308, bh, check for unloaded module in ExecFinalizer
+	- 20080107, bh, full GC included in NewBlock
+	- 20080107, bh, pointer anchoring bug corrected in NewRec & NewArr
+	- 20120822, bh, mf, checks for integer overflow in NewArr and NewBlock
+	"
 	issues	= ""
 
 **)
@@ -742,6 +752,7 @@ MODULE Kernel;
 	(* impl. of NEW(ptr, dim0, dim1, ...) *)
 		VAR b: Block; size, headSize: INTEGER; t: Type; fin: BOOLEAN; l: FList;
 	BEGIN
+		IF (nofdim < 0) OR (nofdim > (MAX(INTEGER) - 12) DIV 4) THEN RETURN 0 END;
 		headSize := 4 * nofdim + 12; fin := FALSE;
 		CASE eltyp OF
 		| -1: eltyp := S.ADR(IntPtrType); fin := TRUE
@@ -762,6 +773,8 @@ MODULE Kernel;
 			IF ODD(eltyp) THEN DEC(eltyp); fin := TRUE END
 		END;
 		t := S.VAL(Type, eltyp);
+		ASSERT(t.size > 0, 100);
+		IF (nofelem < 0) OR (nofelem > (MAX(INTEGER) - headSize) DIV t.size) THEN RETURN 0 END;
 		size := headSize + nofelem * t.size;
 		b := NewBlock(size);
 		IF b = NIL THEN RETURN 0 END;
