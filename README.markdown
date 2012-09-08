@@ -26,7 +26,7 @@ The original open source code was taken from distribution of BlackBox Component 
 ## To developers ##
 
 This distribution doesn't include neither binary executables nor other resource files. In order to compile it from sources, you need to have full installation of BlackBox Component Builder 1.6 RC6.
-
+See INSTALL.markdown for details.
 
 # License #
 
