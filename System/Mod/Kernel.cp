@@ -16,6 +16,7 @@ MODULE Kernel;
 	- 20080107, bh, full GC included in NewBlock
 	- 20080107, bh, pointer anchoring bug corrected in NewRec & NewArr
 	- 20120822, bh, mf, checks for integer overflow in NewArr and NewBlock
+	- 20120906, luowy, additional checks in NewBlock and Init
 	"
 	issues	= ""
 
@@ -1498,7 +1499,9 @@ MODULE Kernel;
 				END;
 				blk := next
 			END;
-			IF dealloc & (S.VAL(INTEGER, fblk) = S.VAL(INTEGER, cluster) + 12) THEN	(* deallocate cluster *)
+			
+			IF dealloc & dllMem
+				& (S.VAL(INTEGER, fblk) = S.VAL(INTEGER, cluster) + 12) THEN(* deallocate cluster *)
 				c := cluster; cluster := cluster.next;
 				IF last = NIL THEN root := cluster ELSE last.next := cluster END;
 				FreeHeapMem(c)
@@ -1584,6 +1587,8 @@ MODULE Kernel;
 	PROCEDURE NewBlock (size: INTEGER): Block;
 		VAR tsize, a, s: INTEGER; b: FreeBlock; new, c: Cluster; r: Reducer;
 	BEGIN
+		ASSERT(size >= 0, 20);
+		IF size > MAX(INTEGER) - 19 THEN RETURN NIL END;
 		tsize := (size + 19) DIV 16 * 16;
 		b := OldBlock(tsize);	(* 1) search for free block *)
 		IF b = NIL THEN
@@ -1618,7 +1623,15 @@ MODULE Kernel;
 					WHILE r # NIL DO r.Reduce(FALSE); r := r.next END;
 					Collect
 				END;
-				s := 3 * (allocated + tsize) DIV 2;
+				s := (allocated + tsize) DIV 2 * 3;
+				IF s > root.max THEN 
+					IF  root.max - allocated >=  tsize THEN
+						s := root.max
+					ELSE
+						RETURN NIL
+					END
+				END;
+				
 				a := 12 + (root.size - 12) DIV 16 * 16;
 				IF s <= total THEN
 					b := OldBlock(tsize);
@@ -2066,7 +2079,8 @@ MODULE Kernel;
 			i := MIN(N - 1, (root.size - 12) DIV 16 - 1);
 			free[i] := S.VAL(FreeBlock, S.VAL(INTEGER, root) + 12);
 			free[i].next := sentinel;
-			free[i].size := (root.size - 12) DIV 16 * 16 - 4
+			free[i].size := (root.size - 12) DIV 16 * 16 - 4;
+			free[i].tag:=S.VAL(Type, S.ADR(free[i].size));
 		END;
 
 		res := WinOle.OleInitialize(0);
