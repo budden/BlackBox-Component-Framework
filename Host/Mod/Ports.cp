@@ -301,8 +301,8 @@ MODULE HostPorts;
 		ctx := C.cairo_create(surface);
 		C.cairo_set_source_rgb(ctx, (col MOD 65536) MOD 256 / 256,
 			(col MOD 65536) DIV 256 / 256, col DIV 65536 / 256);
-		C.cairo_move_to(ctx, x0, y0);
-          C.cairo_line_to(ctx, x1, y1);
+		C.cairo_move_to(ctx, x0 + 0.5, y0 + 0.5);
+          C.cairo_line_to(ctx, x1 + 0.5, y1 + 0.5);
 		C.cairo_set_line_width(ctx, s);
 		C.cairo_stroke(ctx);
 		C.cairo_destroy(ctx);
