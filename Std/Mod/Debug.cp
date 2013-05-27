@@ -54,6 +54,12 @@ MODULE StdDebug;
 		out: TextMappers.Formatter;
 		path: ARRAY 4 OF Ports.Point;
 		empty: Name;
+		foldStack: ARRAY 32 OF RECORD
+			beg: INTEGER;
+			hidden: ARRAY 128 OF CHAR;
+			prevText: TextModels.Model
+		END;
+		foldSp: INTEGER;
 
 
 	PROCEDURE NewRuler (): TextRulers.Ruler;
@@ -80,21 +86,38 @@ MODULE StdDebug;
 	END OpenViewer;
 	
 	PROCEDURE OpenFold (hidden: ARRAY OF CHAR);
-		VAR fold: StdFolds.Fold; t: TextModels.Model; w: TextMappers.Formatter;
+		VAR t: TextModels.Model;
 	BEGIN
-		Dialog.MapString(hidden, hidden);
+		Dialog.MapString(hidden, foldStack[foldSp].hidden);
+		foldStack[foldSp].beg := out.Pos();
+		foldStack[foldSp].prevText := out.rider.Base();
 		t := TextModels.dir.New();
-		w.ConnectTo(t); w.WriteString(hidden);
-		fold := StdFolds.dir.New(StdFolds.expanded, "", t);
-		out.WriteView(fold)
+		out.ConnectTo(t);
+		INC(foldSp)
 	END OpenFold;
 	
 	PROCEDURE CloseFold (collaps: BOOLEAN);
-		VAR fold: StdFolds.Fold; m: TextModels.Model;
+		VAR fold: StdFolds.Fold; t: TextModels.Model; w: TextMappers.Formatter;
 	BEGIN
-		fold := StdFolds.dir.New(StdFolds.expanded, "", NIL);
+		DEC(foldSp);
+		IF collaps THEN
+			fold := StdFolds.dir.New(StdFolds.collapsed, "", out.rider.Base());
+			out.ConnectTo(foldStack[foldSp].prevText);
+			out.WriteView(fold);
+			out.WriteString(foldStack[foldSp].hidden);
+		ELSE
+			t := TextModels.dir.New();
+			w.ConnectTo(t); w.WriteString(foldStack[foldSp].hidden);
+			fold := StdFolds.dir.New(StdFolds.expanded, "", t);
+			t := out.rider.Base();
+			out.ConnectTo(foldStack[foldSp].prevText);
+			out.WriteView(fold);
+			foldStack[foldSp].prevText.Insert(out.Pos(), t, 0, t.Length());
+			out.SetPos(out.rider.Base().Length())
+		END;
+		fold := StdFolds.dir.New(collaps, "", NIL);
 		out.WriteView(fold);
-		IF collaps THEN fold.Flip(); m := out.rider.Base(); out.SetPos(m.Length()) END
+		foldStack[foldSp].prevText := NIL
 	END CloseFold;
 	
 	PROCEDURE WriteHex (n: INTEGER);
