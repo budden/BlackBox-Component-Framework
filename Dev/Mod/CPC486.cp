@@ -277,6 +277,7 @@ MODULE DevCPC486;
 		| Real32, Real64:
 			IF (FReg = 0) OR (float IN stop) THEN DevCPM.err(216); FReg := 99 END;
 			DEC(FReg); n := 0
+		ELSE n := 0
 		END;
 		DevCPL486.MakeReg(x, n, f);
 	END GetReg;
@@ -994,6 +995,7 @@ MODULE DevCPC486;
 							(* make range checks !!! *)
 							FreeHi(y)
 						END
+				ELSE
 				END
 			END;
 			IF f IN {Real32, Real64} THEN
