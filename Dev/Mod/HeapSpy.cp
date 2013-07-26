@@ -1,4 +1,4 @@
-MODULE DevHeapSpy;
+﻿MODULE DevHeapSpy;
 (**
 	project	= "BlackBox"
 	organization	= "www.oberon.ch"
@@ -10,6 +10,14 @@ MODULE DevHeapSpy;
 	issues	= ""
 
 **)
+	
+	(* bh / mh 12.07.99 *)
+	(* dg	03.03.99	changed Kernel.ThisMod => Kernel.ThisLoadedMod *)
+	(* dg	24.11.98	Domains 2000 *)
+	(* cp 10-Jun-97 openLayout eliminated; interactors merged; GetAnchor with OUT parameter *)
+	(* bh 16.1.96 SizeOf changed for new types *)
+	(* bh 18.1.96 Next apapted to new Kernel *)
+	(* bh 19.1.96 BlockInfo adapted to new Debugger *)
 
 	IMPORT
 		S := SYSTEM, Kernel, Strings,

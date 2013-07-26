@@ -1,4 +1,4 @@
-MODULE DevDebug;
+﻿MODULE DevDebug;
 (**
 	project	= "BlackBox"
 	organization	= "www.oberon.ch"
@@ -10,6 +10,31 @@ MODULE DevDebug;
 	issues	= ""
 
 **)
+
+	(* cp, bh 20 Feb 2001 *)
+	(* ww	20.02.01	Changed IsIdent to accept also idents starting with an "Umlaut" *)
+	(* bh	16.08.00	ShowVar corrected (nan handling) *)
+	(* bj	18.07.00	added procedures UnloadList and UnloadThis *)
+	(* dg	03.03.99	changed Loader.ThisMod => Kernel.ThisMod and eliminated import of Loader *)
+	(* dg	03.03.99	changed Kernel.ThisMod => Kernel.ThisLoadedMod *)
+	(* dg	04.01.99	changed references to Controllers.Controller to Containers.Controller *)
+	(* dg	02.12.98	changes due to renaming of Views.CopyFrom => Views.CopyFromSimpleView *)
+	(* dg 1.10.98 mapping of error messages over string resources *)
+	(* bh 10.7.98 correct LONGINT values for big endiam machines (ShowVar) *)
+	(* bh 8.8.96 Unload ignores comments before MODULE *)
+	(* bh 12.5.96 descriptors for untagged structures *)
+	(* 1.5.96 custom rulers for mac *)
+	(* 29.2.96 bh guid & result types *)
+	(* 23.2.96 characters with leading "0" *)
+	(* 21.1.96 Update with links *)
+	(* 20.1.96 ShowHeapObject apapted to new Kernel *)
+	(* 18.1.96 array handling redesigned *)
+	(* 17.1.96 bh folds for records & arrays *)
+	(* 17.1.96 bh Update buttons *)
+	(* 16.1.96 bh new constants for types *)
+	(* 4.1.96 bh ShowInterfaceRecords *)
+	(* 1.1.96 bh trap 125 = obsolete *)
+	(* 12.12.95 bh anyrecord, anypointer, longchar, & largeint support *)
 
 	IMPORT SYSTEM,
 		Kernel, Strings, Dates, Files, Fonts, Services, Ports, Stores, Converters,

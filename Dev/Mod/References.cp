@@ -10,7 +10,11 @@ MODULE DevReferences;
 	issues	= ""
 
 **)
-	
+
+	(* 11.9.00 bj	added procedures Scan, CheckModName and some additional scanner types. *)
+	(* 16.4.96 bh underscores *)
+	(* 16.4.96 bh second search for non-bold *)
+
 	IMPORT
 		Kernel, Files, Fonts, Models, Views, Dialog, Containers,
 		StdDialog,

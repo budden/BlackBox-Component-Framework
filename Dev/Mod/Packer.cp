@@ -11,6 +11,11 @@ MODULE DevPacker;
 
 **)
 
+	(* bj	14.11.01	Changed the parser to use a TextModels.Reader instead of a TextMappers.Scanner. *)
+	(* bj	19.01.01	Corrected ReadPath to stop when the end of the command is reached. *)
+	(* bj	24.10.00	Changed syntax and added ListLoadedModules *)
+	(* bj	20.10.00	Changed so that comma is not needed as separator in input list and so that "=>" is understood. *)
+
 	(* !!! HostPackedFiles depends on the way files are packed into the exe file by DevPacker. !!!! *)
 
 	IMPORT

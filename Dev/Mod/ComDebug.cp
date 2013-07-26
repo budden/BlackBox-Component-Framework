@@ -11,6 +11,8 @@ MODULE DevComDebug;
 
 **)
 
+	(* dg	06.05.99	changes due to interface change of BeginModification/EndModification *)
+
 	IMPORT
 		SYSTEM, COM, WinApi, WinOle,
 		Kernel, Strings,  Dialog, Fonts, Ports, Stores, Models, Views, Properties, Containers,

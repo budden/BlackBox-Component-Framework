@@ -12,6 +12,14 @@ MODULE DevCPS;
 
 **)
 
+	(* NW, RC 6.3.89 / 18.10.92 *)
+	(* bh 25.9.95 COM support *)
+	(* bh 2.1.96 longchar & largeint support *)
+	(* bh 8.5.96 largeint const with "L" *)
+	(* bh 8.5.96 guid consts removed *)
+	(* bh 28.1.97 longer names and dynamic strings *)
+	(* Component Pascal version, bh, 30 Oct 1998 *)
+
 	IMPORT SYSTEM, Math, DevCPM, DevCPT;
 	
 	CONST

@@ -1,4 +1,4 @@
-MODULE DevMsgSpy;
+﻿MODULE DevMsgSpy;
 (**
 	project	= "BlackBox"
 	organization	= "www.oberon.ch"
@@ -10,6 +10,16 @@ MODULE DevMsgSpy;
 	issues	= ""
 
 **)
+
+	(* dg, 12.03.98 *)
+	(* dg	09.12.98	StdDialog.Open instead of Sequencers.Open *)
+	(* dg	02.12.98	changes due to renaming of Views.CopyFrom => Views.CopyFromSimpleView *)
+	(* dg	25.11.98	InitFrom => CopyFromModelView *)
+	(* dg	24.11.98	Domains 2000 *)
+	(* dg	07.11.98	View.InitFrom: changed shallow to deep copy in case that inner view has no model *)
+	(* dg	27.10.98	changes due to changed Controllers.SetCurrentPath/ResetCurrentPath  *)
+	(* dg	24.09.98	CheckGuard Action eliminated (there is one in module Controls) *)
+	(* dg	24.09.98	support for efficient bitmapscrolling for wrapped view *)
 
 	IMPORT SYSTEM, 
 		DevDebug, Dialog, Stores, Models, Views, Controllers, Properties, Kernel, 

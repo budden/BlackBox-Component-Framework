@@ -1,4 +1,4 @@
-MODULE DevLinker;
+﻿MODULE DevLinker;
 (**
 	project	= "BlackBox"
 	organization	= "www.oberon.ch"
@@ -10,7 +10,11 @@ MODULE DevLinker;
 	issues	= ""
 
 **)
-	
+
+		(* bh 18.5.96 static linker *)
+		(* bh 31.8.00 exported variables in CollectExports *)
+		(* bh  01.11.00 *)
+
 	IMPORT
 		Kernel, Files, Dates, Dialog, Strings,
 		TextModels, TextViews, TextMappers,

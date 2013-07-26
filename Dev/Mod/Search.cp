@@ -1,4 +1,4 @@
-MODULE DevSearch;
+﻿MODULE DevSearch;
 (**
 	project	= "BlackBox"
 	organization	= "www.oberon.ch"
@@ -10,6 +10,18 @@ MODULE DevSearch;
 	issues	= ""
 
 **)
+	
+	(* bh 22.04.01 *)
+	(* ww 22.04.01	removed Kernel.Cleanup at end of Search (introduced on 25.01.01) after correction in Kernel;
+							key constants for string mappings; moved strings from #Std: to #Dev: *)
+	(* ww 12.03.01	adapted to new interface of TextCmds.FindFirst *)
+	(* bj	08.03.01	Introduced a parameter to SearchInDocu for case sensitive search or not. *)
+	(* bj	07.03.01	Split the Docu commands in two. One case sensitive and one case insensitive *)
+	(* ww	25.01.01	Added Kernel.Cleanup at end of Search *)
+	(* bj	17.01.01	Changed Select to SelectSource and SelectDocu. Now opens the find dialog for Docu. *)
+	(* ww 22.10.00	added Dialog.Update to Select *)
+	(* ww 30.08.00	case insensitive = TRUE in Select *)
+	(* dg 23.9.98 change due to interface change of Kernel.Time() *)
 
 	IMPORT
 		Kernel, Files, Fonts, Ports, Models, Views, Containers, Dialog, Windows,

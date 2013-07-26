@@ -11,6 +11,8 @@ MODULE DevAlienTool;
 
 **)
 
+	(* cas 23 Jan 1999 *)
+
 	IMPORT
 		Services, Ports, Stores, Models, Views, Controllers, Properties, Dialog, Containers, Documents,
 		TextModels, TextMappers, TextViews, StdFolds;

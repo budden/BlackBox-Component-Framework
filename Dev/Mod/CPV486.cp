@@ -1,4 +1,4 @@
-MODULE DevCPV486;
+﻿MODULE DevCPV486;
 (**
 	project	= "BlackBox"
 	organization	= "www.oberon.ch"
@@ -11,6 +11,23 @@ MODULE DevCPV486;
 	issues	= ""
 
 **)
+
+	(* bh 3.12.93 / 7.9.94 *)
+	(* bh 25.9.95 COM support *)
+	(* bh 10.10.95 return with jumps *)
+	(* bh 6.12.95 COM support changed *)
+	(* bh 9.12.95 longchar & largeint support *)
+	(* bh 21.2.96 [new] & [iid] handling *)
+	(* bh 28.5.96 union support *)
+	(* bh 7.1.97 Checkpc calls chaged *)
+	(* bh 17.12.97 Java frontend extensions *)
+	(* bh 31.8.99 oveflow check in TypeSize *)
+	(* cp 23.11.99 correction in CompStat (two assertions eliminated, according to bh) *)
+	(* bh 30.4.00 correction in Dim *)
+	(* bh 27.10.00 error for untagged arrays in Parameters *)
+	(* bh 8.2.01 nil tests for var par & receiver (ActualPar) *)
+	(* bh 8.2.01 FPU control register handling (CheckFpu, procs, Module) *)
+	(* bh 8.2.01 check for wrong extensions (EnumTProcs, CountTProcs) *)
 
 	IMPORT SYSTEM, DevCPM, DevCPT, DevCPE, DevCPH, DevCPL486, DevCPC486;
 	

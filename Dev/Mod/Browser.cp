@@ -11,6 +11,25 @@ MODULE DevBrowser;
 
 **)
 
+	(* cas, bh 11 Oct 2000 *)
+	(* bj 10.10.00	Change Init and SaveOptions to work with the registry instead of a file *)
+	(* bj 02.10.00	Fixed Init so it reads the correct file. *)
+	(* dg 29.08.00	bugfix in PutSelection *)
+	(* dg 03.02.99	clientinterface and extensioninterface interfaces *)
+	(* dg 09.12.98	hook interfaces (extensions of Kernel.Hook) and hook installations procedures are only 
+							shown if &-Option is provided *)
+	(* bh 29.1.97 codefile browser *)
+	(* bh 15.10.96 TypName changed *)
+	(* bh 24.7.96 AliasType corrected *)
+	(* bh 10.7.96 OPM.Close *)
+	(* bh 10.6.96 correction in GetQualident *)
+	(* cas 24.4.96 changed option handling *)
+	(* bh 16.4.96 underscores *)
+	(* bh 22.2.96 COM support adapted *)
+	(* bh 5.3.96 open ruler *)
+	(* bh 12.12.95 anypointer, anyrecord, longchar, & largeint support *)
+	(* bh 25.9.95 COM support *)
+
 	IMPORT
 		Kernel, Files, Fonts, Dates, Ports, Stores, Views, Properties, Dialog, Documents,
 		TextModels, TextMappers, TextRulers, TextViews, TextControllers, StdDialog, StdFolds,
@@ -19,7 +38,7 @@ MODULE DevBrowser;
 	CONST
 		width = 170 * Ports.mm;	(* view width *)
 		height = 300 * Ports.mm;
-
+		
 		(* visibility *)
 		internal = 0; external = 1; externalR = 2; inPar = 3; outPar = 4;
 
@@ -31,13 +50,13 @@ MODULE DevBrowser;
 		undef = 0; bool = 2; sChar = 3; byte = 4; sInt = 5; int = 6; sReal = 7; real = 8;
 		set = 9; sString = 10; nilTyp = 11; noTyp = 12; pointer = 13; procTyp = 14; comp = 15;
 		char = 16; string = 17; lInt = 18;
-
+		
 		(* composite structure forms *)
 		basic = 1; array = 2; dynArray = 3; record = 4;
-
+		
 		(* attribute flags (attr.adr, struct.attribute, proc.conval.setval) *)
 		newAttr = 16; absAttr = 17; limAttr = 18; empAttr = 19; extAttr = 20;
-
+		
 		(* additional scanner types *)
 		import = 100; module = 101; semicolon = 102; becomes = 103; comEnd = 104;
 
@@ -48,14 +67,14 @@ MODULE DevBrowser;
 		noItemNameSelectedKey = "#Dev:NoItemNameSelected";
 
 		regKey = "Dev\Browser\";
-
+		
 	TYPE
 		TProcList = POINTER TO RECORD
 			fld: DevCPT.Object;
 			attr: SET;	(* newAttr *)
 			next: TProcList
 		END;
-
+		
 	VAR
 		global: RECORD
 			hints: BOOLEAN;	(* display low-level hints such as field offsets *)
@@ -81,9 +100,9 @@ MODULE DevBrowser;
 			hints*: BOOLEAN;	(* display low-level hints such as field offsets *)
 			flatten*: BOOLEAN;	(* include fields/bound procs of base types as well *)
 			formatted*: BOOLEAN;
-			shints, sflatten, sformatted: BOOLEAN	(* saved values *)
+			shints, sflatten, sformatted: BOOLEAN;	(* saved values *)
 		END;
-
+		
 	PROCEDURE IsHook(typ: DevCPT.Struct): BOOLEAN;
 	BEGIN
 		WHILE ((typ.form = pointer) OR (typ.form = comp)) & (typ.BaseTyp # NIL) DO typ := typ.BaseTyp END;
@@ -125,7 +144,7 @@ MODULE DevBrowser;
 		ELSE mod[0] := 0X; ident[0] := 0X
 		END
 	END GetQualIdent;
-
+	
 	PROCEDURE Scan (VAR s: TextMappers.Scanner);
 	BEGIN
 		s.Scan;
@@ -148,7 +167,7 @@ MODULE DevBrowser;
 			END
 		END
 	END Scan;
-
+	
 	PROCEDURE CheckModName (VAR mod: DevCPT.Name; t: TextModels.Model);
 		VAR s: TextMappers.Scanner;
 	BEGIN
@@ -192,7 +211,7 @@ MODULE DevBrowser;
 			d := d + s
 		END
 	END Append;
-
+	
 	PROCEDURE IsLegal (name: POINTER TO ARRAY OF SHORTCHAR): BOOLEAN;
 		VAR i: SHORTINT;
 	BEGIN
@@ -215,7 +234,7 @@ MODULE DevBrowser;
 	BEGIN
 		global.out.WriteSString(s)
 	END String;
-
+	
 	PROCEDURE StringConst (s: ARRAY OF SHORTCHAR; long: BOOLEAN);
 		VAR i, x, y: INTEGER; quoted, first: BOOLEAN;
 	BEGIN
@@ -253,7 +272,7 @@ MODULE DevBrowser;
 		IF quoted THEN global.out.WriteChar('"') END;
 		IF long & (y = 0) THEN global.out.WriteChar(")") END
 	END StringConst;
-
+	
 	PROCEDURE ProperString (s: ARRAY OF SHORTCHAR);
 		VAR i: SHORTINT;
 	BEGIN
@@ -282,7 +301,7 @@ MODULE DevBrowser;
 	BEGIN
 		global.out.WriteInt(i)
 	END Int;
-
+	
 	PROCEDURE Hex (x, n: INTEGER);
 	BEGIN
 		IF n > 1 THEN Hex(x DIV 16, n - 1) END;
@@ -325,6 +344,7 @@ MODULE DevBrowser;
 		Hex(ORD(ext[15]), 2);
 		Char("}")
 	END Guid;
+	
 
 
 	(* special marks *)
@@ -350,7 +370,7 @@ MODULE DevBrowser;
 	BEGIN
 		IF i # external THEN Char("-") END
 	END Vis;
-
+	
 	PROCEDURE ProcSysFlag (flag: SHORTINT);
 	BEGIN
 		IF flag # 0 THEN
@@ -361,7 +381,7 @@ MODULE DevBrowser;
 			Char("]")
 		END
 	END ProcSysFlag;
-
+	
 	PROCEDURE ParSysFlag (flag: SHORTINT);
 		VAR pos: INTEGER;
 	BEGIN
@@ -392,7 +412,7 @@ MODULE DevBrowser;
 			Char("]")
 		END
 	END ParSysFlag;
-
+	
 	PROCEDURE StructSysFlag (typ: DevCPT.Struct);
 		VAR flag: SHORTINT;
 	BEGIN
@@ -416,7 +436,7 @@ MODULE DevBrowser;
 			Char("]")
 		END
 	END StructSysFlag;
-
+	
 	PROCEDURE SysStrings (obj: DevCPT.Object);
 	BEGIN
 		IF global.hints & ((obj.entry # NIL) OR (obj.library # NIL)) THEN
@@ -515,6 +535,7 @@ MODULE DevBrowser;
 					IF p = NIL THEN
 						NEW(elem); elem.next := newProcs; newProcs := elem;
 						elem.fld := fld;
+						
 						IF old = NIL THEN INCL(elem.attr, newAttr) END;
 						IF absAttr IN fld.conval.setval THEN INCL(elem.attr, absAttr)
 						ELSIF empAttr IN fld.conval.setval THEN INCL(elem.attr, empAttr)
@@ -526,7 +547,7 @@ MODULE DevBrowser;
 			TProcs(rec, fld.right, oldProcs, newProcs)
 		END
 	END TProcs;
-
+	
 (*
 	PROCEDURE AdjustTProcs (typ: DevCPT.Struct; fld: DevCPT.Object);
 		VAR receiver, old: DevCPT.Object; base: DevCPT.Struct;
@@ -561,7 +582,7 @@ MODULE DevBrowser;
 	BEGIN
 		IF (typ # NIL) & (typ # DevCPT.iunktyp) THEN
 			TProcs(typ, typ.link, list, new);
-
+			
 			p := list;
 			WHILE new # NIL DO
 				q := new.next; new.next := p; p := new; new := q
@@ -745,7 +766,7 @@ MODULE DevBrowser;
 		END;
 		Char(";"); Ln
 	END Const;
-
+	
 	PROCEDURE AliasType (typ: DevCPT.Struct);
 	BEGIN
 		IF global.singleton & IsLegal(typ.strobj.name) THEN
@@ -781,7 +802,7 @@ MODULE DevBrowser;
 			(obj.typ.form = pointer) & ~IsLegal(obj.typ.BaseTyp.strobj.name) &
 				NotExtRec(obj.typ.BaseTyp)
 		)
-
+			
 		THEN
 			IF global.singleton THEN RETURN END;
 			global.out.rider.SetAttr(TextModels.NewColor(global.out.rider.attr, Ports.grey50));
@@ -789,7 +810,7 @@ MODULE DevBrowser;
 				global.out.rider.Base().SetAttr(global.pos, global.out.rider.Pos()-1, global.out.rider.attr)
 			END
 		END;
-
+		
 		Indent; LocalName(obj); SysStrings(obj); String(" = ");
 		IF obj.typ.strobj # obj THEN
 			TypName(obj.typ, FALSE);
@@ -1044,7 +1065,7 @@ MODULE DevBrowser;
 			IF options.flatten THEN opts := opts + "!" END;
 			IF options.formatted THEN opts := opts + "/" END
 		END;
-
+		
 		WHILE opts[i] # 0X DO
 			CASE opts[i] OF
 			| '+': global.hints := TRUE
@@ -1133,7 +1154,7 @@ MODULE DevBrowser;
 		END;
 		Kernel.Cleanup
 	END ShowInterface;
-
+	
 	PROCEDURE ImportSymFile* (f: Files.File; OUT s: Stores.Store);
 		VAR v: Views.View; title: Views.Title; noerr: BOOLEAN;
 	BEGIN
@@ -1148,8 +1169,8 @@ MODULE DevBrowser;
 		DevCPM.file := NIL;
 		Kernel.Cleanup
 	END ImportSymFile;
-
-
+	
+	
 	(* codefile browser *)
 
 	PROCEDURE RWord (VAR x: INTEGER);
@@ -1160,7 +1181,7 @@ MODULE DevBrowser;
 		inp.ReadByte(b); y := y + 10000H * (b MOD 256);
 		inp.ReadByte(b); x := y + 1000000H * b
 	END RWord;
-
+	
 	PROCEDURE RNum (VAR x: INTEGER);
 		VAR b: BYTE; s, y: INTEGER;
 	BEGIN
@@ -1168,7 +1189,7 @@ MODULE DevBrowser;
 		WHILE b < 0 DO INC(y, ASH(b + 128, s)); INC(s, 7); inp.ReadByte(b) END;
 		x := ASH((b + 64) MOD 128 - 64, s) + y
 	END RNum;
-
+	
 	PROCEDURE RName (VAR name: ARRAY OF SHORTCHAR);
 		VAR b: BYTE; i, n: INTEGER;
 	BEGIN
@@ -1177,14 +1198,14 @@ MODULE DevBrowser;
 		WHILE b # 0 DO inp.ReadByte(b) END;
 		name[i] := 0X
 	END RName;
-
+	
 	PROCEDURE RLink;
 		VAR x: INTEGER;
 	BEGIN
 		RNum(x);
 		WHILE x # 0 DO RNum(x); RNum(x) END
 	END RLink;
-
+	
 	PROCEDURE RShort (p: INTEGER; OUT x: INTEGER);
 		VAR b0, b1: BYTE;
 	BEGIN
@@ -1259,7 +1280,7 @@ MODULE DevBrowser;
 		global.out.ConnectTo(NIL);
 		inp := NIL
 	END ReadHeader;
-
+	
 	PROCEDURE ShowCodeFile*;
 		VAR t: TextModels.Model; f: Files.File; v: Views.View; title: Views.Title; mod, ident: DevCPT.Name;
 			name: Files.Name; loc: Files.Locator; str: ARRAY 256 OF CHAR;
@@ -1277,7 +1298,7 @@ MODULE DevBrowser;
 		ELSE Dialog.ShowMsg(noModuleNameSelectedKey)
 		END
 	END ShowCodeFile;
-
+	
 	PROCEDURE ImportCodeFile* (f: Files.File; OUT s: Stores.Store);
 		VAR v: Views.View; title: Views.Title;
 	BEGIN
@@ -1317,7 +1338,7 @@ MODULE DevBrowser;
 		options.shints := options.hints;
 		options.sformatted := options.formatted
 	END Init;
-
+	
 BEGIN
 	Init
 END DevBrowser.

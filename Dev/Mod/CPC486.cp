@@ -1,5 +1,6 @@
 MODULE DevCPC486;
-(**
+(* code generator for i386 *)
+
 	project	= "BlackBox"
 	organization	= "www.oberon.ch"
 	contributors	= "Oberon microsystems"
@@ -7,12 +8,31 @@ MODULE DevCPC486;
 	copyright	= "System/Rsrc/About"
 	license	= "Docu/BB-License"
 	references	= "ftp://ftp.inf.ethz.ch/pub/software/Oberon/OberonV4/Docu/OP2.Paper.ps"
-	changes	= "
-	- 20070123, bh, ccall support for procedure variable calls
-	- 20070409, bh, OUT pointer initialization in empty procedures
-	- 20091228, bh, corrections for S.VAL(LONGINT, real) in Convert & ConvMove
-	"
+	changes	= ""
 **)
+
+	(* 20091228, bh, corrections for S.VAL(LONGINT, real) in Convert & ConvMove *)
+	(* 20070409, bh, OUT pointer initialization in empty procedures *)
+	(* 20070123, bh, ccall support for procedure variable calls *)
+	(* bh 8.2.01 FPU control register handling (InitFpu, Call, Enter) *)
+	(* bh 8.2.01 nil tests for var par & receiver (PushAdr, Param) *)
+	(* bh 27.10.00 correction in Param (do not push length for untagged arrays) *)
+	(* bh 11.9.00 correction in Push (pushing of temporary LONGINT values) *)
+	(* bh 5.5.00 correction in LoadLong *)
+	(* bh 28.8.99 initialization of local variables (Enter & Param) *)
+	(* bh 31.8.99 correction in Index fixed bug in Index reported by W. Braun (p.p[i].e[k])*)
+	(* bh 27.01.99 fixed bug in Oberon compiler (handling of EXTENSIBLE records) *)
+	(* bh 26.7.98 correction in Param (receiver type) *)
+	(* bh 17.12.97 Java frontend extensions *)
+	(* bh 22.5.96 NEW of tagged  array of untagged record allowed *)
+	(* bh 20.2.96 exception handling in interface procs *)
+	(* bh 20.1.96 new kernel type in NEW *)
+	(* bh 16.1.96 interface ptr marks in NEW *)
+	(* bh 9.12.95 lonchar & largeint support *)
+	(* bh 6.12.95 COM support changed *)
+	(* bh 30.9.95 pointer init corrected *)
+	(* bh 25.9.95 COM support *)
+	(* bh 7.9.94 *)
 
 	IMPORT SYSTEM, DevCPM, DevCPT, DevCPE, DevCPL486;
 

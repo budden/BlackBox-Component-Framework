@@ -12,6 +12,21 @@ MODULE DevCPT;
 
 **)
 
+	(* NW, RC 6.3.89 / 24.2.94 / bh 7.9.94 *)
+	(* 27.8.95 bh neg exported sys flags for objects *)
+	(* 4.9.95 bh sys strings for modules & procedures *)
+	(* bh 25.9.95 COM support *)
+	(* mh SOM suport *)
+	(* 28.11.95 bh sysstrings for types, indirect interface import *)
+	(* 6.12.95 bh MODULE COM *)
+	(* 6.12.95 bh LONGCHAR, LARGEINT, ANYRECORD, ANYPOINTER *)
+	(* 7.12.95 bh sym file version 1 (changed FirstRef) *)
+	(* bh 12.12.95 alias structures *)
+	(* 5.8.96 bh report only 20 sym file changes *)
+	(* 15.1.97 bh IN and OUT parameters *)
+	(* 10.7.98 LONGINT write bug corrected in OutConstant *)
+	(* Component Pascal version, bh, 08 Feb 2001 *)
+
 	IMPORT DevCPM;
 
 	CONST
