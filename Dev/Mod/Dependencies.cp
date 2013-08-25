@@ -1,4 +1,4 @@
-﻿MODULE DevDependencies;
+MODULE DevDependencies;
 (**
 	project	= "BlackBox"
 	organization	= "www.oberon.ch"

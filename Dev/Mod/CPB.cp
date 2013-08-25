@@ -1,4 +1,4 @@
-﻿MODULE DevCPB; (* build parse tree *)
+MODULE DevCPB; (* build parse tree *)
 (**
 	project	= "BlackBox"
 	organization	= "www.oberon.ch"

@@ -1,4 +1,4 @@
-﻿MODULE DevMsgSpy;
+MODULE DevMsgSpy;
 (**
 	project	= "BlackBox"
 	organization	= "www.oberon.ch"

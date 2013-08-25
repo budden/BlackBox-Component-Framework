@@ -1,4 +1,4 @@
-﻿MODULE DevCPL486;
+MODULE DevCPL486;
 (* low level code generator for i386 *)
 
 (**

@@ -1,4 +1,4 @@
-﻿MODULE DevLinker;
+MODULE DevLinker;
 (**
 	project	= "BlackBox"
 	organization	= "www.oberon.ch"

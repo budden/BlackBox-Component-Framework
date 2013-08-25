@@ -1,4 +1,4 @@
-﻿MODULE DevHeapSpy;
+MODULE DevHeapSpy;
 (**
 	project	= "BlackBox"
 	organization	= "www.oberon.ch"
