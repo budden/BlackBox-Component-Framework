@@ -11,6 +11,8 @@ MODULE DevLinkChk;
 
 **)
 
+	(* dg	17.11.98	added type test in CheckLoc *)
+
 	IMPORT
 		Kernel, Strings, Dialog, Files, Fonts, Ports, Converters, Views, Containers,
 		TextModels, TextMappers, TextViews, TextControllers, StdLinks, StdCmds;

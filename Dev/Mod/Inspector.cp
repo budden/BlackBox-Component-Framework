@@ -11,6 +11,10 @@ MODULE DevInspector;
 
 **)
 
+	(* dg	23.09.99	extended length of labels from 40 to 256 chars *)
+	(* dg	27.10.98	changes due to changed Controllers.SetCurrentPath/ResetCurrentPath  *)
+	(* dg	11.10.98	call of MakeViewVisible in GetNext *)
+
 	IMPORT Utils, Services, Stores, Views, Controllers, Properties, Containers, Dialog, Controls;
 	
 	CONST

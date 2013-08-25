@@ -11,6 +11,10 @@ MODULE DevRBrowser;
 
 **)
 
+	(* bj	27.02.01	changed ARRAY OF const CHAR to Files.Name *)
+	(* bj	29.08.00	added update command *)
+	(* cp, 19-Nov-96 *)
+
 	IMPORT
 		Strings, Dialog, Files, Stores, Converters, Fonts, Ports, Views, Containers,
 		TextModels, TextMappers, TextRulers, TextViews, StdLinks, StdFolds, TextControllers, Models;

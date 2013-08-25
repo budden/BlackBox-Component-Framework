@@ -11,6 +11,14 @@ MODULE DevDependencies;
 
 **)
 
+	(* ww	22.04.01	Removed call to Kernel.Collect again (added on 14.12.00) after correction of Kernel *)
+	(* bj	29.03.01	Bugfix in MarkImplicitModules *)
+	(* bj	23.03.01	CreateTool: Added folds, added root list, implicit imports written gray. Check added to DependencyList *)
+	(* bj	14.12.00	Added a Kernel.Collect to StartAnalysis to free all file handles of the object files which were read *)
+	(* bj	24.10.00	Changed CreateTool to reflect changes in DevPacker syntax *)
+	(* bj	23.10.00	Changed Deposit so that a view is deposited even if no modules where found  *)
+	(* bj	23.10.00	Changed the linking command to reflect changes in HostPackedFiles  *)
+
 	IMPORT
 		Files, Utils, Dialog, TextMappers, TextControllers, StdDialog, StdFolds, Strings, Views, Ports, 
 		Fonts, Properties, Controllers, Stores, HostMenus, HostPorts, StdCmds, Math, 

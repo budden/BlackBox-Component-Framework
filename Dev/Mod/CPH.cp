@@ -12,6 +12,9 @@ MODULE DevCPH;
 
 **)
 
+	(* bh, 23.10.98 Convert corrected (wrong LONGINT constants) *)
+	(* bh, 14.10.99	int mul/div added *)
+	
 	IMPORT DevCPT;
 	
 	CONST
@@ -145,13 +148,9 @@ MODULE DevCPH;
 	BEGIN
 		CASE n.subcl OF
 		| minus:
-			IF (realMop IN opts) & (n.typ.form IN realSet) OR (longMop IN opts) & (n.typ.form = Int64) THEN
-				UseThisCall(n, "Neg")
-			END
+			IF (realMop IN opts) & (n.typ.form IN realSet) OR (longMop IN opts) & (n.typ.form = Int64) THEN UseThisCall(n, "Neg") END
 		| abs:
-			IF (realMop IN opts) & (n.typ.form IN realSet) OR (longMop IN opts) & (n.typ.form = Int64) THEN
-				UseThisCall(n, "Abs")
-			END
+			IF (realMop IN opts) & (n.typ.form IN realSet) OR (longMop IN opts) & (n.typ.form = Int64) THEN UseThisCall(n, "Abs") END
 		| odd:
 			IF (longOdd IN opts) & (n.left.typ.form = Int64) THEN UseThisCall(n, "Odd") END
 		| conv:

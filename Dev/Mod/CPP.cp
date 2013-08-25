@@ -12,6 +12,26 @@ MODULE DevCPP;
 
 **)
 
+	(* NW, RC 6.3.89 / 10.2.94 / object model 4.12.93 / bh 7.9.94 *)
+	(* 27.8.95 bh neg exported sys flags for objects *)
+	(* 4.9.95 bh sys strings for modules & procedures *)
+	(* bh 25.9.95 COM support *)
+	(* bh 30.11.95 new sysfalg handling *)
+	(* bh 12.12.95 alias structures *)
+	(* bh 23.1.96 correction in Block *)
+	(* bh 8.5.96 changes for new largint consts in Factor *)
+	(* bh 5.9.96 FormalParameters: return type changed from Qualident to Type *)
+	(* bh 5.9.96 Factor & selector: function call moved to selector *)
+	(* bh 8.9.96 TypeDecl: number is new in follow set *)
+	(* bh 12.9.96 RecordType: pointer type allowed as base type *)
+	(* bh 7.1.97 statement source positions changed *)
+	(* 07.02.99 bh eliminated super side call of implement only methods *)
+	(* 25.08.99 bh forward attribute compare corrected in TProcDecl *)
+	(* 30.08.99 bh anchoring of dereferenced actual VAR parameters (ActualParameters) *)
+	(* 01.09.99 bh additional error codes (36, 37, 38) in Block *)
+	(* 09.03.01 bh error message corrected in TProcDecl *)
+	(* Component Pascal version, bh, 09 Mar 2001 *)
+
 	IMPORT
 		DevCPM, DevCPT, DevCPB, DevCPS;
 		
@@ -109,7 +129,10 @@ MODULE DevCPP;
 	
 	PROCEDURE IncompleteType (typ: DevCPT.Struct): BOOLEAN;
 	BEGIN
-		IF typ.form = Pointer THEN typ := typ.BaseTyp END;
+		IF typ.form = Pointer THEN
+			IF typ = DevCPT.sysptrtyp THEN RETURN FALSE END;
+			typ := typ.BaseTyp
+		END;
 		RETURN (typ = DevCPT.undftyp) OR (typ.comp = Record) & (typ.BaseTyp = DevCPT.undftyp)
 	END IncompleteType;
 	

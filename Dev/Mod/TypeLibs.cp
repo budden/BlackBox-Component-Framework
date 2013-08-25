@@ -11,7 +11,10 @@ MODULE DevTypeLibs;
 
 **)
 
+	(* ww	02.03.01	[nil] permitted for VAR param in ShowWrapper to disable new NIL test by compiler *)
 	(* Code that is only reached with wrapper in options. Code that is not reached with wrapper in options. *)
+	(* mf 5.11.1999 interface changes *)
+	(* KHU 99-04-15 Changes marked red. *)
 		
 	IMPORT COM, WinOle, WinOleAut, TextModels, TextMappers;
 

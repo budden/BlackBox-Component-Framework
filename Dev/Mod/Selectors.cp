@@ -11,6 +11,8 @@ MODULE DevSelectors;
 
 **)
 
+	(*  bh 21.07.00  *)
+	(* dg	02.12.98	changes due to renaming of Views.CopyFrom => Views.CopyFromSimpleView *)
 
 	IMPORT
 		Ports, Stores, Models, Views, Controllers, Fonts, Properties, TextModels, TextViews, TextSetters;

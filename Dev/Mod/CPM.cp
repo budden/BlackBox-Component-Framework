@@ -9,6 +9,11 @@ MODULE DevCPM;
 	references	= "ftp://ftp.inf.ethz.ch/pub/software/Oberon/OberonV4/Docu/OP2.Paper.ps"
 **)
 
+	(* ww	02.03.01	[nil] permitted for VAR param in ShowWrapper to disable new NIL test by compiler *)
+	(* Code that is only reached with wrapper in options. Code that is not reached with wrapper in options. *)
+	(* mf 5.11.1999 interface changes *)
+	(* KHU 99-04-15 Changes marked red. *)
+
 	IMPORT SYSTEM, Files, Utils, Stores, Models, Views, TextModels, TextMappers, StdLog, DevMarkers;
 
 	CONST

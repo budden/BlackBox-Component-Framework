@@ -1,4 +1,4 @@
-MODULE DevCPB;
+MODULE DevCPB; (* build parse tree *)
 (**
 	project	= "BlackBox"
 	organization	= "www.oberon.ch"
@@ -11,6 +11,34 @@ MODULE DevCPB;
 	issues	= ""
 
 **)
+
+	(* RC 6.3.89 / 24.5.93 / 17.2.94 / bh 16.6.94 *)
+	(* bh 25.9.95 COM support *)
+	(* bh 6.12.95 COM functions *)
+	(* bh 8.12.95 longchar & largeint support *)
+	(* bh 12.12.95 alias structures *)
+	(* bh 26.12.95 largeint via longreal *)
+	(* bh 21.2.96 [new] flag handling *)
+	(* bh 27.3.96 NEW(ptrInterface, ptrInterface) *)
+	(* bh 28.3.96 CheckAssign corrected *)
+	(* bh 9.5.96 assignment compatibility for guid constants *)
+	(* bh 3.7.96 Convert corrected for largeint constants *)
+	(* bh 5.9.96 CheckAssign: string to open array assign allowed *)
+	(* bh 5.9.96 CheckAssign: ptr to array of T compatible to ptr to array of T *)
+	(* bh 5.9.96 Param: ptr to array of T compatible to VAR ptr to array of T *)
+	(* bh 5.9.96 Deref, Index, Field, TypTest: expressions allowed *)
+	(* bh 10.9.96 AssignString added for optimal string assignment *)
+	(* bh 08.03.99 fixed compiler bug (ORD({1}) in case statement lead to problem in Loader.Fixup *)
+	(* bh 25.08.99 open arrays allowed in SYSTEM.VAL (StdPar0, StdPar1) *)
+	(* bh 25.08.99 string expressions allowed for IN parameters (Param, CheckBuffering) *)
+	(* bh 02.09.99 check for obsolete oberon types (CheckOldType, StPar0) *)
+	(* bh 22.11.99 CheckLeaf in Param *)
+	(* bh 16.3.00 bug in Convert fixed (string compare) *)
+	(* bh 27.10.00 StrDeref added in GetMaxLength for untagged arrays *)
+	(* bh 13.03.01 Contravariant use of OUT parameters prohibited *)
+	(* bh 1.6.01 parameter test for MIN & MAX in StFct corrected *)
+	(* bh 7.2.02 test for type expressions in Param *)
+
 
 	IMPORT DevCPT, DevCPM;
 

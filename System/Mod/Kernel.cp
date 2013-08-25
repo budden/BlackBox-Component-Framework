@@ -6,21 +6,67 @@ MODULE Kernel;
 	version	= "System/Rsrc/About"
 	copyright	= "System/Rsrc/About"
 	license	= "Docu/BB-License"
-	changes	= "
-	- 20070123, bh, Beep using MessageBeep
-	- 20070125, bh, Support for procedure signatures added
-	- 20070130, bh, KERNEL32 & USER32 eliminated
-	- 20070220, bh, comSig eliminated
-	- 20070307, bh, improved Ctrl-Break handling
-	- 20070308, bh, check for unloaded module in ExecFinalizer
-	- 20080107, bh, full GC included in NewBlock
-	- 20080107, bh, pointer anchoring bug corrected in NewRec & NewArr
-	- 20120822, bh, mf, checks for integer overflow in NewArr and NewBlock
-	- 20120906, luowy, additional checks in NewBlock and Init
-	"
+	changes	= ""
 	issues	= ""
 
 **)
+
+	(* bh 20.12.95 termination and finalization for COM *)
+	(* bh 7.1.95 ole initialization *)
+	(* bh 9.1.96 MarkLocals corrected *)
+	(* bh 15.1.96 AddRef, Release, interface ptr finalization *)
+	(* bh 20.1.96 new desc for basetypes *)
+	(* bh 10.2.96 finalization changed *)
+	(* bh 11.2.96 trap handling adapted to new compiler *)
+	(* bh 20.2.96 interface trap handler *)
+	(* bh 29.2.96 trap handling changed *)
+	(* bh 27.3.96 new interface handling *)
+	(* bh 18.4.96 FastCollect *)
+	(* bh 18.4.96 Next inline *)
+	(* bh 18.4.96 only one free list *)
+	(* bh 18.4.96 allocLimit in NewBlock *)
+	(* bh 23.4.96 NewObj corrected *)
+	(* bh 23.4.96 MarkInterfaces *)
+	(* bh 6.1.97 SourcePos adapted *)
+	(* bh 2.5.97 V1.3 changes *)
+	(* bh 22.9.98 simple memory allocation for DLLs *)
+	(* dg 23.9.98 fixed "Millenium Bug", Time() returns LONGINT *)
+	(* dg 01.10.98 trapped cleaners are now removed *)
+	(* dg 01.10.98 added Kernel.RemoveCleaner *)
+	(* dg	29.10.98	ASSERT added in PushTrapCleaner - asserts that a TrapCleaner is not pushed twice *)
+	(* dg	11.02.99	fixed Kernel.Time (interval = 2*(MAX(INTEGER)+1) = 100000000L *)
+	(* dg	16.02.99	Finalizer calls eliminated in FastCollect *)
+	(* dg	24.02.99	added type Hook *)
+	(* dg	09.03.99	Loader Hook *)
+	(* bh	14.04.99	silent trap *)
+	(* bh	31.08.99	strict stack sweep *)
+	(* cp	23.11.99	CallFinalizers: array handling corrected (according to bh) *)
+	(* ww 4.12.00	Max. heap memory incresed from 0.5 to 1.5 GByte (AllocHeapMem) *)
+	(* bh 8.2.01 InitFpu eliminated, delayed for 1.5 *)
+	(* bh 8.2.01 stack overflow handling *)
+	(* ww 12.2.01 separate treatment of TrapChecker (to not have to install Views.TrapCleanup as a TrapViewer) *)
+	(* ww 13.2.01 when growing heap, merge new area with free block (if any) at the end of the old heap *)
+	(* ww 14.2.01 (re-)introduced separate free lists for small blocks *)
+	(* ww 16.2.01 slight performance improvement in OldBlock *)
+	(* ww 22.3.01 AllocHeapMem aligns cluster to 16 bytes if dllMem is true. c.max contains actual address of allocated memory *)
+	(* ww 22.4.01 Changed FastCollect to call MarkFinObj instead of CheckFinalizers preventing moving obj. to hotFinalizers *)
+	(* ww 24.4.01 CallFinalizers catches traps in Finalizers *)
+	(* ww 27.4.01 Introduced "WouldFinalize" to allow applications to call Collect after FastCollect detected objects
+						being due for finalization *)
+	(* bh 25.02.02 *)
+	(*
+		20070123, bh, Beep using MessageBeep
+		20070125, bh, Support for procedure signatures added
+		20070130, bh, KERNEL32 & USER32 eliminated
+		20070220, bh, comSig eliminated
+		20070307, bh, improved Ctrl-Break handling
+		20070308, bh, check for unloaded module in ExecFinalizer
+		20080107, bh, full GC included in NewBlock
+		20080107, bh, pointer anchoring bug corrected in NewRec & NewArr
+		20120822, bh, mf, checks for integer overflow in NewArr and NewBlock
+		20120906, luowy, additional checks in NewBlock and Init
+		20130824, luowy, more checks in NewBlock
+	*)
 
 	(* green color means COM-specific code *)
 
@@ -1623,36 +1669,38 @@ MODULE Kernel;
 					WHILE r # NIL DO r.Reduce(FALSE); r := r.next END;
 					Collect
 				END;
-				s := (allocated + tsize) DIV 2 * 3;
-				IF s > root.max THEN 
-					IF  root.max - allocated >=  tsize THEN
-						s := root.max
-					ELSE
-						RETURN NIL
-					END
-				END;
-				
-				a := 12 + (root.size - 12) DIV 16 * 16;
-				IF s <= total THEN
-					b := OldBlock(tsize);
-					IF b = NIL THEN s := a + tsize END
-				ELSIF s < a + tsize THEN
-					s := a + tsize
-				END;
-				IF total < s THEN	(* 4) enlarge heap *)
-					GrowHeapMem(s, root);
-					IF root.size >= s THEN
-						b := LastBlock(S.VAL(INTEGER, root) + a);
-						IF b # NIL THEN
-							b.size := (root.size - a + b.size + 4) DIV 16 * 16 - 4
+				IF b = NIL THEN
+					s := (tsize + allocated) DIV 2 * 3;
+					IF s > root.max THEN
+						IF  root.max - allocated >=  tsize THEN
+							s := root.max
 						ELSE
-							b := S.VAL(FreeBlock, S.VAL(INTEGER, root) + a);
-							b.size := (root.size - a) DIV 16 * 16 - 4
+							RETURN NIL
 						END
-					ELSIF reducers # NIL THEN	(* 5) no space => fully reduce *)
-						r := reducers; reducers := NIL;
-						WHILE r # NIL DO r.Reduce(TRUE); r := r.next END;
-						Collect
+					END;
+					
+					a := 12 + (root.size - 12) DIV 16 * 16;
+					IF s <= total THEN
+						b := OldBlock(tsize);
+						IF b = NIL THEN s := a + tsize END
+					ELSIF s < a + tsize THEN
+						s := a + tsize
+					END;
+					IF (b = NIL) & (total < s) THEN	(* 4) enlarge heap *)
+						GrowHeapMem(s, root);
+						IF root.size >= s THEN
+							b := LastBlock(S.VAL(INTEGER, root) + a);
+							IF b # NIL THEN
+								b.size := (root.size - a + b.size + 4) DIV 16 * 16 - 4
+							ELSE
+								b := S.VAL(FreeBlock, S.VAL(INTEGER, root) + a);
+								b.size := (root.size - a) DIV 16 * 16 - 4
+							END
+						ELSIF reducers # NIL THEN	(* 5) no space => fully reduce *)
+							r := reducers; reducers := NIL;
+							WHILE r # NIL DO r.Reduce(TRUE); r := r.next END;
+							Collect
+						END
 					END
 				END;
 				IF b = NIL THEN

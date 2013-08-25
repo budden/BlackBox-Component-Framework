@@ -1,5 +1,8 @@
 MODULE DevCPE;
+(* code file emiter *)
+
 (**
+
 	project	= "BlackBox"
 	organization	= "www.oberon.ch"
 	contributors	= "Oberon microsystems, Robert Campbell"

@@ -11,6 +11,39 @@ MODULE DevAnalyzer;
 
 **)
 
+	(* Component Pascal version, bh, 19 Feb 2001 *)
+
+	(* bj	19.02.01	Removed the NIL check in Type. FormalParameters: Setobj -> par.num := set, par.num := setUsedP.
+							Added UseObj in selector for defreferences pointers. *)
+	(* bj	08.02.01	NIL check in Type for forward declarations, ELSE added in Check. FormalParameters: "num := set" -> SetObj *)
+	(* bj	24.01.01	Changes in procedures Block and Type to handle forward declaration of types *)
+	(* bj	15.01.01	Added an IF to StatSeq for WITH statements to be compliant with DevCPP.StatSeq *)
+	(* bj	27.10.00	Changed ActualParameters to avoid error message when NIL is passed as var parameter *)
+	(* bj	11.10.00	fix in CheckForwardTypes so that num is not set to set if it already has a "better" value *)
+	(* ww	11.10.00	Ok message does no more overwrite first error message *)
+	(* bj	11.10.00	changed LoadOptions and SaveOptions to work with the registry instead of a file *)
+	(* bj	03.10.00	change to filter out errors for temprary variables in Check *)
+	(* bj	29.09.00	changes to avoid unnecessary warnings. Mostly for Abstract and type bound procedures. *)
+	(* dg	06.05.99	replaced SetDirty-hack by transparent operations *)
+	(* dg	24.11.98	Domains 2000 *)
+	(* bh 7.1.97 statement source positions changed *)
+	(* bh 12.9.96 RecordType: pointer type allowed as base type *)
+	(* bh 8.9.96 TypeDecl: number is new in follow set *)
+	(* bh 5.9.96 Factor & selector: function call moved to selector *)
+	(* bh 5.9.96 FormalParameters: return type changed from Qualident to Type *)
+	(* bh 8.5.96 changes for new largint consts in Factor *)
+	(* bh 23.1.96 correction in Block *)
+	(* bh 12.12.95 alias structures *)
+	(* bh 30.11.95 new sysfalg handling *)
+	(* 4.9.95 bh sys strings for modules & procedures *)
+	(* 27.8.95 bh neg exported sys flags for objects *)
+	(* bh 25.9.95 COM support *)
+	(* first Oberon/F Version 4 May 94 *)
+	(* DevAnalyzer, Copyright: Stefan H.-M. Ludwig, 1997 *)
+	(* adapted for Component Pascal, Black Box release *)
+	
+	(* NW, RC 6.3.89 / 10.2.94 / object model 4.12.93 / bh 7.9.94 *)
+
 	IMPORT
 		TextMappers, TextModels, TextViews, DevMarkers, Stores, Models, Kernel, Dialog, StdLog, Files,
 		CPT := DevCPT, CPS := DevCPS, CPM := DevCPM, CPB := DevCPB, HostRegistry;
@@ -382,7 +415,7 @@ MODULE DevAnalyzer;
 						CASE obj.num OF
 						| clean: DumpObj(obj); err2(neverUsed, obj.adr) 
 						(* | used: DumpObj(obj); err2(neverSet, obj.adr) *)
-						| used: IF obj.name[0] # "@" THEN DumpObj(obj); err2(neverSet, obj.adr) END
+						| used: IF obj.name[0] # "@" THEN DumpObj(obj); err2(neverSet, obj.adr) END (* BJ: tmp variables always set *)
 						| usedSet: IF obj.mode # Fld THEN DumpObj(obj); err2(usedBSet, obj.adr) END
 						| set: DumpObj(obj); err2(setBNUsed, obj.adr);
 						| setUsedP: IF options.varpar & (obj.mode # Fld) THEN DumpObj(obj); err2(usedVarPar, obj.adr); END
@@ -473,7 +506,7 @@ MODULE DevAnalyzer;
 				END
 			| usedSet, setUsed, setUsedP:
 			| set: IF varPar THEN obj.num := setUsed END
-			| setUsed+noChange, setUsedP+noChange: DumpObj(obj); err2(loopVarSet, pos) (* for loop variable gets set!*)
+			| setUsed+noChange, setUsedP+noChange: DumpObj(obj); err2(loopVarSet, pos)	(* for loop variable gets set!*)
 			END
 		END
 	END SetObj;
@@ -1215,7 +1248,7 @@ MODULE DevAnalyzer;
 			qualident(id);
 			pos := CPM.curpos;	(*<<*)
 			x := CPB.NewLeaf(id); 
-			UseObj(x.obj, SelUseBSet, pos);
+			UseObj(x.obj, SelUseBSet, pos); (* BJ: Added, so that variables are marked as used when a type bound procedure is called *)
 			selector(x);
 			IF (x.class = Nfield) & (x.obj.mode = TProc) & (x.obj.link.mode = VarPar) & (x.obj.link.typ.comp = Record) THEN	
 				(*<< receiver is var parameter and record *)
@@ -1437,6 +1470,7 @@ MODULE DevAnalyzer;
 				ASSERT(CPT.topScope # NIL);
 				GetAttributes(proc, baseProc, recTyp);
 				
+				(* BJ: If it is an abstract or empty procedure, its parameters should be marked as used, to avoid irrelevant warnings. *)
 				IF ((absAttr IN proc.conval.setval) OR (empAttr IN proc.conval.setval)) & (proc.link.link # NIL) THEN
 					o := proc.link.link;
 					WHILE o # NIL DO o.num := setUsed; o := o.link END;

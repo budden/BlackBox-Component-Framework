@@ -10,6 +10,15 @@ MODULE DevMarkers;
 	issues	= ""
 
 **)
+	
+	(* cas 28.03.01 *)
+	(* ww	28.03.01	error file renamed from "error" to "Error" to avoid problems on Unix *)
+	(* dg	06.05.99	replaced SetDirty-hack by transparent operations *)
+	(* dg	02.12.98	changes due to renaming of Views.CopyFrom => Views.CopyFromSimpleView *)
+	(* dg	24.11.98	Domains 2000 *)
+	(* dg 01.10.98 Kernel.RemoveCleaner call added *)
+	(* bh 23.3.96 Unmark without era *)
+	(* bh 18.3.96 dir.NewMsg *)
 
 	IMPORT
 		Kernel, Files, Stores, Fonts, Ports, Models, Views, Controllers, Properties, Dialog,

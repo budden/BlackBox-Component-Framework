@@ -1,4 +1,6 @@
 MODULE DevCPL486;
+(* low level code generator for i386 *)
+
 (**
 	project	= "BlackBox"
 	organization	= "www.oberon.ch"
@@ -11,6 +13,12 @@ MODULE DevCPL486;
 	issues	= ""
 
 **)
+
+	(* bh 12.5.96 descriptors for untagged structures *)
+	(* bh 16.1.96 new form const *)
+	(* bh 9.12.95 longchar & largeint support *)
+	(* bh 25.9.95 COM support *)
+	(* bh 16.11.93 / 7.9.94 *)
 
 	IMPORT DevCPM, DevCPT, DevCPE;
 	

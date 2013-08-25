@@ -11,6 +11,17 @@ MODULE DevProfiler;
 
 **)
 
+	(* bh 03.03.99 *)
+	(* dg	03.03.99	changed Loader.ThisMod => Kernel.ThisMod and eliminated import of loader *)
+	(* dg 23.9.98 change due to interface change of Kernel.Time() *)
+	(* OMinc	23.09.1998 *)
+	(* OMinc	6.10.1997 *)
+	(* OMinc	25.07.1997 *)
+	(* OMinc	11.04.1997 *)
+	(* OMinc	10.04.1997 *)
+	(* OMinc	9.04.1997 *)
+	(* OMinc	2.10.1996 *)
+	
 	IMPORT
 		WinApi, WinMM,
 		Kernel, Dialog, Fonts, Ports, Views,
