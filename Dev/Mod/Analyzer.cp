@@ -1,4 +1,4 @@
-﻿MODULE DevAnalyzer;
+MODULE DevAnalyzer;
 (**
 	project	= "BlackBox"
 	organization	= "www.oberon.ch"

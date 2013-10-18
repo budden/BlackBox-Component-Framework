@@ -65,6 +65,7 @@ MODULE Kernel;
 		20080107, bh, pointer anchoring bug corrected in NewRec & NewArr
 		20120822, bh, mf, checks for integer overflow in NewArr and NewBlock
 		20120906, luowy, additional checks in NewBlock and Init
+		20130824, luowy, more checks in NewBlock
 	*)
 
 	(* green color means COM-specific code *)
@@ -1668,36 +1669,38 @@ MODULE Kernel;
 					WHILE r # NIL DO r.Reduce(FALSE); r := r.next END;
 					Collect
 				END;
-				s := (allocated + tsize) DIV 2 * 3;
-				IF s > root.max THEN 
-					IF  root.max - allocated >=  tsize THEN
-						s := root.max
-					ELSE
-						RETURN NIL
-					END
-				END;
-				
-				a := 12 + (root.size - 12) DIV 16 * 16;
-				IF s <= total THEN
-					b := OldBlock(tsize);
-					IF b = NIL THEN s := a + tsize END
-				ELSIF s < a + tsize THEN
-					s := a + tsize
-				END;
-				IF total < s THEN	(* 4) enlarge heap *)
-					GrowHeapMem(s, root);
-					IF root.size >= s THEN
-						b := LastBlock(S.VAL(INTEGER, root) + a);
-						IF b # NIL THEN
-							b.size := (root.size - a + b.size + 4) DIV 16 * 16 - 4
+				IF b = NIL THEN
+					s := (tsize + allocated) DIV 2 * 3;
+					IF s > root.max THEN
+						IF  root.max - allocated >=  tsize THEN
+							s := root.max
 						ELSE
-							b := S.VAL(FreeBlock, S.VAL(INTEGER, root) + a);
-							b.size := (root.size - a) DIV 16 * 16 - 4
+							RETURN NIL
 						END
-					ELSIF reducers # NIL THEN	(* 5) no space => fully reduce *)
-						r := reducers; reducers := NIL;
-						WHILE r # NIL DO r.Reduce(TRUE); r := r.next END;
-						Collect
+					END;
+					
+					a := 12 + (root.size - 12) DIV 16 * 16;
+					IF s <= total THEN
+						b := OldBlock(tsize);
+						IF b = NIL THEN s := a + tsize END
+					ELSIF s < a + tsize THEN
+						s := a + tsize
+					END;
+					IF (b = NIL) & (total < s) THEN	(* 4) enlarge heap *)
+						GrowHeapMem(s, root);
+						IF root.size >= s THEN
+							b := LastBlock(S.VAL(INTEGER, root) + a);
+							IF b # NIL THEN
+								b.size := (root.size - a + b.size + 4) DIV 16 * 16 - 4
+							ELSE
+								b := S.VAL(FreeBlock, S.VAL(INTEGER, root) + a);
+								b.size := (root.size - a) DIV 16 * 16 - 4
+							END
+						ELSIF reducers # NIL THEN	(* 5) no space => fully reduce *)
+							r := reducers; reducers := NIL;
+							WHILE r # NIL DO r.Reduce(TRUE); r := r.next END;
+							Collect
+						END
 					END
 				END;
 				IF b = NIL THEN

@@ -1,4 +1,4 @@
-﻿MODULE DevCPV486;
+MODULE DevCPV486;
 (**
 	project	= "BlackBox"
 	organization	= "www.oberon.ch"

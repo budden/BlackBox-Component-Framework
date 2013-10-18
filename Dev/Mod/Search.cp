@@ -1,4 +1,4 @@
-﻿MODULE DevSearch;
+MODULE DevSearch;
 (**
 	project	= "BlackBox"
 	organization	= "www.oberon.ch"

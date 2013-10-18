@@ -1,4 +1,4 @@
-﻿MODULE DevDebug;
+MODULE DevDebug;
 (**
 	project	= "BlackBox"
 	organization	= "www.oberon.ch"

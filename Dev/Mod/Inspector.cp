@@ -1,4 +1,4 @@
-﻿MODULE DevInspector;
+MODULE DevInspector;
 (**
 	project	= "BlackBox"
 	organization	= "www.oberon.ch"

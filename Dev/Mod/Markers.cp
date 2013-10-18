@@ -1,4 +1,4 @@
-﻿MODULE DevMarkers;
+MODULE DevMarkers;
 (**
 	project	= "BlackBox"
 	organization	= "www.oberon.ch"

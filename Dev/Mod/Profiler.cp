@@ -1,4 +1,4 @@
-﻿MODULE DevProfiler;
+MODULE DevProfiler;
 (**
 	project	= "BlackBox"
 	organization	= "www.oberon.ch"
