@@ -6,7 +6,6 @@ MODULE Kernel;
 	version	= "System/Rsrc/About"
 	copyright	= "System/Rsrc/About"
 	license	= "Docu/BB-License"
-	changes	= ""
 	issues	= ""
 
 **)
@@ -74,18 +73,18 @@ MODULE Kernel;
 
 	CONST
 		strictStackSweep = TRUE;
-
+		
 		nameLen* = 256;
 
 		littleEndian* = TRUE;
 		timeResolution* = 1000;	(* ticks per second *)
-
+		
 		processor* = 10;	(* i386 *)
 
 		objType* = "ocf";	(* file types *)
 		symType* = "osf";
 		docType* = "odc";
-
+		
 		(* loader constants *)
 		done* = 0;
 		fileNotFound* = 1;
@@ -99,22 +98,22 @@ MODULE Kernel;
 		moduleNotFound* = 9;
 
 		any = 1000000;
-
+		
 		CX = 1;
 		SP = 4;	(* register number of stack pointer *)
 		FP = 5;	(* register number of frame pointer *)
 		ML = 3;	(* register which holds the module list at program start *)
-
+		
 		N = 128 DIV 16;	(* free lists *)
-
+		
 		(* kernel flags in module desc *)
 		init = 16; dyn = 17; dll = 24; iptrs = 30;
-
+		
 		(* meta interface consts *)
 		mConst = 1; mTyp = 2; mVar = 3; mProc = 4; mField = 5;
-
+		
 		debug = FALSE;
-
+		
 
 	TYPE
 		Name* = ARRAY nameLen OF SHORTCHAR;
@@ -172,7 +171,7 @@ MODULE Kernel;
 		END;
 
 		Handler* = PROCEDURE;
-
+		
 		Reducer* = POINTER TO ABSTRACT RECORD
 			next: Reducer
 		END;
@@ -181,18 +180,17 @@ MODULE Kernel;
 			typ*: INTEGER;
 			obj-: ANYPTR
 		END;
-
+		
 		TrapCleaner* = POINTER TO ABSTRACT RECORD
 			next: TrapCleaner
 		END;
-
+		
 		TryHandler* = PROCEDURE (a, b, c: INTEGER);
-
-
+		
 		(* meta extension suport *)
-
+		
 		ItemExt* = POINTER TO ABSTRACT RECORD END;
-
+		
 		ItemAttr* = RECORD
 			obj*, vis*, typ*, adr*: INTEGER;
 			mod*: Module;
@@ -200,14 +198,14 @@ MODULE Kernel;
 			ptr*: S.PTR;
 			ext*: ItemExt
 		END;
-
+		
 		Hook* = POINTER TO ABSTRACT RECORD END;
-
+		
 		LoaderHook* = POINTER TO ABSTRACT RECORD (Hook) 
 			res*: INTEGER;
 			importing*, imported*, object*: ARRAY 256 OF CHAR
 		END;
-
+		
 		Block = POINTER TO RECORD [untagged]
 			tag: Type;
 			last: INTEGER;		(* arrays: last element *)
@@ -291,7 +289,7 @@ MODULE Kernel;
 		trapCount-: INTEGER;
 		err-, pc-, sp-, fp-, stack-, val-: INTEGER;
 		mainWnd*: INTEGER;
-
+		
 		free: ARRAY N OF FreeBlock;	(* free list *)
 		sentinelBlock: FreeDesc;
 		sentinel: FreeBlock;
@@ -306,7 +304,7 @@ MODULE Kernel;
 		reducers: Reducer;
 		trapStack: TrapCleaner;
 		actual: Module;	(* valid during module initialization *)
-
+		
 		res: INTEGER;	(* auxiliary global variables used for trap handling *)
 		old: INTEGER;
 
@@ -325,35 +323,35 @@ MODULE Kernel;
 
 		loader: LoaderHook;
 		loadres: INTEGER;
-
+		
 		wouldFinalize: BOOLEAN;
 
 		watcher*: PROCEDURE (event: INTEGER);	(* for debugging *)
 
-
+	
 	(* code procedures for exception handling *)
-
-	PROCEDURE [1] PushFP 055H;
-	PROCEDURE [1] PopFP 05DH;
-	PROCEDURE [1] PushBX 053H;
-	PROCEDURE [1] PopBX 05BH;
-	PROCEDURE [1] PushSI 056H;
-	PROCEDURE [1] PopSI 05EH;
-	PROCEDURE [1] PushDI 057H;
-	PROCEDURE [1] PopDI 05FH;
-	PROCEDURE [1] LdSP8 08DH, 065H, 0F8H;
-	PROCEDURE [1] Return0 (ret: INTEGER) 0C3H;
-	PROCEDURE [1] ReturnCX (ret: INTEGER) 05AH, 001H, 0CCH, 0FFH, 0E2H;
+	
+	PROCEDURE [code] PushFP 055H;
+	PROCEDURE [code] PopFP 05DH;
+	PROCEDURE [code] PushBX 053H;
+	PROCEDURE [code] PopBX 05BH;
+	PROCEDURE [code] PushSI 056H;
+	PROCEDURE [code] PopSI 05EH;
+	PROCEDURE [code] PushDI 057H;
+	PROCEDURE [code] PopDI 05FH;
+	PROCEDURE [code] LdSP8 08DH, 065H, 0F8H;
+	PROCEDURE [code] Return0 (ret: INTEGER) 0C3H;
+	PROCEDURE [code] ReturnCX (ret: INTEGER) 05AH, 001H, 0CCH, 0FFH, 0E2H;
 		(* POP DX; ADD SP,CX; JP DX *)
-	PROCEDURE [1] FPageWord (offs: INTEGER): INTEGER 64H, 8BH, 0H;	(* MOV EAX,FS:[EAX] *)
-	PROCEDURE [1] InstallExcp* (VAR e: ExcpFrame) 64H, 8BH, 0DH, 0, 0, 0, 0, 89H, 8, 64H, 0A3H, 0, 0, 0, 0;
-	PROCEDURE [1] RemoveExcp* (VAR e: ExcpFrame) 8BH, 0, 64H, 0A3H, 0, 0, 0, 0;
+	PROCEDURE [code] FPageWord (offs: INTEGER): INTEGER 64H, 8BH, 0H;	(* MOV EAX,FS:[EAX] *)
+	PROCEDURE [code] InstallExcp* (VAR e: ExcpFrame) 64H, 8BH, 0DH, 0, 0, 0, 0, 89H, 8, 64H, 0A3H, 0, 0, 0, 0;
+	PROCEDURE [code] RemoveExcp* (VAR e: ExcpFrame) 8BH, 0, 64H, 0A3H, 0, 0, 0, 0;
 
 	(* code procedures for fpu *)
 
-	PROCEDURE [1] FINIT 0DBH, 0E3H;
-	PROCEDURE [1] FLDCW 0D9H, 06DH, 0FCH;	(* -4, FP *)
-	PROCEDURE [1] FSTCW 0D9H, 07DH, 0FCH;	(* -4, FP *)
+	PROCEDURE [code] FINIT 0DBH, 0E3H;
+	PROCEDURE [code] FLDCW 0D9H, 06DH, 0FCH;	(* -4, FP *)
+	PROCEDURE [code] FSTCW 0D9H, 07DH, 0FCH;	(* -4, FP *)
 
 	(* code procedure for memory erase *)
 
@@ -472,19 +470,18 @@ MODULE Kernel;
 	PROCEDURE (VAR id: Identifier) Identified* (): BOOLEAN,	NEW, ABSTRACT;
 	PROCEDURE (r: Reducer) Reduce* (full: BOOLEAN),	NEW, ABSTRACT;
 	PROCEDURE (c: TrapCleaner) Cleanup*,	NEW, EMPTY;
-
-
+	
 	(* meta extension suport *)
-
+	
 	PROCEDURE (e: ItemExt) Lookup* (name: ARRAY OF CHAR; VAR i: ANYREC), NEW, ABSTRACT;
 	PROCEDURE (e: ItemExt) Index* (index: INTEGER; VAR elem: ANYREC), NEW, ABSTRACT;
 	PROCEDURE (e: ItemExt) Deref* (VAR ref: ANYREC), NEW, ABSTRACT;
-
+	
 	PROCEDURE (e: ItemExt) Valid* (): BOOLEAN, NEW, ABSTRACT;
 	PROCEDURE (e: ItemExt) Size* (): INTEGER, NEW, ABSTRACT;
 	PROCEDURE (e: ItemExt) BaseTyp* (): INTEGER, NEW, ABSTRACT;
 	PROCEDURE (e: ItemExt) Len* (): INTEGER, NEW, ABSTRACT;
-
+	
 	PROCEDURE (e: ItemExt) Call* (OUT ok: BOOLEAN), NEW, ABSTRACT;
 	PROCEDURE (e: ItemExt) BoolVal* (): BOOLEAN, NEW, ABSTRACT;
 	PROCEDURE (e: ItemExt) PutBoolVal* (x: BOOLEAN), NEW, ABSTRACT;
@@ -513,14 +510,16 @@ MODULE Kernel;
 	PROCEDURE SplitName* (name: ARRAY OF CHAR; VAR head, tail: ARRAY OF CHAR);
 		(* portable *)
 		VAR i, j: INTEGER; ch, lch: CHAR;
+        CONST codeAgrave = CHR(0C0H); codetimes = CHR(0D7H); codeTHORN = CHR(0DEH);
+        
 	BEGIN
 		i := 0; ch := name[0];
 		IF ch # 0X THEN
 			REPEAT
 				head[i] := ch; lch := ch; INC(i); ch := name[i]
 			UNTIL (ch = 0X)
-				OR ((ch >= "A") & (ch <= "Z") OR (ch >= "À") & (ch # "×") & (ch <= "Þ"))
-					& ((lch < "A") OR (lch > "Z") & (lch < "À") OR (lch = "×") OR (lch > "Þ"));
+				OR ((ch >= "A") & (ch <= "Z") OR (ch >= codeAgrave) & (ch <= codeTHORN) & (ch # codetimes))
+					& ((lch < "A") OR (lch > "Z") & (lch < codeAgrave) OR (lch = codetimes) OR (lch > codeTHORN));
 			head[i] := 0X; j := 0;
 			WHILE ch # 0X DO tail[j] := ch; INC(i); INC(j); ch := name[i] END;
 			tail[j] := 0X;
@@ -528,7 +527,7 @@ MODULE Kernel;
 		ELSE head := ""; tail := ""
 		END
 	END SplitName;
-
+	
 	PROCEDURE MakeFileName* (VAR name: ARRAY OF CHAR; type: ARRAY OF CHAR);
 		VAR i, j: INTEGER; ext: ARRAY 8 OF CHAR; ch: CHAR;
 	BEGIN
@@ -576,10 +575,10 @@ MODULE Kernel;
 
 
 	(* -------------------- system memory management --------------------- *)
-
+	
 	PROCEDURE GrowHeapMem (size: INTEGER; VAR c: Cluster);
 		(* grow to at least size bytes, typically at least 256 kbytes are allocated *)
-		CONST N = 262144;
+		CONST N = 256 * 1024;
 		VAR adr, s: INTEGER;
 	BEGIN
 		ASSERT(size >= c.size, 100); 
@@ -595,7 +594,7 @@ MODULE Kernel;
 
 	PROCEDURE AllocHeapMem (size: INTEGER; VAR c: Cluster);
 		(* allocate at least size bytes, typically at least 256 kbytes are allocated *)
-		CONST M = 1536 * 100000H;	(* 1.5 GByte *)
+		CONST M = 48 * 100000H;	(* 48 MByte *)
 		CONST N = 65536;	(* cluster size for dll *)
 		VAR adr, s: INTEGER;
 	BEGIN
@@ -639,7 +638,7 @@ MODULE Kernel;
 			res := WinApi.HeapFree(heap, {0}, c.max)
 		END
 	END FreeHeapMem;
-
+	
 	PROCEDURE HeapFull (size: INTEGER): BOOLEAN;
 		VAR ms: WinApi.MEMORYSTATUS;
 	BEGIN
@@ -648,7 +647,7 @@ MODULE Kernel;
 		WinApi.GlobalMemoryStatus(ms);
 		RETURN used + size > ms.dwTotalPhys
 	END HeapFull;
-
+	
 	PROCEDURE AllocModMem* (descSize, modSize: INTEGER; VAR descAdr, modAdr: INTEGER);
 		VAR res: INTEGER;
 	BEGIN
@@ -661,7 +660,7 @@ MODULE Kernel;
 		ELSE modAdr := 0
 		END
 	END AllocModMem;
-
+	
 	PROCEDURE DeallocModMem* (descSize, modSize, descAdr, modAdr: INTEGER);
 		VAR res: INTEGER;
 	BEGIN
@@ -794,8 +793,9 @@ MODULE Kernel;
 			RETURN S.ADR(b.last)
 		END
 	END NewRec;
-
-	PROCEDURE NewArr* (eltyp, nofelem, nofdim: INTEGER): INTEGER;	(* impl. of NEW(ptr, dim0, dim1, ...) *)
+	
+	PROCEDURE NewArr* (eltyp, nofelem, nofdim: INTEGER): INTEGER;
+	(* impl. of NEW(ptr, dim0, dim1, ...) *)
 		VAR b: Block; size, headSize: INTEGER; t: Type; fin: BOOLEAN; l: FList;
 	BEGIN
 		IF (nofdim < 0) OR (nofdim > (MAX(INTEGER) - 12) DIV 4) THEN RETURN 0 END;
@@ -852,7 +852,7 @@ MODULE Kernel;
 		END;
 		RETURN NIL
 	END ThisFinObj;
-
+	
 	PROCEDURE InstallReducer* (r: Reducer);
 	BEGIN
 		r.next := reducers; reducers := r
@@ -862,12 +862,12 @@ MODULE Kernel;
 	BEGIN
 		trapViewer := h
 	END InstallTrapViewer;
-
+	
 	PROCEDURE InstallTrapChecker* (h: Handler);
 	BEGIN
 		trapChecker := h
 	END InstallTrapChecker;
-
+	
 	PROCEDURE PushTrapCleaner* (c: TrapCleaner);
 		VAR t: TrapCleaner;
 	BEGIN
@@ -875,7 +875,7 @@ MODULE Kernel;
 		ASSERT(t = NIL, 20);
 		c.next := trapStack; trapStack := c
 	END PushTrapCleaner;
-
+	
 	PROCEDURE PopTrapCleaner* (c: TrapCleaner);
 		VAR t: TrapCleaner;
 	BEGIN
@@ -884,14 +884,14 @@ MODULE Kernel;
 			t := trapStack; trapStack := trapStack.next
 		END
 	END PopTrapCleaner;
-
+	
 	PROCEDURE InstallCleaner* (p: Command);
 		VAR c: CList;
 	BEGIN
 		c := S.VAL(CList, NewRec(S.TYP(CList)));	(* NEW(c) *)
 		c.do := p; c.trapped := FALSE; c.next := cleaners; cleaners := c
 	END InstallCleaner;
-
+	
 	PROCEDURE RemoveCleaner* (p: Command);
 		VAR c0, c: CList;
 	BEGIN
@@ -901,7 +901,7 @@ MODULE Kernel;
 			IF c0 = NIL THEN cleaners := cleaners.next ELSE c0.next := c.next END
 		END
 	END RemoveCleaner;
-
+	
 	PROCEDURE Cleanup*;
 		VAR c, c0: CList;
 	BEGIN
@@ -919,9 +919,9 @@ MODULE Kernel;
 	END Cleanup;
 
 	(* -------------------- meta information (portable) --------------------- *)
-
+	
 	PROCEDURE (h: LoaderHook) ThisMod* (IN name: ARRAY OF SHORTCHAR): Module, NEW, ABSTRACT;
-
+	
 	PROCEDURE SetLoaderHook*(h: LoaderHook);
 	BEGIN
 		loader := h
@@ -937,7 +937,7 @@ MODULE Kernel;
 			actual := mod; body(); actual := NIL
 		END
 	END InitModule;
-
+	
 	PROCEDURE ThisLoadedMod* (IN name: ARRAY OF SHORTCHAR): Module;	(* loaded modules only *)
 		VAR m: Module;
 	BEGIN
@@ -948,7 +948,7 @@ MODULE Kernel;
 		IF m = NIL THEN loadres := moduleNotFound END;
 		RETURN m
 	END ThisLoadedMod;
-
+	
 	PROCEDURE ThisMod* (IN name: ARRAY OF CHAR): Module;
 		VAR n : Name;
 	BEGIN
@@ -960,13 +960,13 @@ MODULE Kernel;
 			RETURN ThisLoadedMod(n)
 		END
 	END ThisMod;
-
+	
 	PROCEDURE LoadMod* (IN name: ARRAY OF CHAR);
 		VAR m: Module;
 	BEGIN
 		m := ThisMod(name)
 	END LoadMod;
-
+	
 	PROCEDURE GetLoaderResult* (OUT res: INTEGER; OUT importing, imported, object: ARRAY OF CHAR);
 	BEGIN
 		IF loader # NIL THEN
@@ -981,7 +981,7 @@ MODULE Kernel;
 			object := ""
 		END
 	END GetLoaderResult;
-
+	
 	PROCEDURE ThisObject* (mod: Module; name: ARRAY OF SHORTCHAR): Object;
 		VAR l, r, m: INTEGER; p: StrPtr;
 	BEGIN
@@ -994,7 +994,7 @@ MODULE Kernel;
 		END;
 		RETURN NIL
 	END ThisObject;
-
+	
 	PROCEDURE ThisDesc* (mod: Module; fprint: INTEGER): Object;
 		VAR i, n: INTEGER;
 	BEGIN
@@ -1005,7 +1005,7 @@ MODULE Kernel;
 		END;
 		RETURN NIL
 	END ThisDesc;
-
+	
 	PROCEDURE ThisField* (rec: Type; name: ARRAY OF SHORTCHAR): Object;
 		VAR n: INTEGER; p: StrPtr; obj: Object; m: Module;
 	BEGIN
@@ -1050,7 +1050,7 @@ MODULE Kernel;
 	BEGIN
 		RETURN SHORT(t.id DIV 16 MOD 16)
 	END LevelOf;
-
+	
 	PROCEDURE NewObj* (VAR o: S.PTR; t: Type);
 		VAR i: INTEGER;
 	BEGIN
@@ -1068,14 +1068,14 @@ MODULE Kernel;
 		p := S.VAL(StrPtr, S.ADR(mod.names[obj.id DIV 256]));
 		name := p^$
 	END GetObjName;
-
+	
 	PROCEDURE GetTypeName* (t: Type; VAR name: Name);
 		VAR p: StrPtr;
 	BEGIN
 		p := S.VAL(StrPtr, S.ADR(t.mod.names[t.id DIV 256]));
 		name := p^$
 	END GetTypeName;
-
+	
 	PROCEDURE RegisterMod* (mod: Module);
 		VAR i: INTEGER; t: WinApi.SYSTEMTIME;
 	BEGIN
@@ -1093,9 +1093,9 @@ MODULE Kernel;
 		mod.loadTime[5] := t.wSecond;
 		IF ~(init IN mod.opts) THEN InitModule(mod) END
 	END RegisterMod;
-
+	
 	PROCEDURE^ Collect*;
-
+	
 	PROCEDURE UnloadMod* (mod: Module);
 		VAR i: INTEGER; t: Command;
 	BEGIN
@@ -1119,13 +1119,13 @@ MODULE Kernel;
 			END
 		END
 	END UnloadMod;
-
+	
 	(* -------------------- dynamic procedure call  --------------------- *)	(* COMPILER DEPENDENT *)
 
-	PROCEDURE [1] PUSH (p: INTEGER) 050H;	(* push AX *)
-	PROCEDURE [1] CALL (a: INTEGER) 0FFH, 0D0H;	(* call AX *)
-	PROCEDURE [1] RETI (): LONGINT;
-	PROCEDURE [1] RETR (): REAL;
+	PROCEDURE [code] PUSH (p: INTEGER) 050H;	(* push AX *)
+	PROCEDURE [code] CALL (a: INTEGER) 0FFH, 0D0H;	(* call AX *)
+	PROCEDURE [code] RETI (): LONGINT;
+	PROCEDURE [code] RETR (): REAL;
 	
 	(*
 		type				par
@@ -1194,7 +1194,7 @@ MODULE Kernel;
 	BEGIN
 		S.GET(ref, ch); INC(ref)
 	END RefCh;
-
+	
 	PROCEDURE RefNum (VAR ref: INTEGER; VAR x: INTEGER);
 		VAR s, n: INTEGER; ch: SHORTCHAR;
 	BEGIN
@@ -1202,7 +1202,7 @@ MODULE Kernel;
 		WHILE ORD(ch) >= 128 DO INC(n, ASH(ORD(ch) - 128, s) ); INC(s, 7); RefCh(ref, ch) END;
 		x := n + ASH(ORD(ch) MOD 64 - ORD(ch) DIV 64 * 64, s)
 	END RefNum;
-
+	
 	PROCEDURE RefName (VAR ref: INTEGER; VAR n: Name);
 		VAR i: INTEGER; ch: SHORTCHAR;
 	BEGIN
@@ -1210,7 +1210,7 @@ MODULE Kernel;
 		WHILE ch # 0X DO n[i] := ch; INC(i); RefCh(ref, ch) END;
 		n[i] := 0X
 	END RefName;
-
+	
 	PROCEDURE GetRefProc* (VAR ref: INTEGER; VAR adr: INTEGER; VAR name: Name);
 		VAR ch: SHORTCHAR;
 	BEGIN
@@ -1227,7 +1227,7 @@ MODULE Kernel;
 		ELSE adr := 0
 		END
 	END GetRefProc;
-
+	
 	PROCEDURE GetRefVar* (VAR ref: INTEGER; VAR mode, form: SHORTCHAR; VAR desc: Type;
 																VAR adr: INTEGER; VAR name: Name);
 	BEGIN
@@ -1243,7 +1243,7 @@ MODULE Kernel;
 			mode := 0X; form := 0X; adr := 0
 		END
 	END GetRefVar;
-
+	
 	PROCEDURE SourcePos* (mod: Module; codePos: INTEGER): INTEGER;
 		VAR ref, pos, ad, d: INTEGER; ch: SHORTCHAR; name: Name;
 	BEGIN
@@ -1263,17 +1263,16 @@ MODULE Kernel;
 		END;
 		RETURN -1
 	END SourcePos;
-
+	
 	(* -------------------- dynamic link libraries --------------------- *)
-
+	
 	PROCEDURE LoadDll* (IN name: ARRAY OF SHORTCHAR; VAR ok: BOOLEAN);
 		VAR h: WinApi.HANDLE;
 	BEGIN
-		ok := FALSE;
 		h := WinApi.LoadLibraryA(name);
-		IF h # 0 THEN ok := TRUE END
+		ok := (h # 0)
 	END LoadDll;
-
+	
 	PROCEDURE ThisDllObj* (mode, fprint: INTEGER; IN dll, name: ARRAY OF SHORTCHAR): INTEGER;
 		VAR ad: WinApi.FARPROC; h: WinApi.HANDLE;
 	BEGIN
@@ -1284,9 +1283,9 @@ MODULE Kernel;
 		END;
 		RETURN S.VAL(INTEGER, ad)
 	END ThisDllObj;
-
+	
 	(* -------------------- garbage collector (portable) --------------------- *)
-
+	
 	PROCEDURE Mark (this: Block);
 		VAR father, son: Block; tag: Type; flag, offset, actual: INTEGER;
 	BEGIN
@@ -1332,7 +1331,7 @@ MODULE Kernel;
 			END
 		END
 	END Mark;
-
+	
 	PROCEDURE MarkGlobals;
 		VAR m: Module; i, p: INTEGER;
 	BEGIN
@@ -1358,7 +1357,7 @@ MODULE Kernel;
 		IF ODD(S.VAL(INTEGER, b.tag) DIV 2) THEN INC(size, b.last - S.ADR(b.last)) END;
 		RETURN S.VAL(Block, S.VAL(INTEGER, b) + (size + 19) DIV 16 * 16)
 	END Next;
-
+	
 *)
 	PROCEDURE [code] Next (b: Block): Block	(* next block in same cluster *)
 	(*
@@ -1386,7 +1385,7 @@ MODULE Kernel;
 	083H, 0C1H, 013H,
 	080H, 0E1H, 0F0H,
 	001H, 0C8H;
-
+	
 	PROCEDURE CheckCandidates;
 	(* pre: nofcand > 0 *)
 		VAR i, j, h, p, end: INTEGER; c: Cluster; blk, next: Block;
@@ -1449,7 +1448,7 @@ MODULE Kernel;
 		candidates[nofcand] := max; INC(nofcand);	(* ensure complete scan for interface mark*)
 		IF nofcand > 0 THEN CheckCandidates END
 	END MarkLocals;
-
+	
 	PROCEDURE MarkFinObj;
 		VAR f: FList;
 	BEGIN
@@ -1500,7 +1499,7 @@ MODULE Kernel;
 			IF f.iptr THEN RecFinalizer(S.VAL(ANYPTR, S.ADR(f.blk.last))) END
 		END
 	END ExecFinalizer;
-
+	
 	PROCEDURE^ Try* (h: TryHandler; a, b, c: INTEGER);	(* COMPILER DEPENDENT *)
 
 	PROCEDURE CallFinalizers;
@@ -1512,7 +1511,7 @@ MODULE Kernel;
 		END;
 		wouldFinalize := FALSE
 	END CallFinalizers;
-
+	
 	PROCEDURE Insert (blk: FreeBlock; size: INTEGER);	(* insert block in free list *)
 		VAR i: INTEGER;
 	BEGIN
@@ -1520,7 +1519,7 @@ MODULE Kernel;
 		i := MIN(N - 1, (blk.size DIV 16));
 		blk.next := free[i]; free[i] := blk
 	END Insert;
-
+	
 	PROCEDURE Sweep (dealloc: BOOLEAN);
 		VAR cluster, last, c: Cluster; blk, next: Block; fblk, b, t: FreeBlock; end, i: INTEGER;
 	BEGIN
@@ -1565,7 +1564,7 @@ MODULE Kernel;
 			free[i] := fblk
 		UNTIL i = 0
 	END Sweep;
-
+	
 	PROCEDURE Collect*;
 	BEGIN
 		IF root # NIL THEN
@@ -1596,7 +1595,7 @@ MODULE Kernel;
 	END WouldFinalize;
 
 	(* --------------------- memory allocation (portable) -------------------- *)
-
+	
 	PROCEDURE OldBlock (size: INTEGER): FreeBlock;	(* size MOD 16 = 0 *)
 		VAR b, l: FreeBlock; s, i: INTEGER;
 	BEGIN
@@ -1629,9 +1628,37 @@ MODULE Kernel;
 		UNTIL (b # NIL) OR (i = N);
 		RETURN b
 	END LastBlock;
-
+	
+	PROCEDURE AllocateHeapBlock (size: INTEGER): FreeBlock;
+		VAR b: FreeBlock; new, c: Cluster;
+	BEGIN
+		AllocHeapMem(size + 12, new);	(* 3) allocate new cluster *)
+		IF new # NIL THEN
+			IF (root = NIL) OR (S.VAL(INTEGER, new) < S.VAL(INTEGER, root)) THEN
+				new.next := root; root := new
+			ELSE
+				c := root;
+				WHILE (c.next # NIL) & (S.VAL(INTEGER, new) > S.VAL(INTEGER, c.next)) DO c := c.next END;
+				new.next := c.next; c.next := new
+			END;
+			b := S.VAL(FreeBlock, S.VAL(INTEGER, new) + 12);
+			b.size := (new.size - 12) DIV 16 * 16 - 4;
+			RETURN b
+		ELSE
+			RETURN NIL
+		END
+	END AllocateHeapBlock;
+	
 	PROCEDURE NewBlock (size: INTEGER): Block;
-		VAR tsize, a, s: INTEGER; b: FreeBlock; new, c: Cluster; r: Reducer;
+		VAR tsize, a, s: INTEGER; b: FreeBlock; new, c: Cluster;
+		
+		PROCEDURE ApplyReducers (full: BOOLEAN);
+			VAR r: Reducer;
+		BEGIN
+			r := reducers; reducers := NIL;
+			WHILE r # NIL DO r.Reduce(full); r := r.next END
+		END ApplyReducers;
+		
 	BEGIN
 		ASSERT(size >= 0, 20);
 		IF size > MAX(INTEGER) - 19 THEN RETURN NIL END;
@@ -1643,30 +1670,15 @@ MODULE Kernel;
 				IF b = NIL THEN
 					Collect; b := OldBlock(tsize);	(* 2a) fully collect *)
 				END;
-				IF b = NIL THEN
-					AllocHeapMem(tsize + 12, new);	(* 3) allocate new cluster *)
-					IF new # NIL THEN
-						IF (root = NIL) OR (S.VAL(INTEGER, new) < S.VAL(INTEGER, root)) THEN
-							new.next := root; root := new
-						ELSE
-							c := root;
-							WHILE (c.next # NIL) & (S.VAL(INTEGER, new) > S.VAL(INTEGER, c.next)) DO c := c.next END;
-							new.next := c.next; c.next := new
-						END;
-						b := S.VAL(FreeBlock, S.VAL(INTEGER, new) + 12);
-						b.size := (new.size - 12) DIV 16 * 16 - 4
-					ELSE
-						RETURN NIL	(* 4) give up *)
-					END
-				END
+				IF b = NIL THEN b := AllocateHeapBlock(tsize) END;
+				IF b = NIL THEN RETURN NIL	(* 4) give up *) END
 			ELSE
 				FastCollect; b := OldBlock(tsize);	(* 2) collect *)
 				IF b = NIL THEN
 					Collect; b := OldBlock(tsize);	(* 2a) fully collect *)
 				END;
 				IF (b = NIL) & (HeapFull(tsize)) & (reducers # NIL) THEN	(* 3) little space => reduce once *)
-					r := reducers; reducers := NIL;
-					WHILE r # NIL DO r.Reduce(FALSE); r := r.next END;
+					ApplyReducers(FALSE);
 					Collect
 				END;
 				IF b = NIL THEN
@@ -1697,8 +1709,7 @@ MODULE Kernel;
 								b.size := (root.size - a) DIV 16 * 16 - 4
 							END
 						ELSIF reducers # NIL THEN	(* 5) no space => fully reduce *)
-							r := reducers; reducers := NIL;
-							WHILE r # NIL DO r.Reduce(TRUE); r := r.next END;
+							ApplyReducers(TRUE);
 							Collect
 						END
 					END
@@ -1716,17 +1727,17 @@ MODULE Kernel;
 		INC(allocated, tsize);
 		RETURN S.VAL(Block, b)
 	END NewBlock;
-
+	
 	PROCEDURE Allocated* (): INTEGER;
 	BEGIN
 		RETURN allocated
 	END Allocated;
-
+	
 	PROCEDURE Used* (): INTEGER;
 	BEGIN
 		RETURN used
 	END Used;
-
+	
 	PROCEDURE Root* (): INTEGER;
 	BEGIN
 		RETURN S.VAL(INTEGER, root)
@@ -1736,14 +1747,14 @@ MODULE Kernel;
 	(* -------------------- Trap Handling --------------------- *)
 
 	PROCEDURE^ InitFpu;
-
+	
 	PROCEDURE Start* (code: Command);
 	BEGIN
 		restart := code;
 		S.GETREG(SP, baseStack);	(* save base stack *)
 		code()
 	END Start;
-
+	
 	PROCEDURE Quit* (exitCode: INTEGER);
 		VAR m: Module; term: Command; t: BOOLEAN;
 	BEGIN
@@ -1783,14 +1794,14 @@ MODULE Kernel;
 	PROCEDURE DefaultTrapViewer;
 		VAR len, ref, end, x, a, b, c: INTEGER; mod: Module;
 			name: Name; out: ARRAY 1024 OF SHORTCHAR;
-
+		
 		PROCEDURE WriteString (s: ARRAY OF SHORTCHAR);
 			VAR i: INTEGER;
 		BEGIN
 			i := 0;
 			WHILE (len < LEN(out) - 1) & (s[i] # 0X) DO out[len] := s[i]; INC(i); INC(len) END
 		END WriteString;
-
+		
 		PROCEDURE WriteHex (x, n: INTEGER);
 			VAR i, y: INTEGER;
 		BEGIN
@@ -1809,7 +1820,7 @@ MODULE Kernel;
 		BEGIN
 			IF len < LEN(out) - 1 THEN out[len] := 0DX; INC(len) END
 		END WriteLn;
-
+		
 	BEGIN
 		len := 0;
 		IF err = 129 THEN WriteString("invalid with")
@@ -1870,7 +1881,7 @@ MODULE Kernel;
 		out[len] := 0X;
 		x := WinApi.MessageBoxA(0, out, "BlackBox", {})
 	END DefaultTrapViewer;
-
+	
 	PROCEDURE TrapCleanup;
 		VAR t: TrapCleaner;
 	BEGIN
@@ -2096,7 +2107,7 @@ MODULE Kernel;
 		cw := cw - {0..5, 8..11} + {1, 2, 3, 4, 5, 8, 9};
 		FLDCW
 	END InitFpu;
-
+	
 	PROCEDURE Init;
 		VAR excp: ExcpFrame; res: COM.RESULT; i: INTEGER;
 	BEGIN
