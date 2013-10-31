@@ -462,8 +462,8 @@ MODULE Kernel;
 			REPEAT
 				head[i] := ch; lch := ch; INC(i); ch := name[i]
 			UNTIL (ch = 0X)
-				OR ((ch >= "A") & (ch <= "Z") OR (ch >= "À") & (ch # "×") & (ch <= "Þ"))
-					& ((lch < "A") OR (lch > "Z") & (lch < "À") OR (lch = "×") OR (lch > "Þ"));
+				OR ((ch >= "A") & (ch <= "Z") OR (ch >= "Ã€") & (ch # "Ã—") & (ch <= "Ãž"))
+					& ((lch < "A") OR (lch > "Z") & (lch < "Ã€") OR (lch = "Ã—") OR (lch > "Ãž"));
 			head[i] := 0X; j := 0;
 			WHILE ch # 0X DO tail[j] := ch; INC(i); INC(j); ch := name[i] END;
 			tail[j] := 0X;

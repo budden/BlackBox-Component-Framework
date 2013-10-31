@@ -369,7 +369,7 @@ MODULE Controls;
 	BEGIN
 		j := 0; ch := path[i];
 		WHILE (j < LEN(name) - 1) & ((ch >= "0") & (ch <= "9") OR (CAP(ch) >= "A") & (CAP(ch) <= "Z")
-												OR (ch >= 0C0X) & (ch # "×") & (ch # "÷") & (ch <= 0FFX) OR (ch = "_")) DO
+												OR (ch >= 0C0X) & (ch # "Ã—") & (ch # "Ã·") & (ch <= 0FFX) OR (ch = "_")) DO
 			name[j] := ch; INC(i); INC(j); ch := path[i]
 		END;
 		IF (ch = 0X) OR (ch = ".") OR (ch = "[") OR (ch = "^") THEN name[j] := 0X

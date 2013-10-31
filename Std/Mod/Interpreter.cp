@@ -142,12 +142,12 @@ MODULE StdInterpreter;
 					REPEAT num[j] := ch; INC(j); GetCh UNTIL (ch < "0") OR (ch > "9") & (ch < "A") OR (ch > "H");
 					num[j] := 0X; Strings.StringToInt(num, x, r)
 				ELSIF (ch >= "a") & (ch <= "z") OR (ch >= "A") & (ch <= "Z") OR
-						(ch >= 0C0X) & (ch # "×") & (ch # "÷") & (ch <= 0FFX) OR (ch = "_") THEN
+						(ch >= 0C0X) & (ch # "Ã—") & (ch # "Ã·") & (ch <= 0FFX) OR (ch = "_") THEN
 					type := ident;
 					id[0] := ch; j := 1; GetCh;
 					WHILE (ch # 0X) & (i < LEN(proc)) &
 								((ch >= "a") & (ch <= "z") OR (ch >= "A") & (ch <= "Z") OR
-								(ch >= 0C0X) & (ch # "×") & (ch # "÷") & (ch <= 0FFX) OR
+								(ch >= 0C0X) & (ch # "Ã—") & (ch # "Ã·") & (ch <= 0FFX) OR
 								(ch = "_") OR (ch >= "0") & (ch <= "9")) DO
 						id[j] := ch; INC(j); GetCh
 					END;

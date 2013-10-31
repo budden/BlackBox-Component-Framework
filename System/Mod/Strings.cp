@@ -560,8 +560,8 @@ MODULE Strings;
 	BEGIN
 		FOR i := 0 TO 255 DO toUpper[i] :=  CHR(i); toLower[i] := CHR(i) END;
 		FOR i := ORD("A") TO ORD("Z") DO toLower[i] := CHR(i + 32); toUpper[i + 32] := CHR(i) END;
-		FOR i := ORD("À") TO ORD ("Ö") DO toLower[i] := CHR(i + 32); toUpper[i + 32] := CHR(i) END;
-		FOR i := ORD("Ø") TO ORD ("Þ") DO toLower[i] := CHR(i + 32); toUpper[i + 32] := CHR(i) END;
+		FOR i := ORD("Ã€") TO ORD ("Ã–") DO toLower[i] := CHR(i + 32); toUpper[i + 32] := CHR(i) END;
+		FOR i := ORD("Ã˜") TO ORD ("Ãž") DO toLower[i] := CHR(i + 32); toUpper[i + 32] := CHR(i) END;
 		digits := "0123456789ABCDEF"; 
 		maxExp := SHORT(ENTIER(Math.Log(MAX(REAL)))) + 1;
 		maxDig := SHORT(ENTIER(-Math.Log(Math.Eps())));
