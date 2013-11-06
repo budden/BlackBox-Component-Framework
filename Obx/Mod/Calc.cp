@@ -210,5 +210,5 @@ MODULE ObxCalc;
 
 BEGIN 
 	font := Fonts.dir.This("Courier", 11 * Fonts.point, {}, Fonts.normal);
-	labels := "sp÷/789*456-123+C0±^"
+	labels := "spÃ·/789*456-123+C0Â±^"
 END  ObxCalc.
