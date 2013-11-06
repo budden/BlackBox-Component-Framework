@@ -1168,7 +1168,7 @@ MODULE HostFiles;
 		IF (ch = "'") OR (ch = '"') THEN tch := ch; INC(i); ch := p[i] END;
 		WHILE (ch >= " ") & (ch # tch) DO
 			name[j] := ch;
-			IF (ch >= "a") & (ch <= "z") OR (ch >= "à") & (ch <= "ö") OR (ch >= "ø") & (ch <= "þ") THEN ch := CAP(ch)
+			IF (ch >= "a") & (ch <= "z") OR (ch >= "à") & (ch <= "ö") OR (ch >= "�?") & (ch <= "�?") THEN ch := CAP(ch)
 			ELSIF ch = "-" THEN ch := "/"
 			END;
 			opt[j] := ch; INC(j); INC(i); ch := p[i]

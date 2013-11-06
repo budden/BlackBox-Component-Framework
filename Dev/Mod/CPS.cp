@@ -361,7 +361,7 @@ MODULE DevCPS;
 						IF name = "WHILE" THEN s := while
 						ELSIF name = "WITH" THEN s := with
 						END
-			| "G".."H", "J", "K", "Q", "S", "X".."Z", "a".."z", "_", "À".."Ö", "Ø".."ö", "ø".."ÿ": Identifier(s)
+			| "G".."H", "J", "K", "Q", "S", "X".."Z", "a".."z", "_", "À".."Ö", "Ø".."ö", "�?".."ÿ": Identifier(s)
 			| "["  : s := lbrak; DevCPM.Get(ch)
 			| "]"  : s := rbrak; DevCPM.Get(ch)
 			| "^"  : s := arrow; DevCPM.Get(ch)
