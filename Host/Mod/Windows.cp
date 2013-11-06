@@ -1914,7 +1914,7 @@ MODULE HostWindows;
 		res := WinApi.RegisterClassW(class);
 		class.lpszClassName := "Oberon Aux";
 		class.lpfnWndProc := DocWinHandler;
-		class.style := class.style + WinApi.CS_HREDRAW + WinApi.CS_VREDRAW;
+		class.style := {0, 1, 3, 5} (* vredraw, hredraw, doubleclicks, privat dc *)
 		res := WinApi.RegisterClassW(class);
 		docIcon := WinApi.LoadIconW(instance, SYSTEM.VAL(WinApi.PtrWSTR, 2));
 		IF (docIcon = 0) OR (docIcon = 1) THEN
