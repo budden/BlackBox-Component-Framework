@@ -1135,25 +1135,25 @@ MODULE HostTextConv;
 			IF a MOD 16 = 0 THEN
 				w.WriteChar("[");
 				w.WriteIntForm(a, TextMappers.hexadecimal, 8, "0", FALSE);
-				w.WriteSString("]   ")
+				w.WriteSString("]")
 			END;
 			w.WriteIntForm(ORD(ch), TextMappers.hexadecimal, 2, "0", FALSE);
-			IF ch > 20X THEN str[a MOD 16] := ch ELSE str[a MOD 16] := " " END;
+			IF ch > 20X THEN str[a MOD 16] := ch ELSE str[a MOD 16] := "" END;
 			INC(a);
 			IF a MOD 16 = 0 THEN
-				str[16] := 0X; w.WriteString("    "); w.WriteString(str);
+				str[16] := 0X; w.WriteString(""); w.WriteString(str);
 				w.WriteLn
 			ELSIF a MOD 4 = 0 THEN
-				w.WriteString("  ")
+				w.WriteString("")
 			ELSE
-				w.WriteChar(" ")
+				w.WriteChar("")
 			END;
 			r.ReadSChar(ch)
 		END;
 		IF a MOD 16 # 0 THEN
 			str[a MOD 16] := 0X;
 			i := (16 - a MOD 16) * 3 + (3 - a MOD 16 DIV 4) + 3;
-			WHILE i # 0 DO w.WriteChar(" "); DEC(i) END;
+			WHILE i # 0 DO w.WriteChar(""); DEC(i) END;
 			w.WriteString(str)
 		END;
 		s := TextViews.dir.New(t)

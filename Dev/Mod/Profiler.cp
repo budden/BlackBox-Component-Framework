@@ -273,7 +273,7 @@ MODULE DevProfiler;
 		p := m.count * 100 DIV totalCount;
 		IF p > 0 THEN
 			out.WriteSString(m.mod.name); out.WriteTab; out.WriteTab;
-			out.WriteIntForm(p, 10, 2, " ", FALSE); out.WriteLn;
+			out.WriteIntForm(p, 10, 2, "", FALSE); out.WriteLn;
 			NEW(proc); list := NIL;
 			ref := m.mod.refs; i := m.first;
 			WHILE i <= m.last DO
@@ -291,7 +291,7 @@ MODULE DevProfiler;
 			list := proc.next;
 			WHILE list # NIL DO
 				out.WriteTab; out.WriteSString(list.name); out.WriteTab; out.WriteTab;
-				out.WriteIntForm(list.p, 10, 2, " ", FALSE); out.WriteLn;
+				out.WriteIntForm(list.p, 10, 2, "", FALSE); out.WriteLn;
 				list := list.next
 			END;
 			out.WriteLn;
