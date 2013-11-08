@@ -15,7 +15,7 @@ MODULE Strings;
 
 	CONST
 		charCode* = -1; decimal* = 10; hexadecimal* = -2; roman*= -3;
-		digitspace* = 08FX;
+		digitspace* = 08FX; (* ??? = 205FX ??? *)
 		showBase* = TRUE; hideBase* = FALSE;
 		minLongIntRev = "8085774586302733229";	(* reversed string of -MIN(LONGINT) *)
 
@@ -465,6 +465,119 @@ MODULE Strings;
 		END;
 		IF neg THEN x := -x END
 	END StringToReal;
+
+	(* set conversions *)
+
+	PROCEDURE ToString (x : LONGINT; VAR s : ARRAY OF CHAR; VAR pos : INTEGER);
+	VAR j, k: INTEGER; ch: CHAR; a: ARRAY 32 OF CHAR;
+	BEGIN
+		IF x # MIN(LONGINT) THEN
+			IF x < 0 THEN s[pos] := "-"; k := pos + 1; x := -x ELSE k := pos END;
+			j := 0; REPEAT a[j] := CHR(x MOD 10 + ORD("0")); x := x DIV 10; INC(j) UNTIL x = 0
+		ELSE
+			a := minLongIntRev; s[pos] := "-"; k := pos + 1;
+			j := 0; WHILE a[j] # 0X DO INC(j) END
+		END;
+		ASSERT( k + j < LEN(s), 23);
+		REPEAT DEC(j); ch := a[j]; s[k] := ch; INC(k) UNTIL j = 0;
+		s[k] := 0X;
+		pos := k;
+	END ToString;
+
+	PROCEDURE SetToString* (x : SET; OUT s : ARRAY OF CHAR);
+	VAR
+		a : ARRAY 64 OF CHAR;
+		i, k, last : INTEGER;
+		dots : BOOLEAN;
+	BEGIN
+		a[0] := "{"; last := MIN(INTEGER); k := 1;
+		FOR i := MIN(SET) TO MAX(SET) DO
+			IF i IN x THEN
+				IF last = i-1 THEN
+					IF dots THEN a[k] := "."; a[k+1] := "."; INC(k, 2); dots := FALSE END;
+					IF (i = MAX(SET)) OR ~((i+1) IN x) THEN
+						ToString(i, a, k);
+					END
+				ELSE
+					IF last >= MIN(SET) THEN a[k] := ","; a[k+1] := " "; INC(k, 2) END;
+					ToString(i, a, k);
+					dots := TRUE
+				END;
+				last  := i;
+			END
+		END;
+		a[k] := "}";
+		a[k+1] := 0X;
+		ASSERT(LEN(s) >= k+2, 23);
+		s := a$
+	END SetToString;
+
+	PROCEDURE StringToSet* (IN s : ARRAY OF CHAR; OUT x : SET; OUT res : INTEGER);
+	VAR
+		i :  INTEGER;
+		state : INTEGER;
+		x1, x2 : INTEGER;
+		ch : CHAR;
+		PROCEDURE Get() : CHAR;
+		BEGIN
+			WHILE i < LEN(s$) DO
+				IF s[i] > " " THEN INC(i); RETURN s[i-1] END;
+				INC(i)
+			END;
+			RETURN 0X
+		END Get;
+	BEGIN
+		x := {}; i := 0; state := 1; res := 0;
+		IF Get() # "{" THEN res := 1 END;
+		WHILE (i < LEN(s$)) & (res = 0) DO
+			ch := Get();
+			CASE ch OF
+			  "," :
+				IF state # 0 THEN res := 1 ELSE state := 1 END
+			|"." :
+				IF state # 0 THEN
+					res := 1
+				ELSE
+					IF (i >= LEN(s)) OR (s[i] # ".") THEN
+						res := 1
+					ELSE
+						INC(i);
+						state := 2;
+						x2 := x1;
+					END;
+				 END
+			|"}" :
+				IF (state # 0) & (x # {}) THEN res := 1 END; RETURN
+			|"0".."9" :
+				IF state # 0 THEN
+					x1 := ORD(ch) - ORD("0");
+					IF (i < LEN(s)) & (s[i] >= "0") & (s[i] <= "9") THEN
+						x1 := x1*10 + ORD(s[i]) - ORD("0");
+						INC(i)
+					END;
+					IF x1 > MAX(SET) THEN
+						res := 2
+					ELSE
+						IF state = 1 THEN
+							INCL(x, x1)
+						ELSE
+							IF x2 < x1 THEN state := x1; x1 := x2; x2 := state END;
+							WHILE x2 >= x1 DO
+								INCL(x, x2);
+								DEC(x2)
+							END;
+						END;
+						state := 0;
+					END
+				 ELSE
+					res := 1
+				END
+			ELSE
+				res := 1
+			END
+		END;
+		IF res = 0 THEN res := 1 END
+	END StringToSet;
 
 	(* ----------------------------- string manipulation routines --------------------------- *)
 
