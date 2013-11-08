@@ -94,11 +94,11 @@ MODULE DevLinker;
 		ntab: POINTER TO ARRAY OF SHORTCHAR;
 	
 	PROCEDURE TimeStamp (): INTEGER;	(* seconds since 1.1.1970 00:00:00 *)
-		VAR a: INTEGER; t: Dates.Time; d: Dates.Date;
+		VAR a: INTEGER; t: Dates.Time; d, epoch: Dates.Date;
 	BEGIN
-		Dates.GetTime(t); Dates.GetDate(d);
-		a := 12 * (d.year - 70) + d.month - 3;
-		a := a DIV 12 * 1461 DIV 4 + (a MOD 12 * 153 + 2) DIV 5 + d.day + 59;
+		Dates.GetUTCTime(t); Dates.GetUTCDate(d);
+		epoch.year := 1970; epoch.month := 1; epoch.day := 1;
+		a := Dates.Day(d) - Dates.Day(epoch);
 		RETURN ((a * 24 + t.hour) * 60 + t.minute) * 60 + t.second;
 	END TimeStamp;
 	
@@ -602,7 +602,7 @@ MODULE DevLinker;
 			Write2(838EH); (* program image flags *)
 		END;
 		Write2(10BH); (* magic (normal ececutable file) *)
-		Write2(0301H); (* linker version !!! *)
+		Write2(0502H); (* linker version !!! *) (* BdT: if value < 2.5, Microsoft AppLocker may report "not a valid Win32 application" *)
 		Write4(CodeSize); (* code size *)
 		Write4(ConSize); (* initialized data size *)
 		Write4(DataSize); (* uninitialized data size *)
@@ -1134,7 +1134,7 @@ MODULE DevLinker;
 		END;
 		i := 0;
 		WHILE name[i] # 0X DO ntab[idx] := name[i]; INC(idx); INC(i) END;
-		IF (hint = -1) & ((ntab[idx-4] # ".") OR (CAP(ntab[idx-3]) # "D") OR (CAP(ntab[idx-2]) # "L") OR (CAP(ntab[idx-1]) # "L")) THEN
+		IF (idx < 4) OR (hint = -1) & ((ntab[idx-4] # ".") OR (CAP(ntab[idx-3]) # "D") OR (CAP(ntab[idx-2]) # "L") OR (CAP(ntab[idx-1]) # "L")) THEN
 			ntab[idx] := "."; INC(idx);
 			ntab[idx] := "d"; INC(idx);
 			ntab[idx] := "l"; INC(idx);
