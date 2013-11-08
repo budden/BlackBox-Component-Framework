@@ -484,9 +484,10 @@ MODULE HostPorts;
 	PROCEDURE (rd: Rider) Input* (OUT x, y: INTEGER; OUT modifiers: SET; OUT isDown: BOOLEAN);
 		VAR msg: WinApi.MSG; wnd, mw: WinApi.HANDLE; pt: WinApi.POINT; res: INTEGER; set: SET;
 	BEGIN
-		WinApi.Sleep(1);
+		Services.actionHook.Step;	(* mc:060325 *)
 		wnd := rd.port.wnd; mw := WinApi.GetCapture();
 		res := WinApi.UpdateWindow(wnd);
+		WinApi.Sleep(1);
 		IF WinApi.PeekMessageW(msg, mw, WinApi.WM_MOUSEMOVE,
 															WinApi.WM_MBUTTONDBLCLK, 1) # 0 THEN
 			mx := (msg.lParam + 32768) MOD 65536 - 32768; my := msg.lParam DIV 65536;
