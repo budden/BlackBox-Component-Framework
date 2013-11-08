@@ -775,7 +775,7 @@ MODULE WinNet ["MPR.dll"];
 			h_aliases*: POINTER TO (*?*) ARRAY [untagged] OF WinApi.PtrSTR;
 			h_addrtype*: SHORTINT;
 			h_length*: SHORTINT;
-			h_addr_list*: POINTER TO (*?*) ARRAY [untagged] OF POINTER TO ARRAY [untagged] OF in_addr;
+			h_addr_list*: POINTER TO (*?*) ARRAY [untagged] OF WinApi.PtrSTR;
 		END;
 		Ptrhostent* = POINTER TO hostent;
 		netent* = RECORD [untagged]
