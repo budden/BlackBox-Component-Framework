@@ -28,7 +28,7 @@ MODULE HostPorts;
 		
 		copy = 00CC0020H;	(* raster code for source copy *)
 		xor = 00A50065H;	(* raster code for xor function *)
-		figureSpace = 8FX;
+		figureSpace = 8FX;	(* ??? = 205FX ??? *)
 		
 	TYPE
 		Port* = POINTER TO RECORD (Ports.Port)
@@ -678,6 +678,29 @@ MODULE HostPorts;
 		END;
 		IF p.wnd = 0 THEN res := WinApi.RestoreDC(dc, -1) END
 	END DrawString;
+
+	PROCEDURE (rd: Rider) DrawSpace* (x, y, w: INTEGER; col: Ports.Color; font: Fonts.Font);
+		VAR right, res, u: INTEGER; dx: ARRAY 1 OF INTEGER;
+			p: Port; dc, old: WinApi.HANDLE; df: HostFonts.DevFont;
+	BEGIN
+		p := rd.port; dc := p.dc; u := p.unit;
+		IF p.wnd = 0 THEN res := WinApi.SaveDC(dc)
+		ELSE res := WinApi.SelectClipRgn(dc, 0);
+		END;
+		res := WinApi.IntersectClipRect(dc, rd.l, rd.t, rd.r, rd.b);
+		WITH font: HostFonts.Font DO
+			df := font.dev;
+			WHILE (df # NIL) & (df.unit # u) DO df := df.next END;
+			IF df = NIL THEN HostFonts.InsertDevFont(dc, font, df, u) 
+			ELSE old := WinApi.SelectObject(dc, df.id)
+			END;
+			IF col = Ports.defaultColor THEN col := textCol END;
+			res := WinApi.SetTextColor(dc, col);
+			dx[0] := w;
+			res := WinApi.ExtTextOutA(dc, x, y, 0, NIL, " ", 1, dx[0])
+		END ;
+		IF p.wnd = 0 THEN res := WinApi.RestoreDC(dc, -1) END
+	END DrawSpace;
 
 	PROCEDURE (rd: Rider) CharIndex* (x, pos: INTEGER; IN s: ARRAY OF CHAR; font: Fonts.Font): INTEGER;
 		VAR res, d, u, i, a, b, c, w, n: INTEGER;

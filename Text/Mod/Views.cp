@@ -684,7 +684,13 @@ MODULE TextViews;
 							FlushCaches;
 							IF ~v.hideMarks & (TextModels.hideable IN rd.textOpts) THEN
 								f.DrawRect(rd.x, py - box.asc + f.dot, rd.x + rd.w, py + box.dsc - f.dot, 0, Ports.grey25)
+							ELSIF ((rd.string[0] = ' ') OR (rd.string[0] = TextModels.tab))  & 
+									  ({Fonts.underline, Fonts.strikeout} * rd.attr.font.style # {})
+							THEN
+								f.DrawSpace(rd.x, py, rd.w, rd.attr.color, rd.attr.font)
 							END
+						ELSIF rd.string[0] # 0X THEN
+							CacheString(rd.x, py, rd.attr.color, rd.string, rd.attr.font)
 						ELSE FlushCaches
 						END
 					END
