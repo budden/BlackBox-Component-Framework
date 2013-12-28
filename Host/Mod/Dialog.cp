@@ -133,6 +133,7 @@ MODULE HostDialog;
 					res := WinApi.TranslateMessage(msg);
 					res := WinApi.DispatchMessageW(msg)
 				END
+			ELSE WinApi.Sleep(1)
 			END
 		UNTIL w.wnd = 0
 	END WaitDialogClose;
