@@ -1,4 +1,9 @@
-﻿MODULE Utils;
+MODULE Utils;
+
+	(*
+		Some file utilities
+		Compile & Link Order: Kernel Files Utils HostFiles StdLoader
+	*)
 
 	IMPORT Files;
 	
@@ -10,7 +15,7 @@
 		objType* = "ocf";
 		symType* = "osf";
 		
-		codeType* = "cp";
+		codeType* = "odc";
 		docType* = "odc";
 	
 	PROCEDURE SplitName* (name: ARRAY OF CHAR; VAR head, tail: ARRAY OF CHAR);
@@ -61,13 +66,18 @@
 		ELSIF cat$ = "Mod" THEN type := codeType
 		ELSE type := ""
 		END;
-		SplitName(mod, sub, name); MakeFileName(name, type);
+		SplitName(mod, sub, name);
 		loc := Files.dir.This(sub); file := NIL;
 		IF loc # NIL THEN
 			loc := loc.This(cat);
 			IF sub = "" THEN
 				IF loc # NIL THEN
+					MakeFileName(name, type);
 					file := Files.dir.Old(loc, name, Files.shared);
+					IF (file = NIL) & (type = codeType) THEN
+						MakeFileName(name, docType);
+						file := Files.dir.Old(loc, name, Files.shared);
+					END;
 					IF file = NIL THEN loc := NIL END
 				END;
 				IF loc = NIL THEN

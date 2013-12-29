@@ -32,6 +32,7 @@ MODULE Config;
 		OleData.Register("HostBitmaps.ImportDPictAsBitmap", "", "METAFILEPICT", "HostBitmaps.View", {});
 		OleData.Register("", "OleData.ExportPicture", "METAFILEPICT", "", {});
 
+		Dialog.Call("StdPlainDoc.Init", "", res); (* Define UTF-8 encoded with extension CP as default format for storage of documents *)
 		Dialog.Call("StdLog.Open", "", res)
 	END Setup;
 
