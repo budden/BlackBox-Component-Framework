@@ -672,7 +672,7 @@ MODULE TextViews;
 								(c # NIL) & (v1 = c.ThisFocus()) )
 						END
 					ELSIF (rd.h > 0) & (rd.w > 0) THEN
-						IF box.rbox & ~v.hideMarks THEN rd.string[0] := parasign END;	(* ¶ sign *)
+						IF box.rbox & ~v.hideMarks THEN rd.string[0] := parasign END;	(* Â¶ sign *)
 						py := y - rd.attr.offset;
 						IF rd.string[0] > " " THEN
 							CacheString(rd.x, py, rd.attr.color, rd.string, rd.attr.font);
