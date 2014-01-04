@@ -26,7 +26,7 @@ MODULE Ports;
 		point* = 12700;
 		inch* = 914400;
 
-		(** size parameter for the DrawRect, DrawOval, DrawLine, DrawPath, and MarkRect procedures **)
+		(** size parameter for the procedures DrawRect, DrawOval, DrawLine, DrawPath, and MarkRect **)
 		fill* = -1;
 
 		(** path parameter for DrawPath **)
@@ -111,6 +111,8 @@ MODULE Ports;
 	PROCEDURE (rd: Rider) Input* (OUT x, y: INTEGER; OUT modifiers: SET;
 														OUT isDown: BOOLEAN), NEW, ABSTRACT;
 	PROCEDURE (rd: Rider) DrawString* (x, y: INTEGER; col: Color; IN s: ARRAY OF CHAR;
+																font: Fonts.Font), NEW, ABSTRACT;
+	PROCEDURE (rd: Rider) DrawSpace* (x,y, w : INTEGER; col : Color;
 																font: Fonts.Font), NEW, ABSTRACT;
 	PROCEDURE (rd: Rider) CharIndex* (x, pos: INTEGER; IN s: ARRAY OF CHAR;
 																font: Fonts.Font): INTEGER, NEW, ABSTRACT;
@@ -262,6 +264,23 @@ MODULE Ports;
 		x := (f.gx + x) DIV u; y := (f.gy + y) DIV u;
 		f.rider.DrawString(x, y, col, s, font)
 	END DrawString;
+	
+	PROCEDURE (f: Frame) DrawSpace* (x, y, w: INTEGER; col : Color; font: Fonts.Font), NEW;
+		VAR right, u: INTEGER;
+	BEGIN
+		u := f.unit;
+		right := f.gx + x + w;
+		x := (f.gx + x) DIV u;
+		y := (f.gy + y) DIV u;
+		w := (right + u - 1) DIV u - x; (* round up; x may be truncated *)
+		IF u <= inch DIV 300 THEN
+			(* most probably a printer frame:
+				avoid gaps in the underline by extending it one pixel to the left and right 
+			*)
+			IF x > 0 THEN DEC(x); INC(w, 2) ELSE INC(w) END ;
+		END;
+		f.rider.DrawSpace(x, y, w, col, font)
+	END DrawSpace;
 
 	PROCEDURE (f: Frame) CharIndex* (x, pos: INTEGER; IN s: ARRAY OF CHAR;
 															font: Fonts.Font): INTEGER, NEW;
