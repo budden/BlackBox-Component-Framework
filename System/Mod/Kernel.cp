@@ -105,6 +105,13 @@ MODULE Kernel;
 		
 		N = 128 DIV 16;	(* free lists *)
 		
+		BlockAlign = 16;
+		
+		WordSize = 4; (* SIZE(INTEGER) *)
+		TagSize = WordSize;
+		
+		ClusterSize = 12; (* SIZE(Cluster) *)
+		
 		(* kernel flags in module desc *)
 		init = 16; dyn = 17; dll = 24; iptrs = 30;
 		
@@ -598,13 +605,13 @@ MODULE Kernel;
 		VAR adr, s: INTEGER;
 	BEGIN
 		IF dllMem THEN
-			INC(size, 16);
+			INC(size, BlockAlign);
 			ASSERT(size > 0, 100); adr := 0;
 			IF size < N THEN adr := WinApi.HeapAlloc(heap, {0}, N) END;
 			IF adr = 0 THEN adr := WinApi.HeapAlloc(heap, {0}, size) END;
 			IF adr = 0 THEN c := NIL
 			ELSE
-				c := S.VAL(Cluster, (adr + 15) DIV 16 * 16); c.max := adr;
+				c := S.VAL(Cluster, (adr + BlockAlign - 1) DIV BlockAlign * BlockAlign); c.max := adr;
 				c.size := WinApi.HeapSize(heap, {0}, adr) - (S.VAL(INTEGER, c) - adr);
 				INC(used, c.size); INC(total, c.size)
 			END
@@ -626,7 +633,7 @@ MODULE Kernel;
 				IF c.size < size THEN c := NIL END
 			END
 		END
-		(* post: (c = NIL) OR (c MOD 16 = 0) & (c.size >= size) *)
+		(* post: (c = NIL) OR (c MOD BlockAlign = 0) & (c.size >= size) *)
 	END AllocHeapMem;
 
 	PROCEDURE FreeHeapMem (c: Cluster);
@@ -783,7 +790,7 @@ MODULE Kernel;
 			tag := S.VAL(Type, typ);
 			b := NewBlock(tag.size);
 			IF b = NIL THEN RETURN 0 END;
-			b.tag := tag; S.GET(typ - 4, size);
+			b.tag := tag; S.GET(typ - TagSize, size);
 			IF size # 0 THEN	(* record uses a finalizer *)
 				l := S.VAL(FList, S.ADR(b.last));	(* anchor new object! *)
 				l := S.VAL(FList, NewRec(S.TYP(FList)));	(* NEW(l) *)
@@ -797,8 +804,8 @@ MODULE Kernel;
 	(* impl. of NEW(ptr, dim0, dim1, ...) *)
 		VAR b: Block; size, headSize: INTEGER; t: Type; fin: BOOLEAN; l: FList;
 	BEGIN
-		IF (nofdim < 0) OR (nofdim > (MAX(INTEGER) - 12) DIV 4) THEN RETURN 0 END;
-		headSize := 4 * nofdim + 12;
+		IF (nofdim < 0) OR (nofdim > (MAX(INTEGER) - ClusterSize) DIV TagSize) THEN RETURN 0 END;
+		headSize := TagSize * nofdim + ClusterSize;
 		fin := FALSE;
 		CASE eltyp OF
 		| -1: eltyp := S.ADR(IntPtrType); fin := TRUE
@@ -1014,7 +1021,7 @@ MODULE Kernel;
 		WHILE n > 0 DO
 			p := S.VAL(StrPtr, S.ADR(m.names[obj.id DIV 256]));
 			IF p^ = name THEN RETURN obj END;
-			DEC(n); INC(S.VAL(INTEGER, obj), 16)
+			DEC(n); INC(S.VAL(INTEGER, obj), BlockAlign)
 		END;
 		RETURN NIL
 	END ThisField;
@@ -1023,7 +1030,7 @@ MODULE Kernel;
 		VAR x: Object; sig: Signature;
 	BEGIN
 		x := ThisObject(mod, name);
-		IF (x # NIL) & (x.id MOD 16 = mProc) THEN
+		IF (x # NIL) & (x.id MOD BlockAlign = mProc) THEN
 			sig := S.VAL(Signature, x.struct);
 			IF (sig.retStruct = NIL) & (sig.num = 0) THEN RETURN S.VAL(Command, mod.procBase + x.offs) END
 		END;
@@ -1034,7 +1041,7 @@ MODULE Kernel;
 		VAR x: Object;
 	BEGIN
 		x := ThisObject(mod, name);
-		IF (x # NIL) & (x.id MOD 16 = mTyp) & (S.VAL(INTEGER, x.struct) DIV 256 # 0) THEN
+		IF (x # NIL) & (x.id MOD BlockAlign = mTyp) & (S.VAL(INTEGER, x.struct) DIV 256 # 0) THEN
 			RETURN x.struct
 		ELSE
 			RETURN NIL
@@ -1048,7 +1055,7 @@ MODULE Kernel;
 
 	PROCEDURE LevelOf* (t: Type): SHORTINT;
 	BEGIN
-		RETURN SHORT(t.id DIV 16 MOD 16)
+		RETURN SHORT(t.id DIV BlockAlign MOD BlockAlign)
 	END LevelOf;
 	
 	PROCEDURE NewObj* (VAR o: S.PTR; t: Type);
@@ -1144,7 +1151,7 @@ MODULE Kernel;
 		WHILE p > 0 DO	(* push parameters from right to left *)
 			DEC(p);
 			typ := sig.par[p].struct;
-			kind := sig.par[p].id MOD 16;
+			kind := sig.par[p].id MOD BlockAlign;
 			IF (S.VAL(INTEGER, typ) DIV 256 = 0) OR (typ.id MOD 4 IN {0, 3}) THEN	(* scalar *)
 				IF (kind = 10) & ((S.VAL(INTEGER, typ) = 8) OR (S.VAL(INTEGER, typ) = 10)) THEN	(* 64 bit *)
 					DEC(n); PUSH(par[n])	(* push hi word *)
@@ -1160,7 +1167,7 @@ MODULE Kernel;
 					S.MOVE(par[n], sp, typ.size)	(* copy to stack *)
 				END
 			ELSIF typ.size = 0 THEN	(* open array *)
-				size := typ.id DIV 16 MOD 16;	(* number of open dimensions *)
+				size := typ.id DIV BlockAlign MOD BlockAlign;	(* number of open dimensions *)
 				WHILE size > 0 DO
 					DEC(size); DEC(n); PUSH(par[n])	(* push length *)
 				END;
@@ -1293,7 +1300,7 @@ MODULE Kernel;
 			father := NIL;
 			LOOP
 				INC(S.VAL(INTEGER, this.tag));
-				flag := S.VAL(INTEGER, this.tag) MOD 4;
+				flag := S.VAL(INTEGER, this.tag) MOD TagSize;
 				tag := S.VAL(Type, S.VAL(INTEGER, this.tag) - flag);
 				IF flag >= 2 THEN actual := this.first; this.actual := actual
 				ELSE actual := S.ADR(this.last)
@@ -1301,31 +1308,31 @@ MODULE Kernel;
 				LOOP
 					offset := tag.ptroffs[0];
 					IF offset < 0 THEN
-						INC(S.VAL(INTEGER, tag), offset + 4);	(* restore tag *)
+						INC(S.VAL(INTEGER, tag), offset + TagSize);	(* restore tag *)
 						IF (flag >= 2) & (actual < this.last) & (offset < -4) THEN	(* next array element *)
 							INC(actual, tag.size); this.actual := actual
 						ELSE	(* up *)
 							this.tag := S.VAL(Type, S.VAL(INTEGER, tag) + flag);
 							IF father = NIL THEN RETURN END;
 							son := this; this := father;
-							flag := S.VAL(INTEGER, this.tag) MOD 4;
+							flag := S.VAL(INTEGER, this.tag) MOD TagSize;
 							tag := S.VAL(Type, S.VAL(INTEGER, this.tag) - flag);
 							offset := tag.ptroffs[0];
 							IF flag >= 2 THEN actual := this.actual ELSE actual := S.ADR(this.last) END;
 							S.GET(actual + offset, father); S.PUT(actual + offset, S.ADR(son.last));
-							INC(S.VAL(INTEGER, tag), 4)
+							INC(S.VAL(INTEGER, tag), TagSize)
 						END
 					ELSE
 						S.GET(actual + offset, son);
 						IF son # NIL THEN
-							DEC(S.VAL(INTEGER, son), 4);
+							DEC(S.VAL(INTEGER, son), TagSize);
 							IF ~ODD(S.VAL(INTEGER, son.tag)) THEN	(* down *)
 								this.tag := S.VAL(Type, S.VAL(INTEGER, tag) + flag);
 								S.PUT(actual + offset, father); father := this; this := son;
 								EXIT
 							END
 						END;
-						INC(S.VAL(INTEGER, tag), 4)
+						INC(S.VAL(INTEGER, tag), TagSize)
 					END
 				END
 			END
@@ -1341,7 +1348,7 @@ MODULE Kernel;
 				i := 0;
 				WHILE i < m.nofptrs DO
 					S.GET(m.varBase + m.ptrs[i], p); INC(i);
-					IF p # 0 THEN Mark(S.VAL(Block, p - 4)) END
+					IF p # 0 THEN Mark(S.VAL(Block, p - TagSize)) END
 				END
 			END;
 			m := m.next
@@ -1353,9 +1360,9 @@ MODULE Kernel;
 	PROCEDURE Next (b: Block): Block;	(* next block in same cluster *)
 		VAR size: INTEGER;
 	BEGIN
-		S.GET(S.VAL(INTEGER, b.tag) DIV 4 * 4, size);
+		S.GET(S.VAL(INTEGER, b.tag) DIV TagSize * TagSize, size);
 		IF ODD(S.VAL(INTEGER, b.tag) DIV 2) THEN INC(size, b.last - S.ADR(b.last)) END;
-		RETURN S.VAL(Block, S.VAL(INTEGER, b) + (size + 19) DIV 16 * 16)
+		RETURN S.VAL(Block, S.VAL(INTEGER, b) + (size + TagSize + BlockAlign - 1) DIV BlockAlign * BlockAlign)
 	END Next;
 	
 *)
@@ -1403,8 +1410,8 @@ MODULE Kernel;
 		(* sweep *)
 		c := root; i := 0;
 		WHILE c # NIL DO
-			blk := S.VAL(Block, S.VAL(INTEGER, c) + 12);
-			end := S.VAL(INTEGER, blk) + (c.size - 12) DIV 16 * 16;
+			blk := S.VAL(Block, S.VAL(INTEGER, c) + ClusterSize);
+			end := S.VAL(INTEGER, blk) + (c.size - ClusterSize) DIV BlockAlign * BlockAlign;
 			WHILE candidates[i] < S.VAL(INTEGER, blk) DO
 				INC(i);
 				IF i = nofcand THEN RETURN END
@@ -1421,7 +1428,7 @@ MODULE Kernel;
 						IF i = nofcand THEN RETURN END
 					UNTIL candidates[i] >= S.VAL(INTEGER, next)
 				END;
-				IF (S.VAL(INTEGER, blk.tag) MOD 4 = 0) & (S.VAL(INTEGER, blk.tag) # S.ADR(blk.last))
+				IF (S.VAL(INTEGER, blk.tag) MOD TagSize = 0) & (S.VAL(INTEGER, blk.tag) # S.ADR(blk.last))
 						& (blk.tag.base[0] = NIL) & (blk.actual > 0) THEN	(* referenced interface record *)
 					Mark(blk)
 				END;
@@ -1439,11 +1446,11 @@ MODULE Kernel;
 		min := S.VAL(INTEGER, root); max := S.VAL(INTEGER, c) + c.size;
 		WHILE sp < baseStack DO
 			S.GET(sp, p);
-			IF (p > min) & (p < max) & (~strictStackSweep OR (p MOD 16 = 0)) THEN
+			IF (p > min) & (p < max) & (~strictStackSweep OR (p MOD BlockAlign = 0)) THEN
 				candidates[nofcand] := p; INC(nofcand);
 				IF nofcand = LEN(candidates) - 1 THEN CheckCandidates; nofcand := 0 END
 			END;
-			INC(sp, 4)
+			INC(sp, TagSize)
 		END;
 		candidates[nofcand] := max; INC(nofcand);	(* ensure complete scan for interface mark*)
 		IF nofcand > 0 THEN CheckCandidates END
@@ -1494,7 +1501,7 @@ MODULE Kernel;
 		f := S.VAL(FList, a);
 		IF f.aiptr THEN ArrFinalizer(S.VAL(ANYPTR, S.ADR(f.blk.last)))
 		ELSE
-			S.GET(S.VAL(INTEGER, f.blk.tag) - 4, fin);	(* method 0 *)
+			S.GET(S.VAL(INTEGER, f.blk.tag) - TagSize, fin);	(* method 0 *)
 			IF (fin # NIL) & (f.blk.tag.mod.refcnt >= 0) THEN fin(S.VAL(ANYPTR, S.ADR(f.blk.last))) END;
 			IF f.iptr THEN RecFinalizer(S.VAL(ANYPTR, S.ADR(f.blk.last))) END
 		END
@@ -1515,8 +1522,8 @@ MODULE Kernel;
 	PROCEDURE Insert (blk: FreeBlock; size: INTEGER);	(* insert block in free list *)
 		VAR i: INTEGER;
 	BEGIN
-		blk.size := size - 4; blk.tag := S.VAL(Type, S.ADR(blk.size));
-		i := MIN(N - 1, (blk.size DIV 16));
+		blk.size := size - TagSize; blk.tag := S.VAL(Type, S.ADR(blk.size));
+		i := MIN(N - 1, (blk.size DIV BlockAlign));
 		blk.next := free[i]; free[i] := blk
 	END Insert;
 	
@@ -1527,8 +1534,8 @@ MODULE Kernel;
 		i := N;
 		REPEAT DEC(i); free[i] := sentinel UNTIL i = 0;
 		WHILE cluster # NIL DO
-			blk := S.VAL(Block, S.VAL(INTEGER, cluster) + 12);
-			end := S.VAL(INTEGER, blk) + (cluster.size - 12) DIV 16 * 16;
+			blk := S.VAL(Block, S.VAL(INTEGER, cluster) + ClusterSize);
+			end := S.VAL(INTEGER, blk) + (cluster.size - ClusterSize) DIV BlockAlign * BlockAlign;
 			fblk := NIL;
 			WHILE S.VAL(INTEGER, blk) < end DO
 				next := Next(blk);
@@ -1546,7 +1553,7 @@ MODULE Kernel;
 			END;
 			
 			IF dealloc & dllMem
-					& (S.VAL(INTEGER, fblk) = S.VAL(INTEGER, cluster) + 12) THEN	(* deallocate cluster *)
+					& (S.VAL(INTEGER, fblk) = S.VAL(INTEGER, cluster) + ClusterSize) THEN	(* deallocate cluster *)
 				c := cluster; cluster := cluster.next;
 				IF last = NIL THEN root := cluster ELSE last.next := cluster END;
 				FreeHeapMem(c)
@@ -1596,12 +1603,12 @@ MODULE Kernel;
 
 	(* --------------------- memory allocation (portable) -------------------- *)
 	
-	PROCEDURE OldBlock (size: INTEGER): FreeBlock;	(* size MOD 16 = 0 *)
+	PROCEDURE OldBlock (size: INTEGER): FreeBlock;	(* size MOD BlockAlign = 0 *)
 		VAR b, l: FreeBlock; s, i: INTEGER;
 	BEGIN
 		IF debug & (watcher # NIL) THEN watcher(3) END;
-		s := size - 4;
-		i := MIN(N - 1, s DIV 16);
+		s := size - TagSize;
+		i := MIN(N - 1, s DIV BlockAlign);
 		WHILE (i # N - 1) & (free[i] = sentinel) DO INC(i) END;
 		b := free[i]; l := NIL;
 		WHILE b.size < s DO l := b; b := b.next END;
@@ -1612,10 +1619,10 @@ MODULE Kernel;
 		RETURN b
 	END OldBlock;
 
-	PROCEDURE LastBlock (limit: INTEGER): FreeBlock;	(* size MOD 16 = 0 *)
+	PROCEDURE LastBlock (limit: INTEGER): FreeBlock;	(* size MOD BlockAlign = 0 *)
 		VAR b, l: FreeBlock; s, i: INTEGER;
 	BEGIN
-		s := limit - 4;
+		s := limit - TagSize;
 		i := 0;
 		REPEAT
 			b := free[i]; l := NIL;
@@ -1632,7 +1639,7 @@ MODULE Kernel;
 	PROCEDURE AllocateHeapBlock (size: INTEGER): FreeBlock;
 		VAR b: FreeBlock; new, c: Cluster;
 	BEGIN
-		AllocHeapMem(size + 12, new);	(* 3) allocate new cluster *)
+		AllocHeapMem(size + ClusterSize, new);	(* 3) allocate new cluster *)
 		IF new # NIL THEN
 			IF (root = NIL) OR (S.VAL(INTEGER, new) < S.VAL(INTEGER, root)) THEN
 				new.next := root; root := new
@@ -1641,8 +1648,8 @@ MODULE Kernel;
 				WHILE (c.next # NIL) & (S.VAL(INTEGER, new) > S.VAL(INTEGER, c.next)) DO c := c.next END;
 				new.next := c.next; c.next := new
 			END;
-			b := S.VAL(FreeBlock, S.VAL(INTEGER, new) + 12);
-			b.size := (new.size - 12) DIV 16 * 16 - 4;
+			b := S.VAL(FreeBlock, S.VAL(INTEGER, new) + ClusterSize);
+			b.size := (new.size - ClusterSize) DIV BlockAlign * BlockAlign - TagSize;
 			RETURN b
 		ELSE
 			RETURN NIL
@@ -1661,8 +1668,8 @@ MODULE Kernel;
 		
 	BEGIN
 		ASSERT(size >= 0, 20);
-		IF size > MAX(INTEGER) - 19 THEN RETURN NIL END;
-		tsize := (size + 19) DIV 16 * 16;
+		IF size > MAX(INTEGER) - (TagSize + BlockAlign - 1) THEN RETURN NIL END;
+		tsize := (size + TagSize + BlockAlign - 1) DIV BlockAlign * BlockAlign;
 		b := OldBlock(tsize);	(* 1) search for free block *)
 		IF b = NIL THEN
 			IF dllMem THEN
@@ -1690,7 +1697,7 @@ MODULE Kernel;
 						RETURN NIL
 					END;
 					
-					a := 12 + (root.size - 12) DIV 16 * 16;
+					a := ClusterSize + (root.size - ClusterSize) DIV BlockAlign * BlockAlign;
 					IF s <= total THEN
 						b := OldBlock(tsize);
 						IF b = NIL THEN s := a + tsize END
@@ -1702,10 +1709,10 @@ MODULE Kernel;
 						IF root.size >= s THEN
 							b := LastBlock(S.VAL(INTEGER, root) + a);
 							IF b # NIL THEN
-								b.size := (root.size - a + b.size + 4) DIV 16 * 16 - 4
+								b.size := (root.size - a + b.size + TagSize) DIV BlockAlign * BlockAlign - TagSize
 							ELSE
 								b := S.VAL(FreeBlock, S.VAL(INTEGER, root) + a);
-								b.size := (root.size - a) DIV 16 * 16 - 4
+								b.size := (root.size - a) DIV BlockAlign * BlockAlign - TagSize
 							END
 						ELSIF reducers # NIL THEN	(* 5) no space => fully reduce *)
 							ApplyReducers(TRUE);
@@ -1720,9 +1727,9 @@ MODULE Kernel;
 			END
 		END;
 		(* b # NIL *)
-		a := b.size + 4 - tsize;
+		a := b.size + TagSize - tsize;
 		IF a > 0 THEN Insert(S.VAL(FreeBlock, S.VAL(INTEGER, b) + tsize), a) END;
-		IF size > 0 THEN Erase(S.ADR(b.size), (size + 3) DIV 4) END;
+		IF size > 0 THEN Erase(S.ADR(b.size), (size + 3) DIV TagSize) END;
 		INC(allocated, tsize);
 		RETURN S.VAL(Block, b)
 	END NewBlock;
@@ -1960,7 +1967,7 @@ MODULE Kernel;
 			IF dispCont = 0 THEN	(* InterfaceTrapHandler *)	(* COMPILER DEPENDENT *)
 				RemoveExcp(estFrame^);
 				S.PUTREG(CX, estFrame(ComExcpFramePtr).par);
-				S.PUTREG(SP, S.VAL(INTEGER, estFrame) + 12);
+				S.PUTREG(SP, S.VAL(INTEGER, estFrame) + ClusterSize);
 				IF err = 137 THEN	(* retrigger stack overflow *)
 					TrapCleanup; DefaultTrapViewer;
 					res := WinApi.VirtualProtect(FPageWord(8), 1024, {2, 8}, old);
@@ -2134,10 +2141,10 @@ MODULE Kernel;
 			i := N;
 			REPEAT DEC(i); free[i] := sentinel UNTIL i = 0;
 			AllocHeapMem(1, root); ASSERT(root # NIL, 100);
-			i := MIN(N - 1, (root.size - 12) DIV 16 - 1);
-			free[i] := S.VAL(FreeBlock, S.VAL(INTEGER, root) + 12);
+			i := MIN(N - 1, (root.size - ClusterSize) DIV BlockAlign - 1);
+			free[i] := S.VAL(FreeBlock, S.VAL(INTEGER, root) + ClusterSize);
 			free[i].next := sentinel;
-			free[i].size := (root.size - 12) DIV 16 * 16 - 4;
+			free[i].size := (root.size - ClusterSize) DIV BlockAlign * BlockAlign - TagSize;
 			free[i].tag:=S.VAL(Type, S.ADR(free[i].size))
 		END;
 
