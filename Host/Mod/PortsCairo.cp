@@ -249,7 +249,7 @@ MODULE HostPorts;
 
 	PROCEDURE (rd: Rider) DrawOval* (l, t, r, b, s: INTEGER; col: Ports.Color);
 		VAR
-			res, h: INTEGER; p: Port; oldb, oldp, dc: WinApi.HANDLE; pt: WinApi.POINT; rect: WinApi.RECT;
+			res, h, w: INTEGER; p: Port; oldb, oldp, dc: WinApi.HANDLE; pt: WinApi.POINT; rect: WinApi.RECT;
 			surface: C.cairo_surface_t;
 			ctx: C.cairo_t;
 			rad : INTEGER;
@@ -267,8 +267,16 @@ MODULE HostPorts;
 		ctx := C.cairo_create(surface);
 		C.cairo_set_source_rgb(ctx, (col MOD 65536) MOD 256 / 256 ,
 			(col MOD 65536) DIV 256 / 256, col DIV 65536 / 256);
+
+		h := b-t;
+		w := r-l;
+
 		rad := (r - l) DIV 2;
-		C.cairo_arc(ctx, l + rad, t + rad, rad, 0, 2 * 3.14);
+
+		C.cairo_translate(ctx, l + w / 2.0, t + h / 2.0);
+		C.cairo_scale(ctx, w / 2.0, h / 2.0);
+		C.cairo_arc(ctx, 0.0, 0.0, 1.0, 0.0, 2 * 3.14);
+
 		IF s > 0 THEN
 			IF s = 0 THEN s := 1 END;
 			C.cairo_set_line_width(ctx, s);
@@ -324,25 +332,7 @@ MODULE HostPorts;
 			polyPtr: POINTER TO ARRAY OF Ports.Point; polyLen: INTEGER;
 			surface: C.cairo_surface_t;
 			ctx: C.cairo_t;
-		PROCEDURE Bezier(x0, y0, xd0, yd0, x1, y1, xd1, yd1: INTEGER);
-			VAR x, y, xd, yd, i: INTEGER;
-		BEGIN
-			IF ABS(x0 + xd0 - x1) + ABS(x0 + xd1 - x1) + ABS(y0 + yd0 - y1) + ABS(y0 + yd1 - y1) < 8 THEN
-				IF k > polyLen - 2 THEN
-					NEW(polyPtr, polyLen * 2);
-					i := 0; WHILE i < polyLen DO polyPtr[i] := SYSTEM.VAL(Ports.Point, pap[i]); INC(i) END;
-					polyLen := polyLen * 2; pap := SYSTEM.VAL(PAP, SYSTEM.ADR(polyPtr^))
-				END;
-				pap[k].x := x0; pap[k].y := y0; INC(k)
-			ELSE
-				x := ((xd0 - xd1) DIV 4 + x0 + x1 + 1) DIV 2;
-				y := ((yd0 - yd1) DIV 4 + y0 + y1 + 1) DIV 2;
-				xd := ((x1 - x0) * 3 - (xd0 + xd1) DIV 2 + 2) DIV 4;
-				yd := ((y1 - y0) * 3 - (yd0 + yd1) DIV 2 + 2) DIV 4;
-				Bezier(x0, y0, xd0 DIV 2, yd0 DIV 2, x, y, xd, yd);
-				Bezier(x, y, xd, yd, x1, y1, xd1 DIV 2, yd1 DIV 2)
-			END
-		END Bezier;
+
 		PROCEDURE Poly;
 		BEGIN
 			C.cairo_move_to(ctx, pts[0].x, pts[0].y);
@@ -350,6 +340,7 @@ MODULE HostPorts;
 				C.cairo_line_to(ctx, pts[i].x, pts[i].y)
 			END;
 		END Poly;
+
 	BEGIN
 		ASSERT(rd.port # NIL, 100);
 		p := rd.port; dc := p.dc;
@@ -362,13 +353,14 @@ MODULE HostPorts;
 		
 		surface := Cwin.cairo_win32_surface_create(dc);
 		ctx := C.cairo_create(surface);
+		C.cairo_set_line_join(ctx, C.CAIRO_LINE_JOIN_ROUND);
 		
 		IF col = Ports.defaultColor THEN col := textCol END;
 		
 		ASSERT(n >= 0, 20); ASSERT(n <= LEN(pts), 21);
 		ASSERT(s >= Ports.fill, 23);
 		
-		C.cairo_set_source_rgb(ctx, 
+		C.cairo_set_source_rgb(ctx,
 			(col MOD 65536) MOD 256 / 256,
 			(col MOD 65536) DIV 256 / 256,
 			col DIV 65536 / 256);
@@ -389,10 +381,14 @@ MODULE HostPorts;
 				WHILE i < n DO
 					j := i+3;
 					IF j = n THEN j := 0 END;
-					Bezier(pts[i].x, pts[i].y, (pts[i+1].x - pts[i].x) * 3, (pts[i+1].y - pts[i].y) * 3,
-							pts[j].x, pts[j].y, (pts[j].x - pts[i+2].x) * 3, (pts[j].y - pts[i+2].y) * 3);
+					IF i=0 THEN C.cairo_move_to(ctx, pts[i].x, pts[i].y); END;
+					C.cairo_curve_to(ctx,
+						pts[i+1].x, pts[i+1].y, pts[i+2].x, pts[i+2].y, pts[j].x, pts[j].y);
+
 					INC(i, 3)
 				END;
+				C.cairo_close_path (ctx);
+				C.cairo_fill(ctx);
 				res := WinApi.DeleteObject(WinApi.SelectObject(dc, oldb));
 				res := WinApi.SelectObject(dc, oldp)
 			END
@@ -420,17 +416,22 @@ MODULE HostPorts;
 				END;
 				oldb := WinApi.SelectObject(dc, nullBrush);
 				oldp := WinApi.SelectObject(dc, WinApi.CreatePen(WinApi.PS_SOLID, s, col));
+
 				pap := SYSTEM.VAL(PAP, SYSTEM.ADR(poly)); polyLen := LEN(poly);
 				i := 0;
 				WHILE i < n-2 DO
 					k := 0; j := i+3;
 					IF j = n THEN j := 0 END;
-					Bezier(pts[i].x, pts[i].y, (pts[i+1].x - pts[i].x) * 3, (pts[i+1].y - pts[i].y) * 3,
-							pts[j].x, pts[j].y, (pts[j].x - pts[i+2].x) * 3, (pts[j].y - pts[i+2].y) * 3);
-					pap[k].x := pts[j].x; pap[k].y := pts[j].y; INC(k);
-					res := WinApi.Polyline(dc, pap[0], k);
+					IF i=0 THEN C.cairo_move_to(ctx, pts[i].x, pts[i].y); END;
+					C.cairo_curve_to(ctx,
+						pts[i+1].x, pts[i+1].y, pts[i+2].x, pts[i+2].y, pts[j].x, pts[j].y);
 					INC(i, 3)
 				END;
+
+				C.cairo_set_line_width(ctx, s);
+				IF path = Ports.closedBezier THEN C.cairo_close_path (ctx); END;
+				C.cairo_stroke(ctx);
+
 				res := WinApi.SelectObject(dc, oldb);
 				res := WinApi.DeleteObject(WinApi.SelectObject(dc, oldp))
 			END;
