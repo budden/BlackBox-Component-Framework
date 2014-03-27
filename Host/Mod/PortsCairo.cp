@@ -2,7 +2,7 @@ MODULE HostPorts;
 (**
 	project	= "BlackBox"
 	organization	= "www.oberon.ch"
-	contributors	= "Oberon microsystems, Marco Ciot, Alexander Iljin"
+	contributors	= "Oberon microsystems, Marco Ciot, Alexander Iljin, Ivan Denison, Roman Miro, Dmitry Solomennikov"
 	version	= "System/Rsrc/About"
 	copyright	= "System/Rsrc/About"
 	license	= "Docu/BB-License"
@@ -11,7 +11,7 @@ MODULE HostPorts;
 **)
 
 	IMPORT
-		SYSTEM, WinApi, Kernel, Fonts, Ports, Dialog, Services, HostFonts, C := LibsCairo, Cwin := LibsCairoWin32, Log;
+		SYSTEM, WinApi, Kernel, Fonts, Ports, Dialog, Services, HostFonts, C := LibsCairo, Cwin := LibsCairoWin32;
 	
 	CONST
 		resizeHCursor* = 16; resizeVCursor* = 17; resizeLCursor* = 18; resizeRCursor* = 19; resizeCursor* = 20;
