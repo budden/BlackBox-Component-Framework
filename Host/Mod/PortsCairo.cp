@@ -2,7 +2,7 @@ MODULE HostPorts;
 (**
 	project	= "BlackBox"
 	organization	= "www.oberon.ch"
-	contributors	= "Oberon microsystems, Marco Ciot, Alexander Iljin, Ivan Denison, Roman Miro, Dmitry Solomennikov"
+	contributors	= "Oberon microsystems, Marco Ciot, Alexander Iljin, Ivan Denisov, Roman Miro, Dmitry Solomennikov"
 	version	= "System/Rsrc/About"
 	copyright	= "System/Rsrc/About"
 	license	= "Docu/BB-License"
@@ -12,23 +12,23 @@ MODULE HostPorts;
 
 	IMPORT
 		SYSTEM, WinApi, Kernel, Fonts, Ports, Dialog, Services, HostFonts, C := LibsCairo, Cwin := LibsCairoWin32;
-	
+
 	CONST
 		resizeHCursor* = 16; resizeVCursor* = 17; resizeLCursor* = 18; resizeRCursor* = 19; resizeCursor* = 20;
 		busyCursor* = 21; stopCursor* = 22;
 		moveCursor* = 23; copyCursor* = 24; linkCursor* = 25; pickCursor* = 26;
 		focusPat* = 5;
-		
+
 		extend = 1; modify = 2; (* same as Controllers.extend and Controllers.modify  !!! *)
 
 		(** buttons **)
 		left* = 16; middle* = 17; right* = 18;
 		shift* = 24; ctrl* = 25; opt* = 26; cmd* = 27; alt* = 28;
-		
+
 		copy = 00CC0020H;	(* raster code for source copy *)
 		xor = 00A50065H;	(* raster code for xor function *)
 		figureSpace = 8FX;
-		
+
 	TYPE
 		Port* = POINTER TO RECORD (Ports.Port)
 			w-, h-: INTEGER;
@@ -54,19 +54,19 @@ MODULE HostPorts;
 		(* system colors *)
 		textCol-, selBackground-, selTextCol-,
 		dialogTextCol-, dialogShadowCol-, dialogLightCol-: Ports.Color;
-		
+
 		dialogBrush*, dim50Brush-: WinApi.HANDLE;
-		
+
 		debug*, noBuffer*, flag*: BOOLEAN;
 
 		cursors-: ARRAY 32 OF WinApi.HANDLE;
-		
+
 		nullBrush, nullPen: WinApi.HANDLE;
 		invertBrush, dim25Brush, dim75Brush, focusBrush: WinApi.HANDLE;
 		grgn: WinApi.HANDLE;
 		mx, my: INTEGER;	(* actual mouse coordinates *)
 		mb: SET;	(* actual mouse buttons & modifiers *)
-		
+
 
 	PROCEDURE Wait;
 		VAR t: LONGINT;
@@ -74,7 +74,7 @@ MODULE HostPorts;
 		t := Kernel.Time() + Kernel.timeResolution;
 		REPEAT UNTIL Kernel.Time() > t
 	END Wait;
-	
+
 	PROCEDURE Length(IN s: ARRAY OF CHAR): INTEGER;
 		VAR i: INTEGER;
 	BEGIN
@@ -82,7 +82,7 @@ MODULE HostPorts;
 		WHILE (i < LEN(s) - 1) & (s[i] # 0X) DO INC(i) END;
 		RETURN i
 	END Length;
-		
+
 	(** Port **)
 
 	PROCEDURE (p: Port) SetSize* (w, h: INTEGER);
@@ -90,18 +90,18 @@ MODULE HostPorts;
 		ASSERT(w >= 0, 20); ASSERT(h >= 0, 21);
 		p.w := w; p.h := h
 	END SetSize;
-	
+
 	PROCEDURE (p: Port) GetSize* (OUT w, h: INTEGER);
 	BEGIN
 		w := p.w; h := p.h
 	END GetSize;
-	
+
 	PROCEDURE (p: Port) NewRider* (): Rider;
 		VAR h: Rider;
 	BEGIN
 		NEW(h); h.port := p; RETURN h
 	END NewRider;
-	
+
 	PROCEDURE (p: Port) SetDC* (dc, wnd: WinApi.HANDLE), NEW;
 		VAR res: INTEGER;
 	BEGIN
@@ -152,7 +152,7 @@ MODULE HostPorts;
 			END
 		END
 	END OpenBuffer;
-	
+
 	PROCEDURE (p: Port) CloseBuffer*;
 		VAR res: INTEGER; rect: WinApi.RECT;
 	BEGIN
@@ -171,7 +171,7 @@ MODULE HostPorts;
 		p.dc := p.homedc; p.map := 0;
 		p.bx := 0; p.by := 0
 	END CloseBuffer;
-	
+
 
 	(** Rider **)
 
@@ -246,7 +246,6 @@ MODULE HostPorts;
 		;IF debug THEN Wait END
 	END DrawRect;
 
-
 	PROCEDURE (rd: Rider) DrawOval* (l, t, r, b, s: INTEGER; col: Ports.Color);
 		VAR
 			res, h, w: INTEGER; p: Port; oldb, oldp, dc: WinApi.HANDLE; pt: WinApi.POINT; rect: WinApi.RECT;
@@ -286,7 +285,7 @@ MODULE HostPorts;
 		END;
 		C.cairo_destroy(ctx);
 		C.cairo_surface_destroy(surface);
-		
+
 		IF p.wnd = 0 THEN res := WinApi.RestoreDC(dc, -1) END
 		;IF debug THEN Wait END
 	END DrawOval;
@@ -318,7 +317,7 @@ MODULE HostPorts;
 		IF p.wnd = 0 THEN res := WinApi.RestoreDC(dc, -1) END
 		;IF debug THEN Wait END
 	END DrawLine;
-	
+
 	PROCEDURE (rd: Rider) DrawPath* (
 		IN pts: ARRAY OF Ports.Point; n, s: INTEGER; col: Ports.Color; path: INTEGER
 	);
@@ -350,21 +349,21 @@ MODULE HostPorts;
 		res := WinApi.IntersectClipRect(dc, rd.l, rd.t, rd.r, rd.b);
 		IF col = Ports.defaultColor THEN col := textCol END;
 		pap := SYSTEM.VAL(PAP, SYSTEM.ADR(pts));
-		
+
 		surface := Cwin.cairo_win32_surface_create(dc);
 		ctx := C.cairo_create(surface);
 		C.cairo_set_line_join(ctx, C.CAIRO_LINE_JOIN_ROUND);
-		
+
 		IF col = Ports.defaultColor THEN col := textCol END;
-		
+
 		ASSERT(n >= 0, 20); ASSERT(n <= LEN(pts), 21);
 		ASSERT(s >= Ports.fill, 23);
-		
+
 		C.cairo_set_source_rgb(ctx,
 			(col MOD 65536) MOD 256 / 256,
 			(col MOD 65536) DIV 256 / 256,
 			col DIV 65536 / 256);
-		
+
 		IF s < 0 THEN (* filled by color col *)
 			IF path = Ports.closedPoly THEN
 				Poly;
@@ -436,10 +435,10 @@ MODULE HostPorts;
 				res := WinApi.DeleteObject(WinApi.SelectObject(dc, oldp))
 			END;
 		END;
-		
+
 		C.cairo_destroy(ctx);
 		C.cairo_surface_destroy(surface);
-		
+
 		IF p.wnd = 0 THEN res := WinApi.RestoreDC(dc, -1) END
 		;IF debug THEN Wait END
 	END DrawPath;
@@ -466,12 +465,12 @@ MODULE HostPorts;
 			res := WinApi.UnrealizeObject(focusBrush); old := WinApi.SelectObject(dc, focusBrush)
 		END;
 		res := WinApi.SetTextColor(dc, Ports.black);
-		
+
 		IF l < -32768 THEN l := -32768 END;	(* ??? *)
 		IF t < -32768 THEN t := -32768 END;
 		IF r > 32767 THEN r := 32767 END;
 		IF b > 32767 THEN b := 32767 END;
-		
+
 		IF s = 0 THEN s := 1 END;
 		IF (s < 0) OR (r-l < 2*s) OR (b-t < 2*s) THEN
 			res := WinApi.PatBlt(dc, l, t, r-l, b-t, xor);
@@ -486,7 +485,7 @@ MODULE HostPorts;
 		;IF debug THEN Wait END
 	END MarkRect;
 
-	
+
 	PROCEDURE (rd: Rider) Scroll* (dx, dy: INTEGER);
 		VAR res: INTEGER; p: Port; dc, par: WinApi.HANDLE; rect, rt: WinApi.RECT; pt: WinApi.POINT;
 	BEGIN
@@ -520,12 +519,12 @@ MODULE HostPorts;
 	BEGIN
 		old := WinApi.SetCursor(cursors[cursor])
 	END SetCursor;
-	
+
 	PROCEDURE SetMouseState* (x, y: INTEGER; but: SET; isDown: BOOLEAN);
 	BEGIN
 		mx := x; my := y; mb := but
 	END SetMouseState;
-	
+
 	PROCEDURE (rd: Rider) Input* (OUT x, y: INTEGER; OUT modifiers: SET; OUT isDown: BOOLEAN);
 		VAR msg: WinApi.MSG; wnd, mw: WinApi.HANDLE; pt: WinApi.POINT; res: INTEGER; set: SET;
 	BEGIN
@@ -565,14 +564,14 @@ MODULE HostPorts;
 		IF WinApi.GetAsyncKeyState(WinApi.VK_MENU) < 0 THEN INCL(mb, alt) ELSE EXCL(mb, alt) END;
 		x := mx; y := my; modifiers := mb; isDown := mb * {left, middle, right} # {}
 	END Input;
-	
+
 	PROCEDURE (rd: Rider) DrawSString* (
 		x, y: INTEGER; col: Ports.Color; IN s: ARRAY OF SHORTCHAR; font: Fonts.Font
 	);
 		VAR res, i, a, b, c, w, u, n: INTEGER; p: Port; dc, old: WinApi.HANDLE; ch: SHORTCHAR;
 			df: HostFonts.DevFont; dx: ARRAY 1024 OF INTEGER;
 			s1: ARRAY 1024 OF SHORTCHAR; fsp: BOOLEAN;
-		
+
 		PROCEDURE HasFigureSpace (OUT k: INTEGER): BOOLEAN;
 		(* Figure space equal to tabular width of a font.
 		This is equivalent to the digit width of fonts with fixed-width digits *)
@@ -585,7 +584,7 @@ MODULE HostPorts;
 			END;
 			RETURN found
 		END HasFigureSpace;
-		
+
 	BEGIN
 		ASSERT(rd.port # NIL, 100);
 		WITH font: HostFonts.Font DO
@@ -685,7 +684,7 @@ MODULE HostPorts;
 		VAR res, i, a, b, c, n, w, u: INTEGER; p: Port; dc, old: WinApi.HANDLE;
 			df: HostFonts.DevFont; dx: ARRAY 1024 OF INTEGER;
 			s1: ARRAY 1024 OF CHAR; fsp: BOOLEAN;
-		
+
 		PROCEDURE HasFigureSpace (OUT k: INTEGER): BOOLEAN;
 		(* Figure space equal to tabular width of a font.
 		This is equivalent to the digit width of fonts with fixed-width digits *)
@@ -698,7 +697,7 @@ MODULE HostPorts;
 			END;
 			RETURN found
 		END HasFigureSpace;
-		
+
 	BEGIN
 		ASSERT(rd.port # NIL, 100);
 		WITH font: HostFonts.Font DO
@@ -743,7 +742,7 @@ MODULE HostPorts;
 		END;
 		IF p.wnd = 0 THEN res := WinApi.RestoreDC(dc, -1) END
 	END DrawString;
-	
+
 	PROCEDURE (rd: Rider) DrawSpace* (x, y, w: INTEGER; col: Ports.Color; font: Fonts.Font);
 		VAR right, res, u: INTEGER; dx: ARRAY 1 OF INTEGER;
 			p: Port; dc, old: WinApi.HANDLE; df: HostFonts.DevFont;
@@ -766,7 +765,7 @@ MODULE HostPorts;
 		END ;
 		IF p.wnd = 0 THEN res := WinApi.RestoreDC(dc, -1) END
 	END DrawSpace;
-	
+
 	PROCEDURE (rd: Rider) CharIndex* (x, pos: INTEGER; IN s: ARRAY OF CHAR; font: Fonts.Font): INTEGER;
 		VAR res, d, u, i, a, b, c, w, n: INTEGER;
 			df: HostFonts.DevFont; dc: WinApi.HANDLE;
@@ -829,7 +828,7 @@ MODULE HostPorts;
 		END;
 		RETURN x
 	END CharPos;
-	
+
 	PROCEDURE (rd: Rider) SaveRect* (l, t, r, b: INTEGER; VAR res: INTEGER);
 		VAR rs: INTEGER; p: Port;
 	BEGIN
@@ -854,7 +853,7 @@ MODULE HostPorts;
 			END
 		END
 	END SaveRect;
-	
+
 	PROCEDURE (rd: Rider) RestoreRect* (l, t, r, b: INTEGER; dispose: BOOLEAN);
 		VAR res: INTEGER; p: Port; dc: WinApi.HANDLE;
 	BEGIN
@@ -877,7 +876,7 @@ MODULE HostPorts;
 			IF p.wnd = 0 THEN res := WinApi.RestoreDC(dc, -1) END
 		END
 	END RestoreRect;
-	
+
 	PROCEDURE (rd: Rider) CopyFrom* (sdc: WinApi.HANDLE; x, y: INTEGER), NEW;
 		VAR res: INTEGER; p: Port; dc: WinApi.HANDLE;
 	BEGIN
@@ -890,7 +889,7 @@ MODULE HostPorts;
 		res := WinApi.BitBlt(dc, rd.l, rd.t, rd.r - rd.l, rd.b - rd.t, sdc, x, y, copy);
 		IF p.wnd = 0 THEN res := WinApi.RestoreDC(dc, -1) END
 	END CopyFrom;
-	
+
 	PROCEDURE (rd: Rider) DrawBitmap* (bmdc: WinApi.HANDLE; bw, bh, x, y, w, h: INTEGER), NEW;
 		VAR res, u: INTEGER; p: Port; dc: WinApi.HANDLE;
 	BEGIN
@@ -907,7 +906,7 @@ MODULE HostPorts;
 		END;
 		res := WinApi.RestoreDC(dc, -1)
 	END DrawBitmap;
-	
+
 	PROCEDURE (rd: Rider) DrawMetafile* (mf: WinApi.HANDLE; mode, x, y, w, h: INTEGER), NEW;
 		VAR res, oldMode, u: INTEGER; p: Port; dc: WinApi.HANDLE;
 	BEGIN
@@ -927,7 +926,7 @@ MODULE HostPorts;
 		res := WinApi.SetMapMode(dc, oldMode);
 		res := WinApi.RestoreDC(dc, -1)
 	END DrawMetafile;
-	
+
 	PROCEDURE (rd: Rider) FixOrigin*, NEW;
 		VAR p: Port; res: INTEGER;
 	BEGIN
@@ -935,7 +934,7 @@ MODULE HostPorts;
 		res := WinApi.SetBrushOrgEx(p.dc, (rd.dx - p.bx) MOD 8, (rd.dy - p.by) MOD 8, NIL)
 	END FixOrigin;
 
-	
+
 	(** miscellaneous **)
 
 	PROCEDURE ResetColors*;
@@ -949,7 +948,7 @@ MODULE HostPorts;
 		dialogShadowCol := WinApi.GetSysColor(16);
 		dialogLightCol := WinApi.GetSysColor(20);
 	END ResetColors;
-	
+
 	PROCEDURE SetPrinterColors*;
 	BEGIN
 		Ports.background := Ports.white;
@@ -963,12 +962,12 @@ MODULE HostPorts;
 	BEGIN
 		debug := ~debug; noBuffer := debug
 	END ToggleDebug;
-	
+
 	PROCEDURE ToggleBuffer*;
 	BEGIN
 		noBuffer := ~noBuffer
 	END ToggleBuffer;
-	
+
 	PROCEDURE Init;
 		VAR i: INTEGER; instance, bm: WinApi.HANDLE; pat: ARRAY 12 OF SHORTINT;
 	BEGIN
