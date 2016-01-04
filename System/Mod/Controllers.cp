@@ -80,7 +80,7 @@ MODULE Controllers;
 		END;
 
 		TickMsg* = RECORD (Message)
-			tick*: INTEGER	(** IN **)
+			tick*: LONGINT	(** IN **)
 		END;
 
 		MarkMsg* = RECORD (Message)

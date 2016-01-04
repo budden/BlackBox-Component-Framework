@@ -1740,7 +1740,7 @@ MODULE HostWindows;
 		IF (w # NIL) & ~w.trapped THEN
 			w.trapped := TRUE;
 			IF w.frame # NIL THEN
-				tick.tick := WinApi.GetTickCount();
+				tick.tick := Services.Ticks();
 				w.ForwardCtrlMsg(tick)
 			END;
 			w.trapped := FALSE

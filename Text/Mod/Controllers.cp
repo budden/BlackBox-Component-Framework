@@ -275,7 +275,7 @@ MODULE TextControllers;
 
 	(* support for cursor/selection/focus marking *)
 
-	PROCEDURE BlinkCaret (c: StdCtrl; f: Views.Frame; tick: INTEGER);
+	PROCEDURE BlinkCaret (c: StdCtrl; f: Views.Frame; tick: LONGINT);
 		VAR vis: BOOLEAN;
 	BEGIN
 		IF (c.carPos # none) & f.front & (tick >= c.carTick) THEN
