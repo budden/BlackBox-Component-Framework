@@ -248,12 +248,12 @@ MODULE DevCPC486;
 			s1 := s - hint;
 			IF high IN hint THEN s1 := s1 * {0..3} END;
 			IF s1 # {} THEN s := s1 END;
-			IF 0 IN s THEN n := 0
-			ELSIF 2 IN s THEN n := 2
-			ELSIF 1 IN s THEN n := 1
-			ELSIF 3 IN s THEN n := 3
-			ELSIF 6 IN s THEN n := 6
-			ELSE n := 7
+			IF AX IN s THEN n := AX
+			ELSIF DX IN s THEN n := DX
+			ELSIF CX IN s THEN n := CX
+			ELSIF SI IN s THEN n := SI
+			ELSIF DI IN s THEN  n := DI
+			ELSE n := BX (* not used *)
 			END;
 			EXCL(WReg, n);
 			IF n < 4 THEN EXCL(BReg, n); EXCL(BReg, n + 4) END
