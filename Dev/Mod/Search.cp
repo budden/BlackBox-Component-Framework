@@ -19,7 +19,7 @@ MODULE DevSearch;
 
 	CONST
 		N = 32; T = 10;
-		maxPat = 64;
+		maxPat = LEN(TextCmds.find.find);
 		noMatchFoundKey = "#Std:NoMatchFound";
 		locationKey = "#Std:Location";
 		countKey = "#Std:Count";
@@ -66,7 +66,8 @@ MODULE DevSearch;
 	END Find;
 	
 	PROCEDURE List (list: Text; pat: Pattern; source, caseSens: BOOLEAN);
-		VAR a0: TextModels.Attributes; cmd: ARRAY 256 OF CHAR; this, t: Text; max: INTEGER;
+		VAR a0: TextModels.Attributes; this, t: Text; max: INTEGER;
+			cmd: ARRAY maxPat + LEN(t.title) + 50  OF CHAR;
 	BEGIN
 		IF list = NIL THEN
 			Dialog.MapString(noMatchFoundKey, cmd);
@@ -136,6 +137,18 @@ MODULE DevSearch;
 		RETURN NIL
 	END ThisText;
 
+	PROCEDURE GetTitle(IN pat: ARRAY OF CHAR; OUT title: Views.Title);
+		VAR pos: INTEGER; i, j: INTEGER; ch: CHAR;
+	BEGIN
+		title := 'Search for "'; i := LEN(title$); j := 0; ch := pat[0];
+		WHILE (ch # 0X) & (i < LEN(title) - 2) DO
+			IF ch < " " THEN title[i] := " " ELSE title[i] := ch END ; (* replace tabs and line feeds by spaces *)
+			INC(i); INC(j); ch := pat[j]
+		END ;
+		IF ch # 0X THEN title[i - 3] := "."; title[i - 2] := "."; title[i - 1] := "." END ;
+		title[i] := '"'; title[i + 1] := 0X
+	END GetTitle;
+
 	PROCEDURE Search (source, caseSens: BOOLEAN);
 		VAR pat: Pattern; t, log: TextModels.Model; v: Views.View; title: Views.Title; c: Containers.Controller;
 			files: Files.FileInfo; dirs: Files.LocInfo;
@@ -181,7 +194,7 @@ MODULE DevSearch;
 			END;
 			List(list, pat, source, caseSens);
 			v := TextViews.dir.New(log);
-			title := 'Search for "' + pat + '"';
+			GetTitle(pat, title);
 			v(TextViews.View).SetDefaults(NewRuler(), TextViews.dir.defAttr);
 			Views.OpenAux(v, title);
 			c := v(Containers.View).ThisController();
@@ -190,7 +203,7 @@ MODULE DevSearch;
 			Dialog.ShowStatus("")
 		END
 	END Search;
-
+	
 	PROCEDURE SearchInSources*;
 	BEGIN
 		Search(TRUE, TRUE)
