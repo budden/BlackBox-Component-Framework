@@ -559,7 +559,9 @@ MODULE DevCPT;
 		PROCEDURE FPrintHdFld(typ: Struct; fld: Object; adr: INTEGER);	(* modifies pvfp only *)
 			VAR i, j, n: INTEGER; btyp: Struct;
 		BEGIN
-			IF typ.comp = Record THEN FPrintFlds(typ.link, adr, FALSE)
+			IF typ.comp = Record THEN
+				IF typ.BaseTyp # NIL THEN FPrintHdFld(typ.BaseTyp, fld, adr) END ;
+				FPrintFlds(typ.link, adr, FALSE)
 			ELSIF typ.comp = Array THEN btyp := typ.BaseTyp; n := typ.n;
 				WHILE btyp.comp = Array DO n := btyp.n * n; btyp := btyp.BaseTyp END ;
 				IF (btyp.form = Pointer) OR (btyp.comp = Record) THEN
@@ -1224,7 +1226,9 @@ MODULE DevCPT;
 	PROCEDURE OutHdFld(typ: Struct; fld: Object; adr: INTEGER);
 		VAR i, j, n: INTEGER; btyp: Struct;
 	BEGIN
-		IF typ.comp = Record THEN OutFlds(typ.link, adr, FALSE)
+		IF typ.comp = Record THEN
+			IF typ.BaseTyp # NIL THEN OutHdFld(typ.BaseTyp, fld, adr) END ;
+			OutFlds(typ.link, adr, FALSE)
 		ELSIF typ.comp = Array THEN btyp := typ.BaseTyp; n := typ.n;
 			WHILE btyp.comp = Array DO n := btyp.n * n; btyp := btyp.BaseTyp END ;
 			IF (btyp.form = Pointer) OR (btyp.comp = Record) THEN
