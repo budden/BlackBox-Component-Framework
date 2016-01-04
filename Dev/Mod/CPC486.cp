@@ -1151,6 +1151,7 @@ MODULE DevCPC486;
 			END
 		(* largeint support *)
 		| div:
+			IF y.mode # Reg THEN LoadR(y); rev := ~rev END;
 			IF rev THEN DevCPL486.GenFDOp(FDIVR, y) ELSE DevCPL486.GenFDOp(FDIV, y) END;
 			Floor(y, FALSE)
 		| mod:
