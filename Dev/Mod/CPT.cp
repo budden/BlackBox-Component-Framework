@@ -547,6 +547,7 @@ MODULE DevCPT;
 			ELSIF c = Array THEN IdFPrint(btyp); DevCPM.FPrint(idfp, btyp.idfp); DevCPM.FPrint(idfp, typ.n)
 			ELSIF f = ProcTyp THEN FPrintSign(idfp, btyp, typ.link)
 			END ;
+			IF typ.sysflag # 0 THEN DevCPM.FPrint(idfp, typ.sysflag) END;
 			typ.idfp := idfp
 		END
 	END IdFPrint;
@@ -626,7 +627,6 @@ MODULE DevCPT;
 	BEGIN
 		IF ~typ.fpdone THEN
 			IdFPrint(typ); pbfp := typ.idfp;
-			IF typ.sysflag # 0 THEN DevCPM.FPrint(pbfp, typ.sysflag) END;
 			IF typ.ext # NIL THEN FPrintName(pbfp, typ.ext^) END;
 			IF typ.attribute # 0 THEN DevCPM.FPrint(pbfp, typ.attribute) END;
 			pvfp := pbfp; typ.pbfp := pbfp; typ.pvfp := pvfp;	(* initial fprints may be used recursively *)
