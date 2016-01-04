@@ -893,7 +893,7 @@ MODULE DevCPB;
 				END ;
 				z.typ := DevCPT.booltyp
 			| adr: (*ADR*)
-				IF z.class = Nproc THEN
+				IF (z.class = Nproc) & (z.obj.mode # CProc) THEN
 					IF z.obj.mnolev > 0 THEN err(73)
 					ELSIF z.obj.mode = LProc THEN z.obj.mode := XProc
 					END;
