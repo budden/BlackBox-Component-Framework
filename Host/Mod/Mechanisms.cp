@@ -736,7 +736,7 @@ MODULE HostMechanisms;
 				IF ~enabled[j] THEN
 					res := WinApi.EnableMenuItem(menu, 32000 + j, WinApi.MF_GRAYED)
 				ELSIF checked[j] THEN
-					res := WinApi.CheckMenuItem(menu, 32000 + j, WinApi.MF_GRAYED)
+					res := WinApi.CheckMenuItem(menu, 32000 + j, WinApi.MF_CHECKED)
 				END
 			END;
 			INC(j)
