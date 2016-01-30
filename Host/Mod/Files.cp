@@ -148,7 +148,7 @@ MODULE HostFiles;
 			END
 (*
 			IF (cha = chb)
-				OR ~caseSens & (CAP(cha) = CAP(chb)) & (CAP(cha) >= "A") & ((CAP(cha) <= "Z") OR (cha >= "À"))
+				OR ~caseSens & (CAP(cha) = CAP(chb)) & (CAP(cha) >= "A") & ((CAP(cha) <= "Z") OR (cha >= "Ã€"))
 				OR ((cha = "/") OR (cha = "\")) & ((chb = "/") OR (chb = "\")) THEN	(* ok *)
 			ELSE RETURN 1
 			END
@@ -1164,7 +1164,7 @@ MODULE HostFiles;
 		IF (ch = "'") OR (ch = '"') THEN tch := ch; INC(i); ch := p[i] END;
 		WHILE (ch >= " ") & (ch # tch) DO
 			name[j] := ch;
-			IF (ch >= "a") & (ch <= "z") OR (ch >= "à") & (ch <= "ö") OR (ch >= "ø") & (ch <= "þ") THEN ch := CAP(ch)
+			IF (ch >= "a") & (ch <= "z") OR (ch >= "Ã ") & (ch <= "Ã¶") OR (ch >= "Ã¸") & (ch <= "Ã¾") THEN ch := CAP(ch)
 			ELSIF ch = "-" THEN ch := "/"
 			END;
 			opt[j] := ch; INC(j); INC(i); ch := p[i]

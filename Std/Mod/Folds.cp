@@ -749,7 +749,7 @@ MODULE StdFolds;
 			IF font.IsAlien() THEN DefaultAppearance
 			ELSE
 				leftExp := ">"; rightExp := "<";
-				leftColl := "»"; rightColl := "«";
+				leftColl := "Â»"; rightColl := "Â«";
 				coloredBackg := TRUE
 			END
 		ELSE

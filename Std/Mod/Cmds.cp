@@ -477,8 +477,8 @@ MODULE StdCmds;
 		REPEAT
 			key[j] := ch; INC(j); lch := ch; INC(i); ch := name[i]
 		UNTIL (ch = 0X) OR (ch = ".")
-			OR ((ch >= "A") & (ch <= "Z") OR (ch >= "À") & (ch # "×") & (ch <= "Þ"))
-				& ((lch < "A") OR (lch > "Z") & (lch < "À") OR (lch = "×") OR (lch > "Þ"));
+			OR ((ch >= "A") & (ch <= "Z") OR (ch >= "Ã€") & (ch # "Ã—") & (ch <= "Ãž"))
+				& ((lch < "A") OR (lch > "Z") & (lch < "Ã€") OR (lch = "Ã—") OR (lch > "Ãž"));
 		IF ch = "." THEN
 			key := "#System:" + name
 		ELSE

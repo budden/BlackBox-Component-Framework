@@ -70,7 +70,7 @@ MODULE ObxCalc;
 				END
 			END;
 			v.editMode := FALSE
-		ELSIF k = 18 THEN  (* ± *) 
+		ELSIF k = 18 THEN  (* Â± *)
 			s.val := - s.val
 		ELSIF k = 16THEN (* delete *)
 			IF v.editMode THEN s.val := s.val DIV 10
@@ -210,5 +210,5 @@ MODULE ObxCalc;
 
 BEGIN 
 	font := Fonts.dir.This("Courier", 11 * Fonts.point, {}, Fonts.normal);
-	labels := "sp÷/789*456-123+C0±^"
+	labels := "spÃ·/789*456-123+C0Â±^"
 END  ObxCalc.
