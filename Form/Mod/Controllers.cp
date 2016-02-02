@@ -7,7 +7,9 @@ MODULE FormControllers;
 	copyright	= "System/Rsrc/About"
 	license	= "Docu/BB-License"
 	purpose	= ""
-	changes	= ""
+	changes	= "
+	- 20080904, mf, StdController.IsSelected: conformance with contract improved
+	"
 	issues	= ""
 
 **)

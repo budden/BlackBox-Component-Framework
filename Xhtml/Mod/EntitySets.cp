@@ -9,7 +9,9 @@ MODULE XhtmlEntitySets;
 		    http://www.w3.org/TR/xhtml1/DTD/HTMLspecialx.ent,
 		    http://www.w3.org/TR/xhtml1/DTD/HTMLsymbolx.ent"
 	license	= "Docu/BB-License"
-	changes	= ""
+	changes	= "
+	- 20050811, mf (reported by Helmut Zinn), procedure MapCharToEntity: changed "ch <= 039D6X" to "ch <= 03D6X"
+	"
 	issues	= ""
 
 **)

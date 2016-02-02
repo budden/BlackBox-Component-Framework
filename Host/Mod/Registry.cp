@@ -6,7 +6,10 @@ MODULE HostRegistry;
 	version	= "System/Rsrc/About"
 	copyright	= "System/Rsrc/About"
 	license	= "Docu/BB-License"
-	changes	= ""
+	changes	= "
+	- 20070130, bh, Unicode support
+	- 20070510, mf, WriteString: call to RegSetValueW corrected
+	"
 	issues	= ""
 
 **)

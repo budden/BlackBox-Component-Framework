@@ -6,7 +6,9 @@ MODULE StdInterpreter;
 	version	= "System/Rsrc/About"
 	copyright	= "System/Rsrc/About"
 	license	= "Docu/BB-License"
-	changes	= ""
+	changes	= "
+	- 20070209, bh, general command signatures
+	"
 	issues	= ""
 
 **)

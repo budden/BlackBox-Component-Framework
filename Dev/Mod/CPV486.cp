@@ -7,7 +7,10 @@ MODULE DevCPV486;
 	copyright	= "System/Rsrc/About"
 	license	= "Docu/BB-License"
 	references	= "ftp://ftp.inf.ethz.ch/pub/software/Oberon/OberonV4/Docu/OP2.Paper.ps"
-	changes	= ""
+	changes	= "
+	- 20070216, bh, expr call in CaseStat corrected
+	- 20070307, bh, pop in Dim corrected
+	"
 	issues	= ""
 
 **)

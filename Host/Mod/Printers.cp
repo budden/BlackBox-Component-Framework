@@ -6,7 +6,11 @@ MODULE HostPrinters;
 	version	= "System/Rsrc/About"
 	copyright	= "System/Rsrc/About"
 	license	= "Docu/BB-License"
-	changes	= ""
+	changes	= "
+	- 20060316, jt, support for nested pairs of OpenJob/CloseJob
+	- 20070131, bh, Unicode support
+	- 20070327, bh, SetOrientation added
+	"
 	issues	= ""
 
 **)

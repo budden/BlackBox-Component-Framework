@@ -6,7 +6,15 @@ MODULE HostWindows;
 	version	= "System/Rsrc/About"
 	copyright	= "System/Rsrc/About"
 	license	= "Docu/BB-License"
-	changes	= ""
+	changes	= "
+	- 20060531, ai, Updated GetThisWindow to allow parameter p = NIL
+	- 20060608, ai, Updated WMPaint processing to RETURN 0
+	- 20070131, bh, Unicode support
+	- 20070205, bh, Win32s handling removed
+	- 20070209, bh, Windows character mapping removed
+	- 20070210, jt, hookDocWinHandler added
+	- 20070308, bh, handling of minimized windows corrected
+	"
 	issues	= ""
 
 **)

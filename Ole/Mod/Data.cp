@@ -6,7 +6,10 @@ MODULE OleData;
 	version	= "System/Rsrc/About"
 	copyright	= "System/Rsrc/About"
 	license	= "Docu/BB-License"
-	changes	= ""
+	changes	= "
+	- 20061012, ai, Updated procedures MemFile.NewReader and MemFile.NewWriter to reuse existing riders
+	- 20070130, bh, Unicode support
+	"
 	issues	= ""
 
 **)

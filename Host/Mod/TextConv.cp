@@ -6,7 +6,11 @@ MODULE HostTextConv;
 	version	= "System/Rsrc/About"
 	copyright	= "System/Rsrc/About"
 	license	= "Docu/BB-License"
-	changes	= ""
+	changes	= "
+	- 20060905, ai, fixed trap upon copying an empty text view to the clipboard
+	- 20070201, bh, Unicode support
+	- 20070213, bh, improved paragraph handling in ParseRichText
+	"
 	issues	= ""
 
 **)

@@ -7,7 +7,9 @@ MODULE XhtmlTextTableMarkers;
 	copyright	= "System/Rsrc/About"
 	license	= "Docu/BB-License"
 	changes	= ""
-	issues	= ""
+	issues	= "
+	- see View.HandleCtrMsg
+	"
 
 **)
 

@@ -7,7 +7,11 @@ MODULE DevCPE;
 	copyright	= "System/Rsrc/About"
 	license	= "Docu/BB-License"
 	references	= "ftp://ftp.inf.ethz.ch/pub/software/Oberon/OberonV4/Docu/OP2.Paper.ps"
-	changes	= ""
+	changes	= "
+	- 20070123, bh, support for signatures added
+	- 20070816, bh, ProcTyp inserted in base type handling in PrepDesc
+	- 20080202, bh, Real comparison corrected in AllocConst (proposed by Robert Campbell)
+	"
 	issues	= ""
 
 **)

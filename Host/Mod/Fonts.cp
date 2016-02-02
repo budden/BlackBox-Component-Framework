@@ -6,7 +6,11 @@ MODULE HostFonts;
 	version	= "System/Rsrc/About"
 	copyright	= "System/Rsrc/About"
 	license	= "Docu/BB-License"
-	changes	= ""
+	changes	= "
+	- 20070130, bh, Unicode support
+	- 20070827, bh, improved short character handling in Font.*Tab
+	- 20070827, bh, DevFont.wTab added
+	"
 	issues	= ""
 
 **)

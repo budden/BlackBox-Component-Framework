@@ -6,7 +6,10 @@ MODULE WinSql ["ODBC32.dll"];
 	version	= "System/Rsrc/About"
 	copyright	= "System/Rsrc/About"
 	license	= "Docu/BB-License"
-	changes	= ""
+	changes	= "
+	- 20080227, wb, Constants for ODBC 3.0 added
+	- 20080309, wb, SQLGetConnectAttr added
+	"
 	issues	= ""
 
 **)

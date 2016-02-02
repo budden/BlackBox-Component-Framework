@@ -6,7 +6,10 @@ MODULE StdApi;
 	version	= "System/Rsrc/About"
 	copyright	= "System/Rsrc/About"
 	license	= "Docu/BB-License"
-	changes	= ""
+	changes	= "
+	- 20070430, mf, OpenBrowser: allowDuplicates parameter set to FALSE in call to StdDialog.Open
+	- 20080317, mf, OpenBrowser: allowDuplicates parameter set to TRUE in call to StdDialog.Open
+	"
 	issues	= ""
 
 **)

@@ -6,7 +6,9 @@ MODULE DevProfiler;
 	version	= "System/Rsrc/About"
 	copyright	= "System/Rsrc/About"
 	license	= "Docu/BB-License"
-	changes	= ""
+	changes	= "
+	- 20070523, ie, ShowProfile: calculation of samples in profiled modules corrected
+	"
 	issues	= ""
 
 **)

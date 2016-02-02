@@ -6,8 +6,9 @@ MODULE SqlDB;
 	version	= "System/Rsrc/About"
 	copyright	= "System/Rsrc/About"
 	license	= "Docu/BB-License"
-	changes	= ""
-	issues	= ""
+	changes	= "
+	- 20070414, mf, Compile: expansion of 'native' designators corrected
+	"
 
 **)
 	

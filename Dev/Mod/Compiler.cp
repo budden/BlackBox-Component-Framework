@@ -7,8 +7,9 @@ MODULE DevCompiler;
 	copyright	= "System/Rsrc/About"
 	license	= "Docu/BB-License"
 	references	= "ftp://ftp.inf.ethz.ch/pub/software/Oberon/OberonV4/Docu/OP2.Paper.ps"
-	changes	= ""
-	issues	= ""
+	changes	= "
+	- 20070123, bh, signatures added to defopt
+	"
 
 **)
 

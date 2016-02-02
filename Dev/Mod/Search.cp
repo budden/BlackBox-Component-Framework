@@ -6,7 +6,9 @@ MODULE DevSearch;
 	version	= "System/Rsrc/About"
 	copyright	= "System/Rsrc/About"
 	license	= "Docu/BB-License"
-	changes	= ""
+	changes	= "
+	- 20070307, bh, caseSens handling in Find corrected
+	"
 	issues	= ""
 
 **)

@@ -6,7 +6,12 @@ MODULE HostMenus;
 	version	= "System/Rsrc/About"
 	copyright	= "System/Rsrc/About"
 	license	= "Docu/BB-License"
-	changes	= ""
+	changes	= "
+	- 20060315, jt, hookApplWinHandler introduced
+	- 20061225, ai, Added UpdateType to fix bug in PopupMenu
+	- 20070201, bh, Unicode support
+	- 20070205, bh, Win32s handling removed
+	"
 	issues	= ""
 
 **)

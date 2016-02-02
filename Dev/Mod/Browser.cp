@@ -6,7 +6,10 @@ MODULE DevBrowser;
 	version	= "System/Rsrc/About"
 	copyright	= "System/Rsrc/About"
 	license	= "Docu/BB-License"
-	changes	= ""
+	changes	= "
+	- 20070123, bh, StringConst changed to show Unicode strings
+	- 20070123, bh, ProcSysFlag call in Structure (sysflags for procedure types)
+	"
 	issues	= ""
 
 **)

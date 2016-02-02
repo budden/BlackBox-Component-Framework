@@ -6,8 +6,24 @@ MODULE SqlOdbc;
 	version	= "System/Rsrc/About"
 	copyright	= "System/Rsrc/About"
 	license	= "Docu/BB-License"
-	changes	= ""
-	issues	= ""
+	changes	= "
+	- 20050714, mf, Check, case WinSql.SQL_ERROR:
+			IF (d # NIL) & d.showErr THEN
+		instead of
+			IF ((d # NIL) & d.showErr) OR (state # "01004") THEN
+	- 20070205, bh, Unicode support
+	"
+	issues	= "
+	- Should rowcount and/or SetMode be lifted into the SqlDB interface?
+	- If ODBC returns a string with undefined length, how should this be handled?
+	- Can the import of HostWindows be eliminated?
+	- What should be done if SQLExtendedFetch doesn't support the necessary options?
+	- t.ReadName/ReadBlob/ReadType/ReadVarString have OUT parameters that prevent string recycling.
+	  What's better: leave it as it is, and thus give the garbage collector more work to do; or use VAR
+	  parameters for optimization, with the danger that a variable taken out of an interactor may change unexpectedly?
+	- For async queries running in parallel, do we need a separate connection for every table,
+	  to avoid reentrance problems?
+	"
 
 **)
 

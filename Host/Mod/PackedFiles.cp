@@ -6,7 +6,9 @@ MODULE HostPackedFiles;
 	version	= "System/Rsrc/About"
 	copyright	= "System/Rsrc/About"
 	license	= "Docu/BB-License"
-	changes	= ""
+	changes	= "
+	- 20080829, mf, PackedDirectory.Old: success/error handling corrected
+	"
 	issues	= ""
 
 **)

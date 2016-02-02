@@ -7,7 +7,9 @@ MODULE DevCPS;
 	copyright	= "System/Rsrc/About"
 	license	= "Docu/BB-License"
 	references	= "ftp://ftp.inf.ethz.ch/pub/software/Oberon/OberonV4/Docu/OP2.Paper.ps"
-	changes	= ""
+	changes	= "
+	- 20070123, bh, lstr added & Str changed (Unicode support)
+	"
 	issues	= ""
 
 **)

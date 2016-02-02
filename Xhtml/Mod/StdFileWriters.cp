@@ -6,7 +6,10 @@ MODULE XhtmlStdFileWriters;
 	version	= "System/Rsrc/About"
 	copyright	= "System/Rsrc/About"
 	license	= "Docu/BB-License"
-	changes	= ""
+	changes	= "
+	- 20050811, mf (reported by Helmut Zinn), procedure New text declaration corrected: "<?xml" instead of "<? xml"
+	- 20050811, mf (reported by Helmut Zinn), procedure Writer.DocType handling of public identifiers corrected
+	"
 	issues	= ""
 
 **)

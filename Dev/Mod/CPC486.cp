@@ -7,7 +7,10 @@ MODULE DevCPC486;
 	copyright	= "System/Rsrc/About"
 	license	= "Docu/BB-License"
 	references	= "ftp://ftp.inf.ethz.ch/pub/software/Oberon/OberonV4/Docu/OP2.Paper.ps"
-	changes	= ""
+	changes	= "
+	- 20070123, bh, ccall support for procedure variable calls
+	- 20070409, bh, OUT pointer initialization in empty procedures
+	"
 	issues	= ""
 
 **)

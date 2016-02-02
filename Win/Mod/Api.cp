@@ -6,7 +6,11 @@ MODULE WinApi ["KERNEL32.dll"];
 	version	= "System/Rsrc/About"
 	copyright	= "System/Rsrc/About"
 	license	= "Docu/BB-License"
-	changes	= ""
+	changes	= "
+	- 20070130, bh, RtlUnwind added
+	- 20070130, bh, EnumFont callbacks corrected added
+	- 20070510, mf, RegSetValueExW corrected
+	"
 	issues	= ""
 
 **)

@@ -6,7 +6,9 @@ MODULE Converters;
 	version	= "System/Rsrc/About"
 	copyright	= "System/Rsrc/About"
 	license	= "Docu/BB-License"
-	changes	= ""
+	changes	= "
+	- 20071109, bh, Converter search in Import corrected
+	"
 	issues	= ""
 
 **)

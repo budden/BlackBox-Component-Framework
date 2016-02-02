@@ -7,7 +7,13 @@ MODULE DevCPM;
 	copyright	= "System/Rsrc/About"
 	license	= "Docu/BB-License"
 	references	= "ftp://ftp.inf.ethz.ch/pub/software/Oberon/OberonV4/Docu/OP2.Paper.ps"
-	changes	= ""
+	changes	= "
+	- 20070123, bh, GetL added (Unicode support)
+	- 20070123, bh, MaxStruct increased
+	- 20070123, bh, support for procedure type sysflags
+	- 20070224, bh, fingerprints changed to CRC32
+	- 20080208, bh, file checksum for symbol files
+	"
 	issues	= ""
 
 **)

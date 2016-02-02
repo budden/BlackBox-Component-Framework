@@ -6,7 +6,9 @@ MODULE DevAnalyzer;
 	version	= "System/Rsrc/About"
 	copyright	= "System/Rsrc/About"
 	license	= "Docu/BB-License"
-	changes	= ""
+	changes	= "
+	- 20070123, bh, NewString call changed (Unicode support)
+	"
 	issues	= ""
 
 **)
@@ -2241,4 +2243,5 @@ SEPARATOR
 	"Analyze"	"="	"DevAnalyzer.Analyze"	"TextCmds.FocusGuard"
 	"Analyze Selection"	""	"DevAnalyzer.AnalyzeSelection"	"TextCmds.SelectionGuard"
 	"Analyze..."	""	"StdCmds.OpenToolDialog('Dev/Rsrc/Analyzer', 'Analyze')"	""
+
 

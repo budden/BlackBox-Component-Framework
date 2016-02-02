@@ -6,7 +6,11 @@ MODULE HostDialog;
 	version	= "System/Rsrc/About"
 	copyright	= "System/Rsrc/About"
 	license	= "Docu/BB-License"
-	changes	= ""
+	changes	= "
+	- 20070130, bh, new Windows versions
+	- 20070131, bh, Unicode support
+	- 20070319, bh, page orientation added to page setup dialog
+	"
 	issues	= ""
 
 **)
@@ -375,7 +379,11 @@ MODULE HostDialog;
 	END GetIntSpec;
 
 	PROCEDURE [2] HookProc (wnd: WinApi.HANDLE; msg, wParam, lParam: INTEGER): INTEGER;
-	(* 06.11.02. not needed anymore.  *)
+	(* 06.11.02. not needed anymore. 
+
+		For earlier Windows versions, this procedure was supposed to transfer the file-type from
+		the "Save as type" control to the "File name" control. But since Windows 98, it seems neither
+		to work properly nor to be need anymore. *)
 		VAR i, j: INTEGER; s: ARRAY 256 OF CHAR; t: ARRAY 8 OF CHAR; edit: WinApi.HANDLE;
 	BEGIN
 		IF (msg = WinApi.WM_COMMAND) & (lParam # 0) & (wParam = 10470H) THEN

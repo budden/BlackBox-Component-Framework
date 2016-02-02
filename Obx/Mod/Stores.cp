@@ -6,7 +6,9 @@ MODULE ObxStores;
 	version	= "System/Rsrc/About"
 	copyright	= "System/Rsrc/About"
 	license	= "Docu/BB-License"
-	changes	= ""
+	changes	= "
+	- 20080905, dd, Node.CopyFrom: case (source.a = NIL) corrected
+	"
 	issues	= ""
 
 **)

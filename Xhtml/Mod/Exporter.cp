@@ -7,7 +7,16 @@ MODULE XhtmlExporter;
 	copyright	= "System/Rsrc/About"
 	license	= "Docu/BB-License"
 	changes	= ""
-	issues	= ""
+	issues	= "
+	- bug: rd.ReadChar sometimes returns attr = NIL for a character!?
+	- may em occur outside of p (as now in table fields)?
+	- may br only/not occur inside of p?
+	- where does the document name come from?
+	- how should unknown view types be handled (extensible translator framework)?
+	- how can the BlackBox converter mechanism be extended to handle complex documents, which must be converted
+	   to entire subdirectories?
+	- should symbolic font sizes (-1..-8) be introduced, for a direct match with HTML?
+	"
 
 **)
 

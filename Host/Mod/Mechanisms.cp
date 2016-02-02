@@ -6,7 +6,9 @@ MODULE HostMechanisms;
 	version	= "System/Rsrc/About"
 	copyright	= "System/Rsrc/About"
 	license	= "Docu/BB-License"
-	changes	= ""
+	changes	= "
+	- 20070131, bh, Unicode support
+	"
 	issues	= ""
 
 **)

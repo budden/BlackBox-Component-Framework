@@ -6,7 +6,9 @@ MODULE DevCommanders;
 	version	= "System/Rsrc/About"
 	copyright	= "System/Rsrc/About"
 	license	= "Docu/BB-License"
-	changes	= ""
+	changes	= "
+	- 20061112, ai, fixed EndView.Restore for partial updates
+	"
 	issues	= ""
 
 **)

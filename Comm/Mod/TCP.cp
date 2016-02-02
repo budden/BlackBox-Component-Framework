@@ -7,7 +7,9 @@ MODULE CommTCP;
 	copyright	= "System/Rsrc/About"
 	license	= "Docu/BB-License"
 	references	= "see the CommStreams documentation for details on the semantics of this driver module"
-	changes	= ""
+	changes	= "
+	- 20070130, bh, Winsock replaced by WinNet
+	"
 	issues	= ""
 
 **)

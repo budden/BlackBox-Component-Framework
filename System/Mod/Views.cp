@@ -7,7 +7,9 @@ MODULE Views;
 	copyright	= "System/Rsrc/About"
 	license	= "Docu/BB-License"
 	changes	= ""
-	issues	= ""
+	issues	= "
+	- fundamentally, using purely host-specific area-invalidation would be better, but that would be major change
+	"
 
 **)
 

@@ -6,7 +6,9 @@ MODULE TextRulers;
 	version	= "System/Rsrc/About"
 	copyright	= "System/Rsrc/About"
 	license	= "Docu/BB-License"
-	changes	= ""
+	changes	= "
+	- 20080904, et, Precondition check 21 in SetDir corrected
+	"
 	issues	= ""
 
 **)
@@ -568,6 +570,144 @@ MODULE TextRulers;
 	(** ruler construction **)
 
 (*property-based facade procedures *)
+(*
+	PROCEDURE SetFirst* (p: Prop; x: INTEGER);
+	BEGIN
+		ASSERT(p # NIL, 20);
+		INCL(p.valid, first); p.first := x
+	END SetFirst;
+
+	PROCEDURE SetLeft* (p: Prop; x: INTEGER);
+	BEGIN
+		ASSERT(p # NIL, 20);
+		INCL(p.valid, left); p.left := x
+	END SetLeft;
+
+	PROCEDURE SetRight* (p: Prop; x: INTEGER);
+	BEGIN
+		ASSERT(p # NIL, 20);
+		INCL(p.valid, right); p.right := x
+	END SetRight;
+
+	PROCEDURE SetFixedRight* (p: Prop; x: INTEGER);
+	BEGIN
+		ASSERT(p # NIL, 20);
+		INCL(p.valid, right); p.right := x;
+		INCL(p.valid, opts); INCL(p.opts.mask, rightFixed); INCL(p.opts.val, rightFixed)
+	END SetFixedRight;
+
+
+	PROCEDURE SetLead* (p: Prop; h: INTEGER);
+	BEGIN
+		ASSERT(p # NIL, 20);
+		INCL(p.valid, lead); p.lead := h
+	END SetLead;
+
+	PROCEDURE SetAsc* (p: Prop; h: INTEGER);
+	BEGIN
+		ASSERT(p # NIL, 20);
+		INCL(p.valid, asc); p.asc := h
+	END SetAsc;
+
+	PROCEDURE SetDsc* (p: Prop; h: INTEGER);
+	BEGIN
+		ASSERT(p # NIL, 20);
+		INCL(p.valid, dsc); p.dsc := h
+	END SetDsc;
+
+	PROCEDURE SetGrid* (p: Prop; h: INTEGER);
+	BEGIN
+		ASSERT(p # NIL, 20);
+		INCL(p.valid, grid); p.grid := h
+	END SetGrid;
+
+
+	PROCEDURE SetLeftFlush* (p: Prop);
+	BEGIN
+		ASSERT(p # NIL, 20);
+		INCL(p.valid, opts);
+		p.opts.mask := p.opts.mask + {leftAdjust, rightAdjust};
+		p.opts.val := p.opts.val + {leftAdjust} - {rightAdjust}
+	END SetLeftFlush;
+
+	PROCEDURE SetRightFlush* (p: Prop);
+	BEGIN
+		ASSERT(p # NIL, 20);
+		INCL(p.valid, opts);
+		p.opts.mask := p.opts.mask + {leftAdjust, rightAdjust};
+		p.opts.val := p.opts.val - {leftAdjust} + {rightAdjust}
+	END SetRightFlush;
+
+	PROCEDURE SetCentered* (p: Prop);
+	BEGIN
+		ASSERT(p # NIL, 20);
+		INCL(p.valid, opts);
+		p.opts.mask := p.opts.mask + {leftAdjust, rightAdjust};
+		p.opts.val := p.opts.val - {leftAdjust, rightAdjust}
+	END SetCentered;
+
+	PROCEDURE SetJustified* (p: Prop);
+	BEGIN
+		ASSERT(p # NIL, 20);
+		INCL(p.valid, opts);
+		p.opts.mask := p.opts.mask + {leftAdjust, rightAdjust};
+		p.opts.val := p.opts.val + {leftAdjust, rightAdjust}
+	END SetJustified;
+
+
+	PROCEDURE SetNoBreakInside* (p: Prop);
+	BEGIN
+		ASSERT(p # NIL, 20);
+		INCL(p.valid, opts);
+		INCL(p.opts.mask, noBreakInside); INCL(p.opts.val, noBreakInside)
+	END SetNoBreakInside;
+
+	PROCEDURE SetPageBreak* (p: Prop);
+	BEGIN
+		ASSERT(p # NIL, 20);
+		INCL(p.valid, opts);
+		INCL(p.opts.mask, pageBreak); INCL(p.opts.val, pageBreak)
+	END SetPageBreak;
+
+	PROCEDURE SetParJoin* (p: Prop);
+	BEGIN
+		ASSERT(p # NIL, 20);
+		INCL(p.valid, opts);
+		INCL(p.opts.mask, parJoin); INCL(p.opts.val, parJoin)
+	END SetParJoin;
+
+
+	PROCEDURE AddTab* (p: Prop; x: INTEGER);
+		VAR i: INTEGER;
+	BEGIN
+		ASSERT(p # NIL, 20); i := p.tabs.len; ASSERT(i > 0, 21);
+		ASSERT((i = 0) OR (p.tabs.tab[i - 1].stop < x), 22);
+		INCL(p.valid, tabs);
+		p.tabs.tab[i].stop := x; p.tabs.tab[i].type := {};
+		p.tabs.len := i + 1
+	END AddTab;
+
+	PROCEDURE MakeCenterTab* (p: Prop);
+		VAR i: INTEGER;
+	BEGIN
+		ASSERT(p # NIL, 20); i := p.tabs.len; ASSERT(i > 0, 21);
+		p.tabs.tab[i - 1].type := p.tabs.tab[i - 1].type + {centerTab} - {rightTab}
+	END MakeCenterTab;
+
+	PROCEDURE MakeRightTab* (p: Prop);
+		VAR i: INTEGER;
+	BEGIN
+		ASSERT(p # NIL, 20); i := p.tabs.len; ASSERT(i > 0, 21);
+		p.tabs.tab[i - 1].type := p.tabs.tab[i - 1].type - {centerTab} + {rightTab}
+	END MakeRightTab;
+
+	PROCEDURE MakeBarTab* (p: Prop);
+		VAR i: INTEGER;
+	BEGIN
+		ASSERT(p # NIL, 20); i := p.tabs.len; ASSERT(i > 0, 21);
+		p.tabs.tab[i - 1].type := p.tabs.tab[i - 1].type + {barTab}
+	END MakeBarTab;
+*)
 
 	PROCEDURE SetFirst* (r: Ruler; x: INTEGER);
 	BEGIN

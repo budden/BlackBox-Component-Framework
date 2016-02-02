@@ -6,7 +6,16 @@ MODULE Kernel;
 	version	= "System/Rsrc/About"
 	copyright	= "System/Rsrc/About"
 	license	= "Docu/BB-License"
-	changes	= ""
+	changes	= "
+	- 20070123, bh, Beep using MessageBeep
+	- 20070125, bh, Support for procedure signatures added
+	- 20070130, bh, KERNEL32 & USER32 eliminated
+	- 20070220, bh, comSig eliminated
+	- 20070307, bh, improved Ctrl-Break handling
+	- 20070308, bh, check for unloaded module in ExecFinalizer
+	- 20080107, bh, full GC included in NewBlock
+	- 20080107, bh, pointer anchoring bug corrected in NewRec & NewArr
+	"
 	issues	= ""
 
 **)
@@ -2084,3 +2093,4 @@ CLOSE
 		Quit(0)
 	END
 END Kernel.
+

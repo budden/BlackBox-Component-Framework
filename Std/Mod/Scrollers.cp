@@ -6,7 +6,9 @@ MODULE StdScrollers;
 	version	= "System/Rsrc/About"
 	copyright	= "System/Rsrc/About"
 	license	= "Docu/BB-License"
-	changes	= ""
+	changes	= "
+	- 20050715, mf, corrections in InnerFrame and its clients
+	"
 	issues	= ""
 
 **)

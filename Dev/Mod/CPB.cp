@@ -7,7 +7,13 @@ MODULE DevCPB;
 	copyright	= "System/Rsrc/About"
 	license	= "Docu/BB-License"
 	references	= "ftp://ftp.inf.ethz.ch/pub/software/Oberon/OberonV4/Docu/OP2.Paper.ps"
-	changes	= ""
+	changes	= "
+	- 20070123, bh, NewString changed (Unicode support)
+	- 20070123, bh, CheckAssign changed to check procedure type sysflags
+	- 20070307, bh, added char to string conversion in LEN handling
+	- 20070300, bh, x.obj := NIL in ConstOp
+	- 20080202, bh, Real constant operations corrected (proposed by Robert Campbell)
+	"
 	issues	= ""
 
 **)

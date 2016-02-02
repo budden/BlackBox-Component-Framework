@@ -6,7 +6,11 @@ MODULE Dialog;
 	version	= "System/Rsrc/About"
 	copyright	= "System/Rsrc/About"
 	license	= "Docu/BB-License"
-	changes	= ""
+	changes	= "
+	- 20050718, mf, additional Update procedures
+	- 20070129, bh, Unicode string mapping
+	- 20070130, bh, new windows versions
+	"
 	issues	= ""
 
 **)

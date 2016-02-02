@@ -223,4 +223,3 @@ MODULE ObxFldCtrls;
 END ObxFldCtrls.
 
 "ObxFldCtrls.Deposit; StdCmds.PasteView"
-

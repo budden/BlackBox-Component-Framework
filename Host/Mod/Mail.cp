@@ -6,8 +6,14 @@ MODULE HostMail;
 	version	= "System/Rsrc/About"
 	copyright	= "System/Rsrc/About"
 	license	= "Docu/BB-License"
-	changes	= ""
-	issues	= ""
+	changes	= "
+	- 20070201, bh, Unicode support
+	"
+	issues	= "
+	- it is intended that CheckDll is called inside the procedures SendNote/SendDocument and not in the guards.
+	There were suspicious/unsolvable problems with these calls (under Windows 3.11) which lead to nasty
+	error messages. As a consequence, the menu items are always enabled before they are executed for	the first time.
+	"
 
 **)
 				

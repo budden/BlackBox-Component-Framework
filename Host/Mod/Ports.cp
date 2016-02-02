@@ -6,7 +6,14 @@ MODULE HostPorts;
 	version	= "System/Rsrc/About"
 	copyright	= "System/Rsrc/About"
 	license	= "Docu/BB-License"
-	changes	= ""
+	changes	= "
+	- 20060325, mc, Rider.Input changed for the benefit of background task response.
+	- 20060903, ai, call to ValidateRect from Port.CloseBuffer to fix painting bug deleted
+	- 20060915, ai, call to UpdateWindow in Rider.Input to fix ScrollWhileTracking painting bug added
+	- 20070130, bh, Unicode support
+	- 20070205, bh, Win32s handling removed
+	- 20070827, bh, improved width and figureSpace handling in long string ops
+	"
 	issues	= ""
 
 **)

@@ -7,7 +7,11 @@ MODULE DevCPP;
 	copyright	= "System/Rsrc/About"
 	license	= "Docu/BB-License"
 	references	= "ftp://ftp.inf.ethz.ch/pub/software/Oberon/OberonV4/Docu/OP2.Paper.ps"
-	changes	= ""
+	changes	= "
+	- 20070123, bh, NewString call changed (Unicode support)
+	- 20070123, bh, support for procedure type sysflags
+	- 20070308, bh, longint excluded as case labels
+	"
 	issues	= ""
 
 **)

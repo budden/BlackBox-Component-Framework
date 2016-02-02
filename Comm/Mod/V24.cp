@@ -6,8 +6,13 @@ MODULE CommV24;
 	version	= "System/Rsrc/About"
 	copyright	= "System/Rsrc/About"
 	license	= "Docu/BB-License"
-	changes	= ""
-	issues	= ""
+	changes	= "
+	- 20070205, bh, Unicode support
+	"
+	issues	= "
+	- this module was not decomposed into two modules, like CommStreams/CommTCP;
+	for better consistency, this should be corrected
+	"
 
 **)
 

@@ -150,4 +150,3 @@ MODULE ObxCtrls;
 END ObxCtrls.
 
 "ObxCtrls.Deposit; StdCmds.PasteView"
-

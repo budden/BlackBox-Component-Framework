@@ -7,7 +7,12 @@ MODULE DevCPT;
 	copyright	= "System/Rsrc/About"
 	license	= "Docu/BB-License"
 	references	= "ftp://ftp.inf.ethz.ch/pub/software/Oberon/OberonV4/Docu/OP2.Paper.ps"
-	changes	= ""
+	changes	= "
+	- 20070123, bh, support for preocedure type sysflags
+	- 20070307, bh, Extends corrected for untagged records
+	- 20080208, bh, file checksum for symbol files
+	- 20080213, bh, pvfp and pbfp calculation in FPrintStr corrected
+	"
 	issues	= ""
 
 **)

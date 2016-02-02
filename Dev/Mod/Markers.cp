@@ -6,7 +6,9 @@ MODULE DevMarkers;
 	version	= "System/Rsrc/About"
 	copyright	= "System/Rsrc/About"
 	license	= "Docu/BB-License"
-	changes	= ""
+	changes	= "
+	- 20070301, bh, helper strings enlarged to 1024 characters
+	"
 	issues	= ""
 
 **)

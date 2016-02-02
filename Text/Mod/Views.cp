@@ -6,7 +6,9 @@ MODULE TextViews;
 	version	= "System/Rsrc/About"
 	copyright	= "System/Rsrc/About"
 	license	= "Docu/BB-License"
-	changes	= ""
+	changes	= "
+	- 20070820, bh, TextSetters.Reader.sString, cache.short, cache.sbuf, & CacheSString eliminated
+	"
 	issues	= ""
 
 **)

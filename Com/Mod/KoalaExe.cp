@@ -6,7 +6,9 @@ MODULE ComKoalaExe;
 	version	= "System/Rsrc/About"
 	copyright	= "System/Rsrc/About"
 	license	= "Docu/BB-License"
-	changes	= ""
+	changes	= "
+	- 20070205, bh, Unicode support
+	"
 	issues	= ""
 
 **)

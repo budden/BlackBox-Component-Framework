@@ -6,7 +6,11 @@ MODULE HostCFrames;
 	version	= "System/Rsrc/About"
 	copyright	= "System/Rsrc/About"
 	license	= "Docu/BB-License"
-	changes	= ""
+	changes	= "
+	- 20060407, mf, ListBox.DblClickOk: case f.sorted handled
+	- 20070131, bh, Unicode support
+	- 20070209, bh, Euro handling removed
+	"
 	issues	= ""
 
 **)
