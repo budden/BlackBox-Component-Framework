@@ -6,7 +6,10 @@ MODULE DevSelectors;
 	version	= "System/Rsrc/About"
 	copyright	= "System/Rsrc/About"
 	license	= "Docu/BB-License"
-	changes	= ""
+	changes	= "
+	- 20120530, Oleg-N-Cher, Fixed error hat occurs when saving a document after copying of a selector.
+			The error was found by Eugene Temirgaleev.
+	"
 	issues	= ""
 
 **)
@@ -318,11 +321,13 @@ MODULE DevSelectors;
 			selector.position := source.position;
 			IF source.leftHidden # NIL THEN
 				selector.leftHidden := TextModels.CloneOf(source.leftHidden);
-				selector.leftHidden.InsertCopy(0, source.leftHidden, 0, source.leftHidden.Length())
+				selector.leftHidden.InsertCopy(0, source.leftHidden, 0, source.leftHidden.Length());
+				Stores.Join(selector, selector.leftHidden)
 			END;
 			IF source.rightHidden # NIL THEN
 				selector.rightHidden := TextModels.CloneOf(source.rightHidden);
-				selector.rightHidden.InsertCopy(0, source.rightHidden, 0, source.rightHidden.Length())
+				selector.rightHidden.InsertCopy(0, source.rightHidden, 0, source.rightHidden.Length());
+				Stores.Join(selector, selector.rightHidden)
 			END
 		END
 	END CopyFromSimpleView;

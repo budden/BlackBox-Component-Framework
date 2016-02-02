@@ -14,6 +14,7 @@ MODULE HostWindows;
 	- 20070209, bh, Windows character mapping removed
 	- 20070210, jt, hookDocWinHandler added
 	- 20070308, bh, handling of minimized windows corrected
+	- 20080119, bh, handling of minimized windows corrected
 	"
 	issues	= ""
 

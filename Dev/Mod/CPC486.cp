@@ -10,6 +10,7 @@ MODULE DevCPC486;
 	changes	= "
 	- 20070123, bh, ccall support for procedure variable calls
 	- 20070409, bh, OUT pointer initialization in empty procedures
+	- 20091228, bh, corrections for S.VAL(LONGINT, real) in Convert & ConvMove
 	"
 	issues	= ""
 
@@ -879,6 +880,10 @@ MODULE DevCPC486;
 					IF y.mode = Reg THEN Free(y);
 						IF (m # Stk) & (m # Undef) & (m # Reg) & (f >= Int32) THEN
 							x.form := y.form; DevCPL486.GenFStore(x, TRUE); x.form := f
+						ELSIF y.form = Real64 THEN	(* S.VAL(LONGINT, real) *)
+							ASSERT((m = Undef) & (f = Int64));
+							DecStack(y.form); y.mode := Stk; DevCPL486.GenFStore(y, TRUE); y.form := Int64;
+							Pop(y, y.form, hint, stop)
 						ELSE
 							ASSERT(y.form # Real64);
 							DecStack(y.form); y.mode := Stk; DevCPL486.GenFStore(y, TRUE); y.form := Int32;
@@ -1029,10 +1034,8 @@ MODULE DevCPC486;
 		ASSERT(x.mode # Con);
 		IF (size >= 0)
 			& ((size # x.typ.size) & ((size > 4) OR (x.typ.size > 4))
-				OR (f IN {Comp, Real64, Int64}) & (x.mode IN {Reg, Stk})) THEN DevCPM.err(220) END;
-(*
-		IF sysval & ((x.form = Real64) & ~(f IN {Comp, Int64}) OR (f = Real64) & ~(x.form  IN {Comp, Int64})) THEN DevCPM.err(220) END;
-*)
+				OR (f IN {Comp, Real64}) & (x.mode IN {Reg, Stk})
+				OR (f  = Int64) & (x.mode = Stk)) THEN DevCPM.err(220) END;
 		y.mode := Undef; y.form := f; ConvMove(y, x, size >= 0, hint, stop)
 	END Convert;
 
@@ -1526,7 +1529,10 @@ lx	:= LONG(SHORT(ly))	y b+	y w*	x w	*
 	PROCEDURE MulDim* (VAR y, z: DevCPL486.Item; VAR fact: INTEGER; dimtyp: DevCPT.Struct);	(* z := z * y *)
 		VAR c: DevCPL486.Item;
 	BEGIN
-		IF y.mode = Con THEN fact := fact * y.offset
+		IF y.mode = Con THEN
+			IF y.offset <= MAX(INTEGER) DIV fact THEN fact := fact * y.offset
+			ELSE fact := 1; DevCPM.err(214)
+			END
 		ELSE
 			IF ranchk OR inxchk THEN
 				DevCPL486.MakeConst(c, 0, Int32); DevCPL486.GenComp(c, y); DevCPL486.GenAssert(ccG, ranTrap)
@@ -2157,6 +2163,7 @@ lx	:= LONG(SHORT(ly))	y b+	y w*	x w	*
 				DevCPL486.GenPush(fp);
 				DevCPL486.GenMove(sp, fp);
 				adr := proc.conval.intval2; size := -adr;
+				IF size < 0 THEN DevCPM.err(214); size := 256 END;
 				IF isGuarded IN proc.conval.setval THEN
 					DevCPL486.MakeReg(r, BX, Pointer); DevCPL486.GenPush(r);
 					DevCPL486.MakeReg(r, DI, Pointer); DevCPL486.GenPush(r);

@@ -15,6 +15,10 @@ MODULE Kernel;
 	- 20070308, bh, check for unloaded module in ExecFinalizer
 	- 20080107, bh, full GC included in NewBlock
 	- 20080107, bh, pointer anchoring bug corrected in NewRec & NewArr
+	- 20120822, bh, mf, checks for integer overflow in NewArr and NewBlock
+	- 20120906, luowy, deallocate cluster only if dllMem
+	- 20120906, luowy, correction in free list initialization
+	- 20130824, luowy, additional (b = NIL) checks in NewBlock
 	"
 	issues	= ""
 
@@ -22,7 +26,7 @@ MODULE Kernel;
 
 	(* green color means COM-specific code *)
 
-	IMPORT S := SYSTEM, COM, WinApi, WinOle;	
+	IMPORT S := SYSTEM, COM, WinApi, WinOle;
 
 	CONST
 		strictStackSweep = TRUE;
@@ -113,7 +117,7 @@ MODULE Kernel;
 			num-: INTEGER;	(* number of entries *)
 			obj-: ARRAY any OF ObjDesc	(* array of any length *)
 		END;
-		
+
 		Signature* = POINTER TO RECORD [untagged]
 			retStruct-: Type;	(* id of basic type or pointer to typedesc or 0 *)
 			num-: INTEGER;	(* number of parameters *)
@@ -155,7 +159,7 @@ MODULE Kernel;
 
 		Hook* = POINTER TO ABSTRACT RECORD END;
 
-		LoaderHook* = POINTER TO ABSTRACT RECORD (Hook) 
+		LoaderHook* = POINTER TO ABSTRACT RECORD (Hook)
 			res*: INTEGER;
 			importing*, imported*, object*: ARRAY 256 OF CHAR
 		END;
@@ -178,7 +182,7 @@ MODULE Kernel;
 		Cluster = POINTER TO RECORD [untagged]
 			size: INTEGER;	(* total size *)
 			next: Cluster;
-			max: INTEGER
+			max: INTEGER	(* exe: reserved size, dll: original address *)
 			(* start of first block *)
 		END;
 
@@ -222,7 +226,7 @@ MODULE Kernel;
 
 
 		(* Exception handling *)
-		
+
 		ExcpFramePtr* = POINTER TO ExcpFrame;
 		ExcpFrame* = EXTENSIBLE RECORD [untagged]
 			link*: ExcpFramePtr;
@@ -309,7 +313,7 @@ MODULE Kernel;
 
 	(* code procedure for memory erase *)
 
-	PROCEDURE [code] Erase (adr, words: INTEGER)	
+	PROCEDURE [code] Erase (adr, words: INTEGER)
 		089H, 0C7H,	(* MOV EDI, EAX *)
 		031H, 0C0H,	(* XOR EAX, EAX *)
 		059H,			(* POP ECX *)
@@ -371,7 +375,7 @@ MODULE Kernel;
 		0C2H, 004H, 000H;
 
 	PROCEDURE [code] RELEASE
-	(*	
+	(*
 		MOV	ECX,[ESP,4]
 		MOV	EAX,[ECX,8]
 		OR	EAX,EAX
@@ -534,7 +538,7 @@ MODULE Kernel;
 		CONST N = 262144;
 		VAR adr, s: INTEGER;
 	BEGIN
-		ASSERT(size >= c.size, 100); 
+		ASSERT(size >= c.size, 100);
 		IF size <= c.max THEN
 			s := (size + (N - 1)) DIV N * N;
 			adr := WinApi.VirtualAlloc(S.VAL(INTEGER, c), s, {12}, {6});	(* commit; exec, read, write *)
@@ -750,7 +754,9 @@ MODULE Kernel;
 	PROCEDURE NewArr* (eltyp, nofelem, nofdim: INTEGER): INTEGER;	(* impl. of NEW(ptr, dim0, dim1, ...) *)
 		VAR b: Block; size, headSize: INTEGER; t: Type; fin: BOOLEAN; l: FList;
 	BEGIN
-		headSize := 4 * nofdim + 12; fin := FALSE;
+		IF (nofdim < 0) OR (nofdim > (MAX(INTEGER) - 12) DIV 4) THEN RETURN 0 END;
+		headSize := 4 * nofdim + 12;
+		fin := FALSE;
 		CASE eltyp OF
 		| -1: eltyp := S.ADR(IntPtrType); fin := TRUE
 		| 0: eltyp := S.ADR(PtrType)
@@ -770,6 +776,8 @@ MODULE Kernel;
 			IF ODD(eltyp) THEN DEC(eltyp); fin := TRUE END
 		END;
 		t := S.VAL(Type, eltyp);
+		ASSERT(t.size > 0, 100);
+		IF (nofelem < 0) OR (nofelem > (MAX(INTEGER) - headSize) DIV t.size) THEN RETURN 0 END;
 		size := headSize + nofelem * t.size;
 		b := NewBlock(size);
 		IF b = NIL THEN RETURN 0 END;
@@ -948,7 +956,7 @@ MODULE Kernel;
 		VAR i, n: INTEGER;
 	BEGIN
 		i := 0; n := mod.export.num;
-		WHILE (i < n) & (mod.export.obj[i].id DIV 256 = 0) DO 
+		WHILE (i < n) & (mod.export.obj[i].id DIV 256 = 0) DO
 			IF mod.export.obj[i].offs = fprint THEN RETURN S.VAL(Object, S.ADR(mod.export.obj[i])) END;
 			INC(i)
 		END;
@@ -1069,23 +1077,23 @@ MODULE Kernel;
 		END
 	END UnloadMod;
 
-	(* -------------------- dynamic procedure call  --------------------- *)	(* COMPILER DEPENDENT *)
+	(* -------------------- dynamic procedure call --------------------- *)	(* COMPILER DEPENDENT *)
 
 	PROCEDURE [1] PUSH (p: INTEGER) 050H;	(* push AX *)
 	PROCEDURE [1] CALL (a: INTEGER) 0FFH, 0D0H;	(* call AX *)
 	PROCEDURE [1] RETI (): LONGINT;
 	PROCEDURE [1] RETR (): REAL;
-	
+
 	(*
-		type				par
+		type			par
 		32 bit scalar	value
 		64 bit scalar	low hi
 		var scalar		address
 		record			address tag
-		array			  address size
-		open array	   address length .. length
+		array			address size
+		open array	    address length .. length
 	*)
-	
+
 	PROCEDURE Call* (adr: INTEGER; sig: Signature; IN par: ARRAY OF INTEGER; n: INTEGER): LONGINT;
 		VAR p, kind, sp, size: INTEGER; typ: Type; r: REAL;
 	BEGIN
@@ -1129,7 +1137,7 @@ MODULE Kernel;
 			CALL(adr);
 			RETURN S.VAL(INTEGER, SHORT(RETR()))	(* return value in fpu register *)
 		ELSIF S.VAL(INTEGER, sig.retStruct) = 8 THEN	(* real *)
-			CALL(adr); r := RETR(); 
+			CALL(adr); r := RETR();
 			RETURN S.VAL(LONGINT, r)	(* return value in fpu register *)
 		ELSE
 			CALL(adr);
@@ -1201,7 +1209,7 @@ MODULE Kernel;
 			WHILE (ch > 0X) & (ch < 0FCX) DO
 				INC(ad, ORD(ch)); INC(ref); RefNum(ref, d);
 				IF ad > codePos THEN RETURN pos END;
-				INC(pos, d); S.GET(ref, ch) 
+				INC(pos, d); S.GET(ref, ch)
 			END;
 			IF ch = 0FCX THEN INC(ref); RefNum(ref, d); RefName(ref, name); S.GET(ref, ch) END;
 			WHILE ch >= 0FDX DO	(* skip variables *)
@@ -1298,7 +1306,7 @@ MODULE Kernel;
 		END
 	END MarkGlobals;
 
-(*  This is the specification for the code procedure following below:
+(* This is the specification for the code procedure following below:
 
 	PROCEDURE Next (b: Block): Block;	(* next block in same cluster *)
 		VAR size: INTEGER;
@@ -1494,7 +1502,8 @@ MODULE Kernel;
 				END;
 				blk := next
 			END;
-			IF dealloc & (S.VAL(INTEGER, fblk) = S.VAL(INTEGER, cluster) + 12) THEN	(* deallocate cluster *)
+			IF dealloc & dllMem
+					& (S.VAL(INTEGER, fblk) = S.VAL(INTEGER, cluster) + 12) THEN	(* deallocate cluster *)
 				c := cluster; cluster := cluster.next;
 				IF last = NIL THEN root := cluster ELSE last.next := cluster END;
 				FreeHeapMem(c)
@@ -1525,7 +1534,7 @@ MODULE Kernel;
 			CallFinalizers
 		END
 	END Collect;
-	
+
 	PROCEDURE FastCollect*;
 	BEGIN
 		IF root # NIL THEN
@@ -1580,6 +1589,8 @@ MODULE Kernel;
 	PROCEDURE NewBlock (size: INTEGER): Block;
 		VAR tsize, a, s: INTEGER; b: FreeBlock; new, c: Cluster; r: Reducer;
 	BEGIN
+		ASSERT(size >= 0, 20);
+		IF size > MAX(INTEGER) - 19 THEN RETURN NIL END;
 		tsize := (size + 19) DIV 16 * 16;
 		b := OldBlock(tsize);	(* 1) search for free block *)
 		IF b = NIL THEN
@@ -1609,33 +1620,41 @@ MODULE Kernel;
 				IF b = NIL THEN
 					Collect; b := OldBlock(tsize);	(* 2a) fully collect *)
 				END;
-				IF (b = NIL) & (HeapFull(tsize)) & (reducers # NIL) THEN	(* 3) little space => reduce once *)
+				IF (b = NIL) & HeapFull(tsize) & (reducers # NIL) THEN	(* 3) little space => reduce once *)
 					r := reducers; reducers := NIL;
 					WHILE r # NIL DO r.Reduce(FALSE); r := r.next END;
 					Collect
 				END;
-				s := 3 * (allocated + tsize) DIV 2;
-				a := 12 + (root.size - 12) DIV 16 * 16;
-				IF s <= total THEN
-					b := OldBlock(tsize);
-					IF b = NIL THEN s := a + tsize END
-				ELSIF s < a + tsize THEN
-					s := a + tsize
-				END;
-				IF total < s THEN	(* 4) enlarge heap *)
-					GrowHeapMem(s, root);
-					IF root.size >= s THEN
-						b := LastBlock(S.VAL(INTEGER, root) + a);
-						IF b # NIL THEN
-							b.size := (root.size - a + b.size + 4) DIV 16 * 16 - 4
-						ELSE
-							b := S.VAL(FreeBlock, S.VAL(INTEGER, root) + a);
-							b.size := (root.size - a) DIV 16 * 16 - 4
+				IF b = NIL THEN
+					IF tsize <= MAX(INTEGER) DIV 3 * 2 - allocated THEN
+						s := (tsize + allocated) DIV 2 * 3
+					ELSIF tsize <= root.max - allocated THEN
+						s := root.max
+					ELSE
+						RETURN NIL
+					END;
+					a := 12 + (root.size - 12) DIV 16 * 16;
+					IF s <= total THEN
+						b := OldBlock(tsize);
+						IF b = NIL THEN s := a + tsize END
+					ELSIF s < a + tsize THEN
+						s := a + tsize
+					END;
+					IF (b = NIL) & (total < s) THEN	(* 4) enlarge heap *)
+						GrowHeapMem(s, root);
+						IF root.size >= s THEN
+							b := LastBlock(S.VAL(INTEGER, root) + a);
+							IF b # NIL THEN
+								b.size := (root.size - a + b.size + 4) DIV 16 * 16 - 4
+							ELSE
+								b := S.VAL(FreeBlock, S.VAL(INTEGER, root) + a);
+								b.size := (root.size - a) DIV 16 * 16 - 4
+							END
+						ELSIF reducers # NIL THEN	(* 5) no space => fully reduce *)
+							r := reducers; reducers := NIL;
+							WHILE r # NIL DO r.Reduce(TRUE); r := r.next END;
+							Collect
 						END
-					ELSIF reducers # NIL THEN	(* 5) no space => fully reduce *)
-						r := reducers; reducers := NIL;
-						WHILE r # NIL DO r.Reduce(TRUE); r := r.next END;
-						Collect
 					END
 				END;
 				IF b = NIL THEN
@@ -1823,7 +1842,7 @@ MODULE Kernel;
 		(* Label: *)
 		PopFP
 	END Unwind;
-	
+
 	PROCEDURE TrapHandler (excpRec: WinApi.PtrEXCEPTION_RECORD; estFrame: ExcpFramePtr;
 											context: WinApi.PtrCONTEXT; dispCont: INTEGER): INTEGER;
 		(* same parameter size as Try *)
@@ -2062,7 +2081,8 @@ MODULE Kernel;
 			i := MIN(N - 1, (root.size - 12) DIV 16 - 1);
 			free[i] := S.VAL(FreeBlock, S.VAL(INTEGER, root) + 12);
 			free[i].next := sentinel;
-			free[i].size := (root.size - 12) DIV 16 * 16 - 4
+			free[i].size := (root.size - 12) DIV 16 * 16 - 4;
+			free[i].tag:=S.VAL(Type, S.ADR(free[i].size))
 		END;
 
 		res := WinOle.OleInitialize(0);
@@ -2093,4 +2113,3 @@ CLOSE
 		Quit(0)
 	END
 END Kernel.
-
