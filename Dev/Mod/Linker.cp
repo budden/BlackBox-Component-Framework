@@ -7,6 +7,9 @@ MODULE DevLinker;
 	copyright	= "System/Rsrc/About"
 	license	= "Docu/BB-License"
 	changes	= "
+	- 19960518, bh, static linker
+	- 20000831, bh, exported variables in CollectExports
+	- 20001101, bh, ?
 	- 20070123, bh, support for more general resource files
 	- 20120531, BdT, changes for correction of Microsoft AppLocker problem
 	"

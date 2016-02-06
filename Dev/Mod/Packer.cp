@@ -7,6 +7,10 @@ MODULE DevPacker;
 	copyright	= "System/Rsrc/About"
 	license	= "Docu/BB-License"
 	changes	= "
+	- 20001020, bj, Changed so that comma is not needed as separator in input list and so that "=>" is understood.
+	- 20001024, bj, Changed syntax and added ListLoadedModules
+	- 20010119, bj, Corrected ReadPath to stop when the end of the command is reached.
+	- 20011114, bj, Changed the parser to use a TextModels.Reader instead of a TextMappers.Scanner.
 	- 20070402, bh, SplitName corrected
 	"
 	issues	= ""

@@ -7,6 +7,23 @@ MODULE DevBrowser;
 	copyright	= "System/Rsrc/About"
 	license	= "Docu/BB-License"
 	changes	= "
+	- 19950925, bh, COM support
+	- 19951212, bh, anypointer, anyrecord, longchar, & largeint support
+	- 19960222, bh, COM support adapted
+	- 19960305, bh, open ruler
+	- 19960416, bh, underscores
+	- 19960424, cas, changed option handling
+	- 19960610, bh, correction in GetQualident
+	- 19960710, bh, OPM.Close
+	- 19960724, bh, AliasType corrected
+	- 19961015, bh, TypName changed
+	- 19970129, bh, codefile browser
+	- 19981209, dg, hook interfaces (extensions of Kernel.Hook) and hook installations procedures are only shown if &-Option is provided
+	- 19990203, dg, clientinterface and extensioninterface interfaces
+	- 20000829, dg, bugfix in PutSelection
+	- 20001002, bj, Fixed Init so it reads the correct file.
+	- 20001010, bj, Change Init and SaveOptions to work with the registry instead of a file
+	- 20001111, cas/bh, ?
 	- 20070123, bh, StringConst changed to show Unicode strings
 	- 20070123, bh, ProcSysFlag call in Structure (sysflags for procedure types)
 	"

@@ -7,7 +7,10 @@ MODULE DevCPH;
 	copyright	= "System/Rsrc/About"
 	license	= "Docu/BB-License"
 	references	= "ftp://ftp.inf.ethz.ch/pub/software/Oberon/OberonV4/Docu/OP2.Paper.ps"
-	changes	= ""
+	changes	= "
+	- 19981023, bh, Convert corrected (wrong LONGINT constants)
+	- 19991014, bh, int mul/div added
+	"
 	issues	= ""
 
 **)

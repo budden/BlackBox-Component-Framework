@@ -6,7 +6,11 @@ MODULE DevInspector;
 	version	= "System/Rsrc/About"
 	copyright	= "System/Rsrc/About"
 	license	= "Docu/BB-License"
-	changes	= ""
+	changes	= "
+	- 19981011, dg, call of MakeViewVisible in GetNext
+	- 19981027, dg, changes due to changed Controllers.SetCurrentPath/ResetCurrentPath 
+	- 19990923, dg, extended length of labels from 40 to 256 chars
+	"
 	issues	= ""
 
 **)

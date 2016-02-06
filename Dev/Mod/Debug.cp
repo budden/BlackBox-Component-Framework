@@ -7,6 +7,30 @@ MODULE DevDebug;
 	copyright	= "System/Rsrc/About"
 	license	= "Docu/BB-License"
 	changes	= "
+	- 19951212, bh, anyrecord, anypointer, longchar, & largeint support
+	- 19960101, bh, trap 125 = obsolete
+	- 19960104, bh, ShowInterfaceRecords
+	- 19960116, bh, new constants for types
+	- 19960117, bh, folds for records & arrays
+	- 19960117, bh, Update buttons
+	- 19960118, ?, array handling redesigned
+	- 19960120, ?, ShowHeapObject apapted to new Kernel
+	- 19960121, ?, Update with links
+	- 19960223, ?, characters with leading "0"
+	- 19960229, bh, guid & result types
+	- 19960501, ?, custom rulers for mac
+	- 19960512, bh, descriptors for untagged structures
+	- 19960808, bh, Unload ignores comments before MODULE
+	- 19980710, bh, correct LONGINT values for big endiam machines (ShowVar)
+	- 19981001, dg, mapping of error messages over string resources
+	- 19981202, dg, changes due to renaming of Views.CopyFrom => Views.CopyFromSimpleView
+	- 19990104, dg, changed references to Controllers.Controller to Containers.Controller
+	- 19990303, dg, changed Kernel.ThisMod => Kernel.ThisLoadedMod
+	- 19990303, dg, changed Loader.ThisMod => Kernel.ThisMod and eliminated import of Loader
+	- 20000718, bj, added procedures UnloadList and UnloadThis
+	- 20000816, bh, ShowVar corrected (nan handling)
+	- 20010220, cp/bh, ?
+	- 20010220, ww, Changed IsIdent to accept also idents starting with an "Umlaut"
 	- 20070123, bh, WriteString, ShowArray, & ShowVar changed (Unicode support)
 	"
 	issues	= ""

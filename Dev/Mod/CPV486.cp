@@ -8,6 +8,23 @@ MODULE DevCPV486;
 	license	= "Docu/BB-License"
 	references	= "ftp://ftp.inf.ethz.ch/pub/software/Oberon/OberonV4/Docu/OP2.Paper.ps"
 	changes	= "
+	- 19931203, bh, ?
+	- 19940907, bh, ?
+	- 19950925, bh, COM support
+	- 19951010, bh, return with jumps
+	- 19951206, bh, COM support changed
+	- 19951209, bh, longchar & largeint support
+	- 19960221, bh, [new] & [iid] handling
+	- 19960528, bh, union support
+	- 19970107, bh, Checkpc calls chaged
+	- 19971217, bh, Java frontend extensions
+	- 19990831, bh, oveflow check in TypeSize
+	- 19991123, cp, correction in CompStat (two assertions eliminated, according to bh)
+	- 20000430, bh, correction in Dim
+	- 20001027, bh, error for untagged arrays in Parameters
+	- 20010208, bh, nil tests for var par & receiver (ActualPar)
+	- 20010208, bh, FPU control register handling (CheckFpu, procs, Module)
+	- 20010208, bh, check for wrong extensions (EnumTProcs, CountTProcs)
 	- 20070216, bh, expr call in CaseStat corrected
 	- 20070307, bh, pop in Dim corrected
 	"

@@ -6,7 +6,17 @@ MODULE DevMsgSpy;
 	version	= "System/Rsrc/About"
 	copyright	= "System/Rsrc/About"
 	license	= "Docu/BB-License"
-	changes	= ""
+	changes	= "
+	- 19980312, dg, ?
+	- 19980924, dg, CheckGuard Action eliminated (there is one in module Controls)
+	- 19980924, dg, support for efficient bitmapscrolling for wrapped view
+	- 19981027, dg, changes due to changed Controllers.SetCurrentPath/ResetCurrentPath 
+	- 19981107, dg, View.InitFrom: changed shallow to deep copy in case that inner view has no model
+	- 19981124, dg, Domains 2000
+	- 19981125, dg, InitFrom => CopyFromModelView
+	- 19981202, dg, changes due to renaming of Views.CopyFrom => Views.CopyFromSimpleView
+	- 19981209, dg, StdDialog.Open instead of Sequencers.Open
+	"
 	issues	= ""
 
 **)

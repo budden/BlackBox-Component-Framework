@@ -8,6 +8,32 @@ MODULE DevCPB;
 	license	= "Docu/BB-License"
 	references	= "ftp://ftp.inf.ethz.ch/pub/software/Oberon/OberonV4/Docu/OP2.Paper.ps"
 	changes	= "
+	- 19940616, bh, ?
+	- 19950925, bh, COM support
+	- 19951206, bh, COM functions
+	- 19951208, bh, longchar & largeint support
+	- 19951212, bh, alias structures
+	- 19951226, bh, largeint via longreal
+	- 19960221, bh, [new] flag handling
+	- 19960327, bh, NEW(ptrInterface, ptrInterface)
+	- 19960328, bh, CheckAssign corrected
+	- 19960509, bh, assignment compatibility for guid constants
+	- 19960703, bh, Convert corrected for largeint constants
+	- 19960905, bh, CheckAssign: string to open array assign allowed
+	- 19960905, bh, CheckAssign: ptr to array of T compatible to ptr to array of T
+	- 19960905, bh, Param: ptr to array of T compatible to VAR ptr to array of T
+	- 19960905, bh, Deref, Index, Field, TypTest: expressions allowed
+	- 19960910, bh, AssignString added for optimal string assignment
+	- 19990308, bh, fixed compiler bug (ORD({1}) in case statement lead to problem in Loader.Fixup
+	- 19990825, bh, open arrays allowed in SYSTEM.VAL (StdPar0, StdPar1)
+	- 19990825, bh, string expressions allowed for IN parameters (Param, CheckBuffering)
+	- 19990902, bh, check for obsolete oberon types (CheckOldType, StPar0)
+	- 19991122, bh, CheckLeaf in Param
+	- 20000316, bh, bug in Convert fixed (string compare)
+	- 20001027, bh, StrDeref added in GetMaxLength for untagged arrays
+	- 20010313, bh, Contravariant use of OUT parameters prohibited
+	- 20010601, bh, parameter test for MIN & MAX in StFct corrected
+	- 20020207, bh, test for type expressions in Param
 	- 20070123, bh, NewString changed (Unicode support)
 	- 20070123, bh, CheckAssign changed to check procedure type sysflags
 	- 20070307, bh, added char to string conversion in LEN handling
@@ -17,6 +43,8 @@ MODULE DevCPB;
 	issues	= ""
 
 **)
+
+	(* RC 6.3.89 / 24.5.93 / 17.2.94 *)
 
 	IMPORT DevCPT, DevCPM;
 

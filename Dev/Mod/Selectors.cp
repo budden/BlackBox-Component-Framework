@@ -7,6 +7,8 @@ MODULE DevSelectors;
 	copyright	= "System/Rsrc/About"
 	license	= "Docu/BB-License"
 	changes	= "
+	- 19981202, dg, changes due to renaming of Views.CopyFrom => Views.CopyFromSimpleView
+	- 20000721, bh, ?
 	- 20120530, Oleg-N-Cher, Fixed error hat occurs when saving a document after copying of a selector.
 			The error was found by Eugene Temirgaleev.
 	"

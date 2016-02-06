@@ -8,6 +8,9 @@ MODULE DevCPM;
 	license	= "Docu/BB-License"
 	references	= "ftp://ftp.inf.ethz.ch/pub/software/Oberon/OberonV4/Docu/OP2.Paper.ps"
 	changes	= "
+	- 19990415, KHU, Changes marked red.
+	- 19991105, mf, interface changes
+	- 20010302, ww, [nil] permitted for VAR param in ShowWrapper to disable new NIL test by compiler.
 	- 20070123, bh, GetL added (Unicode support)
 	- 20070123, bh, MaxStruct increased
 	- 20070123, bh, support for procedure type sysflags

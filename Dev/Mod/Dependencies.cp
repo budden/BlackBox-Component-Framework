@@ -6,7 +6,15 @@ MODULE DevDependencies;
 	version	= "System/Rsrc/About"
 	copyright	= "System/Rsrc/About"
 	license	= "Docu/BB-License"
-	changes	= ""
+	changes	= "
+	- 20001023, bj, Changed Deposit so that a view is deposited even if no modules where found 
+	- 20001023, bj, Changed the linking command to reflect changes in HostPackedFiles 
+	- 20001024, bj, Changed CreateTool to reflect changes in DevPacker syntax
+	- 20001214, bj, Added a Kernel.Collect to StartAnalysis to free all file handles of the object files which were read
+	- 20010323, bj, CreateTool: Added folds, added root list, implicit imports written gray. Check added to DependencyList
+	- 20010329, bj, Bugfix in MarkImplicitModules
+	- 20010422, ww, Removed call to Kernel.Collect again (added on 14.12.00) after correction of Kernel
+	"
 	issues	= ""
 
 **)

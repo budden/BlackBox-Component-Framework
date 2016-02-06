@@ -9,6 +9,25 @@ MODULE DevCPC486;
 	license	= "Docu/BB-License"
 	references	= "ftp://ftp.inf.ethz.ch/pub/software/Oberon/OberonV4/Docu/OP2.Paper.ps"
 	changes	= "
+	- 19940907, bh, ?
+	- 19950925, bh, COM support
+	- 19950930, bh, pointer init corrected
+	- 19951206, bh, COM support changed
+	- 19951209, bh, lonchar & largeint support
+	- 19960116, bh, interface ptr marks in NEW
+	- 19960120, bh, new kernel type in NEW
+	- 19960220, bh, exception handling in interface procs
+	- 19960522, bh, NEW of tagged  array of untagged record allowed
+	- 19971217, bh, Java frontend extensions
+	- 19980726, bh, correction in Param (receiver type)
+	- 19990127, bh, fixed bug in Oberon compiler (handling of EXTENSIBLE records)
+	- 19990828, bh, initialization of local variables (Enter & Param)
+	- 19990831, bh, correction in Index fixed bug in Index reported by W. Braun (p.p[i].e[k])*)
+	- 20000505, bh, correction in LoadLong
+	- 20000911, bh, correction in Push (pushing of temporary LONGINT values)
+	- 20001027, bh, correction in Param (do not push length for untagged arrays)
+	- 20010208, bh, FPU control register handling (InitFpu, Call, Enter)
+	- 20010208, bh, nil tests for var par & receiver (PushAdr, Param)
 	- 20070123, bh, ccall support for procedure variable calls
 	- 20070409, bh, OUT pointer initialization in empty procedures
 	- 20091228, bh, corrections for S.VAL(LONGINT, real) in Convert & ConvMove

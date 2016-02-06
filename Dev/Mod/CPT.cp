@@ -8,6 +8,19 @@ MODULE DevCPT;
 	license	= "Docu/BB-License"
 	references	= "ftp://ftp.inf.ethz.ch/pub/software/Oberon/OberonV4/Docu/OP2.Paper.ps"
 	changes	= "
+	- 19940907, bh, ?
+	- 19950827, bh, neg exported sys flags for objects
+	- 19950904, bh, sys strings for modules & procedures
+	- 19950925, bh, COM support
+	- 19951128, bh, sysstrings for types, indirect interface import
+	- 19951206, bh, MODULE COM
+	- 19951206, bh, LONGCHAR, LARGEINT, ANYRECORD, ANYPOINTER
+	- 19951207, bh, sym file version 1 (changed FirstRef)
+	- 19951212, bh, alias structures
+	- 19960805, bh, report only 20 sym file changes
+	- 19970115, bh, IN and OUT parameters
+	- 19980710, ?, LONGINT write bug corrected in OutConstant
+	- 20010208, bh, Component Pascal version
 	- 20070123, bh, support for preocedure type sysflags
 	- 20070307, bh, Extends corrected for untagged records
 	- 20080208, bh, file checksum for symbol files
@@ -16,6 +29,8 @@ MODULE DevCPT;
 	issues	= ""
 
 **)
+
+	(* NW, RC 6.3.89 / 24.2.94 *)
 
 	IMPORT DevCPM;
 

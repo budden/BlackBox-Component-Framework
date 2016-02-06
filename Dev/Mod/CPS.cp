@@ -8,11 +8,19 @@ MODULE DevCPS;
 	license	= "Docu/BB-License"
 	references	= "ftp://ftp.inf.ethz.ch/pub/software/Oberon/OberonV4/Docu/OP2.Paper.ps"
 	changes	= "
+	- 19950925, bh, COM support
+	- 19960102, bh, longchar & largeint support
+	- 19960508, bh, largeint const with "L"
+	- 19960508, bh, guid consts removed
+	- 19970128, bh, longer names and dynamic strings
+	- 19981030, bh, Component Pascal version
 	- 20070123, bh, lstr added & Str changed (Unicode support)
 	"
 	issues	= ""
 
 **)
+
+	(* NW, RC 6.3.89 / 18.10.92 *)
 
 	IMPORT SYSTEM, Math, DevCPM, DevCPT;
 	

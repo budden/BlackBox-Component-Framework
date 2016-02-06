@@ -6,7 +6,9 @@ MODULE DevLinkChk;
 	version	= "System/Rsrc/About"
 	copyright	= "System/Rsrc/About"
 	license	= "Docu/BB-License"
-	changes	= ""
+	changes	= "
+	- 19981117, dg, added type test in CheckLoc
+	"
 	issues	= ""
 
 **)

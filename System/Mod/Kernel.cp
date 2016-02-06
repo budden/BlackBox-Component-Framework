@@ -7,6 +7,48 @@ MODULE Kernel;
 	copyright	= "System/Rsrc/About"
 	license	= "Docu/BB-License"
 	changes	= "
+	- 19950107, bh, ole initialization
+	- 19951220, bh, termination and finalization for COM
+	- 19960109, bh, MarkLocals corrected
+	- 19960115, bh, AddRef, Release, interface ptr finalization
+	- 19960120, bh, new desc for basetypes
+	- 19960210, bh, finalization changed
+	- 19960211, bh, trap handling adapted to new compiler
+	- 19960220, bh, interface trap handler
+	- 19960229, bh, trap handling changed
+	- 19960327, bh, new interface handling
+	- 19960418, bh, allocLimit in NewBlock
+	- 19960418, bh, FastCollect
+	- 19960418, bh, Next inline
+	- 19960418, bh, only one free list
+	- 19960423, bh, MarkInterfaces
+	- 19960423, bh, NewObj corrected
+	- 19970106, bh, SourcePos adapted
+	- 19970502, bh, V1.3 changes
+	- 19980922, bh, simple memory allocation for DLLs
+	- 19980923, dg, fixed "Millenium Bug", Time() returns LONGINT
+	- 19981001, dg, added Kernel.RemoveCleaner
+	- 19981001, dg, trapped cleaners are now removed
+	- 19981029, dg, ASSERT added in PushTrapCleaner - asserts that a TrapCleaner is not pushed twice
+	- 19990211, dg, fixed Kernel.Time (interval = 2*(MAX(INTEGER)+1) = 100000000L
+	- 19990216, dg, Finalizer calls eliminated in FastCollect
+	- 19990224, dg, added type Hook
+	- 19990309, dg, Loader Hook
+	- 19990414, bh, silent trap
+	- 19990831, bh, strict stack sweep
+	- 19991123, cp, CallFinalizers: array handling corrected (according to bh)
+	- 20001204, ww, Max. heap memory incresed from 0.5 to 1.5 GByte (AllocHeapMem)
+	- 20010208, bh, InitFpu eliminated, delayed for 1.5
+	- 20010208, bh, stack overflow handling
+	- 20010212, ww, separate treatment of TrapChecker (to not have to install Views.TrapCleanup as a TrapViewer)
+	- 20010213, ww, when growing heap, merge new area with free block (if any) at the end of the old heap
+	- 20010214, ww, (re-)introduced separate free lists for small blocks
+	- 20010216, ww, slight performance improvement in OldBlock
+	- 20010322, ww, AllocHeapMem aligns cluster to 16 bytes if dllMem is true. c.max contains actual address of allocated memory
+	- 20010422, ww, Changed FastCollect to call MarkFinObj instead of CheckFinalizers preventing moving obj. to hotFinalizers
+	- 20010424, ww, CallFinalizers catches traps in Finalizers
+	- 20010427, ww, Introduced "WouldFinalize" to allow applications to call Collect after FastCollect detected objects being due for finalization
+	- 20020225, bh, ?
 	- 20070123, bh, Beep using MessageBeep
 	- 20070125, bh, Support for procedure signatures added
 	- 20070130, bh, KERNEL32 & USER32 eliminated

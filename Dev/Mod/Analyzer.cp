@@ -7,11 +7,39 @@ MODULE DevAnalyzer;
 	copyright	= "System/Rsrc/About"
 	license	= "Docu/BB-License"
 	changes	= "
+	- 19940504, first Oberon/F Version
+	- 19950827, bh, neg exported sys flags for objects
+	- 19950904, bh, sys strings for modules & procedures
+	- 19950925, bh, COM support
+	- 19951130, bh, new sysfalg handling
+	- 19951212, bh, alias structures
+	- 19960123, bh, correction in Block
+	- 19960508, bh, changes for new largint consts in Factor
+	- 19960905, bh, Factor & selector: function call moved to selector
+	- 19960905, bh, FormalParameters: return type changed from Qualident to Type
+	- 19960908, bh, TypeDecl: number is new in follow set
+	- 19960912, bh, RecordType: pointer type allowed as base type
+	- 19970107, bh, statement source positions changed
+	- 19981124, dg, Domains 2000
+	- 19990506, dg, replaced SetDirty-hack by transparent operations
+	- 20000929, bj, changes to avoid unnecessary warnings. Mostly for Abstract and type bound procedures.
+	- 20001003, bj, change to filter out errors for temprary variables in Check
+	- 20001011, bj, changed LoadOptions and SaveOptions to work with the registry instead of a file
+	- 20001011, bj, fix in CheckForwardTypes so that num is not set to set if it already has a "better" value
+	- 20001011, ww, Ok message does no more overwrite first error message
+	- 20001027, bj, Changed ActualParameters to avoid error message when NIL is passed as var parameter
+	- 20010115, bj, Added an IF to StatSeq for WITH statements to be compliant with DevCPP.StatSeq
+	- 20010124, bj, Changes in procedures Block and Type to handle forward declaration of types
+	- 20010208, bj, NIL check in Type for forward declarations, ELSE added in Check. FormalParameters: "num := set" -> SetObj
+	- 20010219, bj, adapted for Component Pascal, Black Box release
+	- 20010219, bj, Removed the NIL check in Type. FormalParameters: Setobj -> par.num := set, par.num := setUsedP. Added UseObj in selector for defreferences pointers.
 	- 20070123, bh, NewString call changed (Unicode support)
 	"
 	issues	= ""
 
 **)
+
+	(* NW, RC 6.3.89 / 10.2.94 / object model 4.12.93 / bh 7.9.94 *)
 
 	IMPORT
 		TextMappers, TextModels, TextViews, DevMarkers, Stores, Models, Kernel, Dialog, StdLog, Files,

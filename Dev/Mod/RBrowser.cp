@@ -7,6 +7,9 @@ MODULE DevRBrowser;
 	copyright	= "System/Rsrc/About"
 	license	= "Docu/BB-License"
 	changes	= "
+	- 19961119, cp, ?
+	- 20000829, bj, added update command
+	- 20010227, bj, changed ARRAY OF const CHAR to Files.Name
 	- 20070205, bh, Win32s handling removed
 	"
 	issues	= ""

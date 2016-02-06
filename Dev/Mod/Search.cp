@@ -7,6 +7,17 @@ MODULE DevSearch;
 	copyright	= "System/Rsrc/About"
 	license	= "Docu/BB-License"
 	changes	= "
+	- 19980923, dg, change due to interface change of Kernel.Time()
+	- 20000830, ww, case insensitive = TRUE in Select
+	- 20001022, ww, added Dialog.Update to Select
+	- 20010117, bj, Changed Select to SelectSource and SelectDocu. Now opens the find dialog for Docu.
+	- 20010125, ww, Added Kernel.Cleanup at end of Search
+	- 20010307, bj, Split the Docu commands in two. One case sensitive and one case insensitive
+	- 20010308, bj, Introduced a parameter to SearchInDocu for case sensitive search or not.
+	- 20010312, ww, adapted to new interface of TextCmds.FindFirst
+	- 20010422, bh, ?
+	- 20010422, ww, removed Kernel.Cleanup at end of Search (introduced on 25.01.01) after correction in Kernel;
+				key constants for string mappings; moved strings from #Std: to #Dev:
 	- 20070307, bh, caseSens handling in Find corrected
 	"
 	issues	= ""

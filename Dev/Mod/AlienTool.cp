@@ -6,7 +6,9 @@ MODULE DevAlienTool;
 	version	= "System/Rsrc/About"
 	copyright	= "System/Rsrc/About"
 	license	= "Docu/BB-License"
-	changes	= ""
+	changes	= "
+	- 19990123, cas
+	"
 	issues	= ""
 
 **)

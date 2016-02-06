@@ -6,7 +6,15 @@ MODULE DevHeapSpy;
 	version	= "System/Rsrc/About"
 	copyright	= "System/Rsrc/About"
 	license	= "Docu/BB-License"
-	changes	= ""
+	changes	= "
+	- 19960116, bh, SizeOf changed for new types
+	- 19960118, bh, Next apapted to new Kernel
+	- 19960119, bh, BlockInfo adapted to new Debugger
+	- 19970610, cp, openLayout eliminated; interactors merged; GetAnchor with OUT parameter
+	- 19981124, dg, Domains 2000
+	- 19990303, dg, changed Kernel.ThisMod => Kernel.ThisLoadedMod
+	- 19990712, bh/mh, ?
+	"
 	issues	= ""
 
 **)

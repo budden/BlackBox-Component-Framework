@@ -7,6 +7,14 @@ MODULE DevMarkers;
 	copyright	= "System/Rsrc/About"
 	license	= "Docu/BB-License"
 	changes	= "
+	- 19960318, bh, dir.NewMsg
+	- 19960323, bh, Unmark without era
+	- 19981001, dg, Kernel.RemoveCleaner call added
+	- 19981124, dg, Domains 2000
+	- 19981202, dg, changes due to renaming of Views.CopyFrom => Views.CopyFromSimpleView
+	- 19990506, dg, replaced SetDirty-hack by transparent operations
+	- 20010328, cas, ?
+	- 20010328, ww, error file renamed from "error" to "Error" to avoid problems on Unix
 	- 20070301, bh, helper strings enlarged to 1024 characters
 	"
 	issues	= ""

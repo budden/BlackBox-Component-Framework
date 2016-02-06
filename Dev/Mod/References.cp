@@ -6,7 +6,11 @@ MODULE DevReferences;
 	version	= "System/Rsrc/About"
 	copyright	= "System/Rsrc/About"
 	license	= "Docu/BB-License"
-	changes	= ""
+	changes	= "
+	- 19960416, bh, second search for non-bold
+	- 19960416, bh, underscores
+	- 20000911, bj, added procedures Scan, CheckModName and some additional scanner types.
+	"
 	issues	= ""
 
 **)

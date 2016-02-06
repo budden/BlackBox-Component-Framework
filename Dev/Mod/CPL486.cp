@@ -7,7 +7,14 @@ MODULE DevCPL486;
 	copyright	= "System/Rsrc/About"
 	license	= "Docu/BB-License"
 	references	= "ftp://ftp.inf.ethz.ch/pub/software/Oberon/OberonV4/Docu/OP2.Paper.ps"
-	changes	= ""
+	changes	= "
+	- 19931116, bh, ?
+	- 19940907, bh, ?
+	- 19950925, bh, COM support
+	- 19951209, bh, longchar & largeint support
+	- 19960116, bh, new form const
+	- 19960512, bh, descriptors for untagged structures
+	"
 	issues	= ""
 
 **)

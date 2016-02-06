@@ -6,7 +6,11 @@ MODULE DevTypeLibs;
 	version	= "System/Rsrc/About"
 	copyright	= "System/Rsrc/About"
 	license	= "Docu/BB-License"
-	changes	= ""
+	changes	= "
+	- 19990415, KHU, Changes marked red.
+	- 19991105, mf, interface changes
+	- 20010302, ww, [nil] permitted for VAR param in ShowWrapper to disable new NIL test by compiler
+	"
 	issues	= ""
 
 **)

@@ -7,6 +7,16 @@ MODULE DevProfiler;
 	copyright	= "System/Rsrc/About"
 	license	= "Docu/BB-License"
 	changes	= "
+	- 19961002, OMinc, ?
+	- 19970409, OMinc, ?
+	- 19970410, OMinc, ?
+	- 19970411, OMinc, ?
+	- 19970725, OMinc, ?
+	- 19971006, OMinc, ?
+	- 19980923, dg, change due to interface change of Kernel.Time()
+	- 19980923, OMinc, ?
+	- 19990303, bh, ?
+	- 19990303, dg, changed Loader.ThisMod => Kernel.ThisMod and eliminated import of loader
 	- 20070523, ie, ShowProfile: calculation of samples in profiled modules corrected
 	"
 	issues	= ""

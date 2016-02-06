@@ -7,6 +7,7 @@ MODULE DevComDebug;
 	copyright	= "System/Rsrc/About"
 	license	= "Docu/BB-License"
 	changes	= "
+	- 19990506, dg, changes due to interface change of BeginModification/EndModification
 	- 20070205, bh, Unicode support
 	"
 	issues	= ""

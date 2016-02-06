@@ -8,6 +8,25 @@ MODULE DevCPP;
 	license	= "Docu/BB-License"
 	references	= "ftp://ftp.inf.ethz.ch/pub/software/Oberon/OberonV4/Docu/OP2.Paper.ps"
 	changes	= "
+	- 19940907, bh, ?
+	- 19950827, bh, neg exported sys flags for objects
+	- 19950904, bh, sys strings for modules & procedures
+	- 19950925, bh, COM support
+	- 19951130, bh, new sysfalg handling
+	- 19951212, bh, alias structures
+	- 19960123, bh, correction in Block
+	- 19960508, bh, changes for new largint consts in Factor
+	- 19960905, bh, FormalParameters: return type changed from Qualident to Type
+	- 19960905, bh, Factor & selector: function call moved to selector
+	- 19960908, bh, TypeDecl: number is new in follow set
+	- 19960912, bh, RecordType: pointer type allowed as base type
+	- 19970107, bh, statement source positions changed
+	- 19990207, bh, eliminated super side call of implement only methods
+	- 19990825, bh, forward attribute compare corrected in TProcDecl
+	- 19990830, bh, anchoring of dereferenced actual VAR parameters (ActualParameters)
+	- 19990901, bh, additional error codes (36, 37, 38) in Block
+	- 20010309, bh, error message corrected in TProcDecl
+	- 20010309, bh, Component Pascal version
 	- 20070123, bh, NewString call changed (Unicode support)
 	- 20070123, bh, support for procedure type sysflags
 	- 20070308, bh, longint excluded as case labels
@@ -15,6 +34,8 @@ MODULE DevCPP;
 	issues	= ""
 
 **)
+
+	(* NW, RC 6.3.89 / 10.2.94 / object model 4.12.93 *)
 
 	IMPORT
 		DevCPM, DevCPT, DevCPB, DevCPS;
