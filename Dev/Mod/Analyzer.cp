@@ -458,7 +458,7 @@ MODULE DevAnalyzer;
 					END
 				END
 			| set: obj.num := setUsed
-			| used, usedSet, setUsed, setUsedP, setUsed+noChange, setUsedP+noChange:
+			ELSE (* already marked as being used *)
 			END
 		END
 	END UseObj;
@@ -476,6 +476,7 @@ MODULE DevAnalyzer;
 			| usedSet, setUsed, setUsedP:
 			| set: IF varPar THEN obj.num := setUsed END
 			| setUsed+noChange, setUsedP+noChange: DumpObj(obj); err2(loopVarSet, pos) (* for loop variable gets set!*)
+			ELSE DumpObj(obj); err2(loopVarSet, pos) (* for loop variable gets set!*)
 			END
 		END
 	END SetObj;
