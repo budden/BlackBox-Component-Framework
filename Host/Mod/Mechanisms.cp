@@ -10,13 +10,14 @@ MODULE HostMechanisms;
 	- 20070131, bh, Unicode support
 	"
 	issues	= ""
-
 **)
 
-	IMPORT COM,
-		WinApi, WinOle, OleData, 
-		Services, Ports, Stores, Views, Controllers, Properties,
-		Dialog, Mechanisms, Containers, Documents, Windows,
+	(* TODO: Add drag'n drop support *)
+
+	IMPORT (* COM,
+		WinApi, WinOle, OleData, *)
+		Services, Ports, (* Stores, *) Views, Controllers, Properties,
+		(* Dialog, *) Mechanisms, Containers, Documents, (* Windows, *)
 		HostPorts;
 
 
@@ -25,15 +26,16 @@ MODULE HostMechanisms;
 		clipMiddleHandle = handleSize DIV 2 + 2 * Ports.point;
 
 		escape = -2;
-		
+
 		fixed = 31;	(* controller option *)
 
 
 	TYPE
+(*
 		IDropSource = POINTER TO RECORD (WinOle.IDropSource)
 			key: SET
 		END;
-		
+
 		IDropTarget = POINTER TO RECORD (WinOle.IDropTarget)
 			win: Windows.Window;
 			wnd: WinApi.HWND;
@@ -45,10 +47,11 @@ MODULE HostMechanisms;
 			isSingle: BOOLEAN;
 			w, h, rx, ry: INTEGER
 		END;
-		
+*)
+
 		Hook = POINTER TO RECORD (Mechanisms.Hook) END;
-		
-	
+
+(*
 	VAR
 		sourceFrame: Views.Frame;	(* source of drag & drop *)
 		sourceX, sourceY: INTEGER;
@@ -58,8 +61,9 @@ MODULE HostMechanisms;
 		isSingleton: BOOLEAN;
 		dropW, dropH: INTEGER;
 		relX, relY: INTEGER;
-		
-	
+*)
+
+
 	(** focus borders **)
 
 	PROCEDURE Fixed (host: Views.Frame; v: Views.View): BOOLEAN;
@@ -74,7 +78,7 @@ MODULE HostMechanisms;
 
 	PROCEDURE PaintFocusBorder (f: Views.Frame; focus: Views.View; l, t, r, b: INTEGER);
 		VAR u, s,  w, h,  mx, my,  l0, t0, r0, b0: INTEGER;
-		
+
 		PROCEDURE PaintHandle (x, y: INTEGER; l, t, r, b: BOOLEAN);
 		BEGIN
 			IF l THEN f.DrawRect(x - u, y, x, y + s, Ports.fill, Ports.background) END;
@@ -83,7 +87,7 @@ MODULE HostMechanisms;
 			IF b THEN f.DrawRect(x, y + s, x + s, y + s + u, Ports.fill, Ports.background) END;
 			f.DrawRect(x, y, x + s, y + s, Ports.fill, Ports.defaultColor)
 		END PaintHandle;
-		
+
 	BEGIN
 		f.rider.GetRect(l0, t0, r0, b0);
 		s := (handleSize - f.dot) DIV f.unit;
@@ -122,14 +126,14 @@ MODULE HostMechanisms;
 	PROCEDURE (hook: Hook) FocusBorderCursor* (f: Views.Frame; view: Views.View; l, t, r, b: INTEGER;
 									x, y: INTEGER): INTEGER;
 		VAR s, u, w, h, mx, my, cursor: INTEGER;
-		
+
 		PROCEDURE CheckHandle (x0, y0: INTEGER; c: INTEGER);
 		BEGIN
 			IF (x >= x0 - u) & (x <= x0 + s) & (y >= y0 - u) & (y <= y0 + s) THEN
 				cursor := c
 			END
 		END CheckHandle;
-		
+
 	BEGIN
 		u := f.dot; s := handleSize - 2 * u;
 		IF (x < l - s) OR (x > r + s) OR (y < t - s) OR (y > b + s) THEN
@@ -177,7 +181,7 @@ MODULE HostMechanisms;
 		Views.RestoreRoot(g, l - s, b, r + s, b + s)
 *)
 	END RestoreBorderArea;
-	
+
 	PROCEDURE (hook: Hook) MarkFocusBorder* (
 		host: Views.Frame; focus: Views.View; l, t, r, b: INTEGER; show: BOOLEAN
 	);
@@ -190,13 +194,13 @@ MODULE HostMechanisms;
 			END
 		END
 	END MarkFocusBorder;
-	
+
 
 	(** selection borders **)
 
 	PROCEDURE PaintSelBorder (f: Views.Frame; view: Views.View; l, t, r, b: INTEGER);
 		VAR u, d, w, h,  mx, my, l0, t0, r0, b0: INTEGER; sizeable: BOOLEAN;
-		
+
 		PROCEDURE PaintHandle (x, y: INTEGER);
 			VAR s: INTEGER; ci, co: Ports.Color;
 		BEGIN
@@ -212,7 +216,7 @@ MODULE HostMechanisms;
 			f.DrawRect(x, y, x + s, y + s, 0, co)
 *)
 		END PaintHandle;
-		
+
 	BEGIN
 		d := (handleSize - f.dot) DIV f.unit DIV 2;
 		f.rider.GetRect(l0, t0, r0, b0);
@@ -250,14 +254,14 @@ MODULE HostMechanisms;
 	PROCEDURE (hook: Hook) SelBorderCursor* (f: Views.Frame; view: Views.View; l, t, r, b: INTEGER;
 									x, y: INTEGER): INTEGER;
 		VAR d, u, w, h, mx, my, cursor: INTEGER;
-		
+
 		PROCEDURE CheckHandle (x0, y0: INTEGER; c: INTEGER);
 		BEGIN
 			IF (x >= x0 - d) & (x <= x0 + d) & (y >= y0 - d) & (y <= y0 + d) THEN
 				cursor := c
 			END
 		END CheckHandle;
-		
+
 	BEGIN
 		IF (x < l) OR (x > r) OR (y < t) OR (y > b) THEN cursor := Mechanisms.outside
 		ELSE cursor := Mechanisms.inside
@@ -380,9 +384,9 @@ MODULE HostMechanisms;
 		END
 	END TrackToResize;
 
-	
+(*
 	(* IDropSource *)
-	
+
 	PROCEDURE (this: IDropSource) QueryContinueDrag (
 		escapePressed: WinApi.BOOL; keyState: SET
 	): COM.RESULT;
@@ -395,12 +399,12 @@ MODULE HostMechanisms;
 		ELSE RETURN WinApi.S_OK
 		END
 	END QueryContinueDrag;
-	
+
 	PROCEDURE (this: IDropSource) GiveFeedback (effect: SET): COM.RESULT;
 	BEGIN
 		RETURN WinApi.DRAGDROP_S_USEDEFAULTCURSORS
 	END GiveFeedback;
-	
+
 
 	(* IDropTarget *)
 
@@ -410,13 +414,13 @@ MODULE HostMechanisms;
 		NEW(drop); drop.win := win; drop.wnd := wnd;
 		res := WinOle.RegisterDragDrop(wnd, drop)
 	END InstallDropTarget;
-	
+
 	PROCEDURE RemoveDropTarget* (wnd: WinApi.HWND);
 		VAR res: COM.RESULT;
 	BEGIN
 		res := WinOle.RevokeDragDrop(wnd)
 	END RemoveDropTarget;
-	
+
 	PROCEDURE PollDrop (d: IDropTarget; show: BOOLEAN);
 		VAR msg: Controllers.PollDropMsg; w, h: INTEGER;
 	BEGIN
@@ -448,7 +452,9 @@ MODULE HostMechanisms;
 		msg.w := w; msg.h := h; msg.rx := d.rx; msg.ry := d.ry;
 		d.win.ForwardCtrlMsg(msg)
 	END Drop;
+*)
 
+(*
 	PROCEDURE AppendMenu (menu: WinApi.HANDLE; id: INTEGER; name: Dialog.String);
 		VAR res: INTEGER;
 	BEGIN
@@ -487,7 +493,7 @@ MODULE HostMechanisms;
 			END
 		END
 	END ShowPopup;
-	
+
 	PROCEDURE Effect (mask, keyState: SET): SET;
 		VAR effect: SET;
 	BEGIN
@@ -504,7 +510,9 @@ MODULE HostMechanisms;
 		END;
 		RETURN effect
 	END Effect;
-	
+*)
+
+(*
 	PROCEDURE (this: IDropTarget) DragEnter (dataObj: WinOle.IDataObject; keyState: SET; pt: WinApi.POINT;
 																VAR effect: SET): COM.RESULT;
 		VAR res: INTEGER; s: BOOLEAN;
@@ -532,7 +540,7 @@ MODULE HostMechanisms;
 		 this.effect := effect;
 		RETURN WinApi.S_OK
 	END DragEnter;
-	
+
 	PROCEDURE (this: IDropTarget) DragOver (keyState: SET; pt: WinApi.POINT; VAR effect: SET): COM.RESULT;
 		VAR res: INTEGER;
 	BEGIN
@@ -551,7 +559,7 @@ MODULE HostMechanisms;
 		this.effect := effect;
 		RETURN WinApi.S_OK
 	END DragOver;
-	
+
 	PROCEDURE (this: IDropTarget) DragLeave (): COM.RESULT;
 	BEGIN
 		IF (this.type # "") & (this.win # NIL) THEN
@@ -560,7 +568,7 @@ MODULE HostMechanisms;
 		targetFrame := NIL; this.source := NIL;
 		RETURN WinApi.S_OK
 	END DragLeave;
-	
+
 	PROCEDURE (this: IDropTarget) Drop (dataObj: WinOle.IDataObject; keyState: SET; pt: WinApi.POINT;
 														VAR effect: SET): COM.RESULT;
 		VAR res, w, h: INTEGER; v: Views.View; s: BOOLEAN;
@@ -612,10 +620,11 @@ MODULE HostMechanisms;
 		END;
 		RETURN WinApi.S_OK
 	END Drop;
-	
-	
-	(* drag & drop *)
+*)
 
+
+	(* drag & drop *)
+(*
 	PROCEDURE (hook: Hook) TrackToDrop* (f: Views.Frame; view: Views.View;
 									isSingle: BOOLEAN; w, h, rx, ry: INTEGER;
 									VAR dest: Views.Frame; VAR destX, destY: INTEGER; VAR op: INTEGER;
@@ -650,15 +659,31 @@ MODULE HostMechanisms;
 		dest := targetFrame; destX := targetX; destY := targetY;
 		sourceFrame := NIL; targetFrame := NIL; dropView := NIL
 	END TrackToDrop;
+*)
+
+	PROCEDURE (hook: Hook) TrackToDrop* (f: Views.Frame; view: Views.View;
+									isSingle: BOOLEAN; w, h, rx, ry: INTEGER;
+									VAR dest: Views.Frame; VAR destX, destY: INTEGER; VAR op: INTEGER;
+									VAR x, y: INTEGER; VAR buttons: SET);
+	BEGIN
+		(* TODO: Implement *)
+	END TrackToDrop;
+
 
 	PROCEDURE PickMode (f, dest: Views.Frame; x, y: INTEGER): INTEGER;
 		VAR mode, cursor: INTEGER;
 	BEGIN
+		(* TODO *)
+(*
 		IF WinApi.GetAsyncKeyState(1BH) < 0 THEN mode := escape; cursor := Ports.arrowCursor
+*)
 (*
 		ELSIF Home(f, x, y) THEN mode := Mechanisms.cancelPick; cursor := Ports.arrowCursor
 *)
-		ELSIF dest = NIL THEN mode := Mechanisms.cancelPick; cursor := HostPorts.stopCursor
+(*
+		ELS
+*)
+		IF dest = NIL THEN mode := Mechanisms.cancelPick; cursor := HostPorts.stopCursor
 		ELSE
 			cursor := HostPorts.pickCursor;
 			IF Services.SameType(dest.view, f.view) THEN
@@ -712,6 +737,7 @@ MODULE HostMechanisms;
 	END TrackToPick;
 
 
+(*
 	PROCEDURE (hook: Hook) PopUpAndSelect* (f: Views.Frame;
 										n, this: INTEGER;
 										string: ARRAY OF ARRAY OF CHAR;
@@ -746,6 +772,20 @@ MODULE HostMechanisms;
 		s := {1, 2};	(* track right, center align *)
 		res := WinApi.TrackPopupMenu(menu, s, pt.x, pt.y + 2, 0, wnd, NIL);
 		res := WinApi.DestroyMenu(menu)
+	END PopUpAndSelect;
+*)
+
+	PROCEDURE (hook: Hook) PopUpAndSelect* (f: Views.Frame;
+										n, this: INTEGER;
+										string: ARRAY OF ARRAY OF CHAR;
+										enabled, checked: ARRAY OF BOOLEAN;
+										VAR i: INTEGER;
+										VAR x, y: INTEGER; VAR buttons: SET);
+	BEGIN
+		ASSERT(0 < n, 20); ASSERT(n <= LEN(string), 21);
+		ASSERT(LEN(enabled) = LEN(string), 22);
+		ASSERT(LEN(checked) = LEN(string), 23);
+		(* TODO *)
 	END PopUpAndSelect;
 
 

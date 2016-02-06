@@ -12,15 +12,14 @@ MODULE HostTextConv;
 	- 20070213, bh, improved paragraph handling in ParseRichText
 	"
 	issues	= ""
-
 **)
 
 	IMPORT
-		SYSTEM, WinApi, WinOle, COM,
+		SYSTEM, (* WinApi, WinOle, COM, *)
 		Files, Fonts, Ports, Stores, Views, Properties,
-		HostFonts, HostClipboard, TextModels,
+		HostFonts, (* HostClipboard, *) TextModels,
 		TextRulers, TextViews, TextMappers;
-	
+
 	CONST
 		CR = 0DX; LF = 0AX; FF = 0EX; TAB = 09X;
 		halfpoint = Ports.point DIV 2;
@@ -37,53 +36,53 @@ MODULE HostTextConv;
 		MemReader = POINTER TO RECORD (Files.Reader)
 			adr, pos: INTEGER
 		END;
-	
+
 	VAR 
 		debug*: BOOLEAN;
-		
+
 
 	(* MemReader *)
-	
+
 	PROCEDURE (r: MemReader) Base (): Files.File;
 	BEGIN
 		RETURN NIL
 	END Base;
-	
+
 	PROCEDURE (r: MemReader) Pos (): INTEGER;
 	BEGIN
 		RETURN r.pos
 	END Pos;
-	
+
 	PROCEDURE (r: MemReader) SetPos (pos: INTEGER);
 	BEGIN
 		r.pos := pos
 	END SetPos;
-	
+
 	PROCEDURE (r: MemReader) ReadByte (OUT x: BYTE);
 	BEGIN
 		SYSTEM.GET(r.adr + r.pos, x); INC(r.pos)
 	END ReadByte;
-	
+
 	PROCEDURE (r: MemReader) ReadBytes (VAR x: ARRAY OF BYTE; beg, len: INTEGER);
 	BEGIN
 		HALT(126)
 	END ReadBytes;
-	
-	
+
+(*
 	PROCEDURE GenGlobalMedium (hg: WinApi.HGLOBAL; unk: COM.IUnknown; VAR sm: WinOle.STGMEDIUM);
 	BEGIN
 		sm.tymed := WinOle.TYMED_HGLOBAL;
 		sm.u.hGlobal := hg;
 		sm.pUnkForRelease := unk
 	END GenGlobalMedium;
-	
+
 	PROCEDURE MediumGlobal (VAR sm: WinOle.STGMEDIUM): WinApi.HGLOBAL;
 	BEGIN
 		ASSERT(sm.tymed = WinOle.TYMED_HGLOBAL, 20);
 		RETURN sm.u.hGlobal
 	END MediumGlobal;
-	
-	
+*)
+
 	PROCEDURE WriteWndChar (wr: TextModels.Writer; ch: CHAR);
 	BEGIN
 		CASE ch OF
@@ -118,7 +117,7 @@ MODULE HostTextConv;
 			wr.WriteChar(CHR(0EF00H + ORD(ch)))
 		END
 	END WriteWndChar;
-	
+
 	PROCEDURE ThisWndChar (ch: CHAR): CHAR;
 	BEGIN
 		IF ch >= 100X THEN
@@ -154,7 +153,7 @@ MODULE HostTextConv;
 		END;
 		RETURN ch
 	END ThisWndChar;
-	
+
 	PROCEDURE ParseRichText (rd: Files.Reader; wr: TextModels.Writer; VAR defRuler: TextRulers.Ruler);
 		TYPE 
 			FontInfo = POINTER TO RECORD id: INTEGER; f: Fonts.Typeface; next: FontInfo END;
@@ -169,7 +168,7 @@ MODULE HostTextConv;
 			ruler: TextRulers.Ruler;
 			pattr: TextRulers.Attributes;
 			skipCnt, uniCnt : INTEGER;
-			
+
 		PROCEDURE Color(i: INTEGER): ColorInfo;
 			VAR c: ColorInfo;
 		BEGIN
@@ -179,13 +178,13 @@ MODULE HostTextConv;
 			ASSERT(c # NIL, 100);
 			RETURN c
 		END Color;
-		
+
 		PROCEDURE SetColor(i: INTEGER; c: Ports.Color);
 			VAR ci: ColorInfo;
 		BEGIN
 			NEW(ci); ci.id := i; ci.c := c; ci.next := colors; colors := ci
 		END SetColor;
-			
+
 		PROCEDURE Font(i: INTEGER): FontInfo;
 			VAR f: FontInfo;
 		BEGIN
@@ -195,19 +194,19 @@ MODULE HostTextConv;
 			ASSERT(f # NIL, 100);
 			RETURN f
 		END Font;
-		
+
 		PROCEDURE SetFont(i: INTEGER; tf: Fonts.Typeface);
 			VAR f: FontInfo;
 		BEGIN
 			NEW(f); f.id := i; f.f := tf; f.next := fonts; fonts := f
 		END SetFont;
-		
+
 		PROCEDURE Next (VAR ch: CHAR);
 			VAR b: BYTE;
 		BEGIN
 			rd.ReadByte(b); ch := CHR(b MOD 256)
 		END Next;
-		
+
 		PROCEDURE Write (ch: CHAR);
 		BEGIN
 			IF skipCnt > 0 THEN
@@ -221,7 +220,7 @@ MODULE HostTextConv;
 				font.f[idx] := ch; INC(idx); font.f[idx] := 0X
 			END
 		END Write;
-		
+
 		PROCEDURE Paragraph;
 			VAR v: Views.View;
 		BEGIN
@@ -241,7 +240,7 @@ MODULE HostTextConv;
 			wr.WriteChar(CR);
 			paraPos := wr.Pos()
 		END Paragraph;
-		
+
 	BEGIN
 		defFont := 0; fnum := 1; f := Fonts.dir.Default(); NEW(fonts); fonts.f := f.typeface; skipCnt := 0; uniCnt := 1;
 		cnum := 1; NEW(colors); SetColor(0, Ports.defaultColor);
@@ -495,7 +494,7 @@ MODULE HostTextConv;
 			END
 		END
 	END ParseRichText;
-	
+
 	PROCEDURE ConvertToRichText (in: TextViews.View; beg, end: INTEGER; VAR out: TextModels.Model);
 		VAR r: TextModels.Reader; w: TextMappers.Formatter; ch: CHAR; f: Fonts.Font;
 			attr, attr0: TextModels.Attributes; col: Ports.Color; tf, atf: Fonts.Typeface; p, size, asize, offs: INTEGER;
@@ -666,8 +665,8 @@ MODULE HostTextConv;
 		w.WriteSString("\deftab216 ");
 		w.WriteSString("\plain")
 	END ConvertToRichText;
-	
-	
+
+(*
 	PROCEDURE ImportDText* (VAR med: WinOle.STGMEDIUM; OUT v: Views.View;
 											OUT w, h: INTEGER; OUT isSingle: BOOLEAN);
 		VAR t: TextModels.Model; res, adr: INTEGER; wr: TextModels.Writer; ch: SHORTCHAR;
@@ -693,7 +692,7 @@ MODULE HostTextConv;
 		Views.HandlePropMsg(v, pref);
 		w := pref.w; h := pref.h; isSingle := FALSE
 	END ImportDText;
-		
+
 	PROCEDURE ImportDRichText* (VAR med: WinOle.STGMEDIUM; OUT v: Views.View;
 												OUT w, h: INTEGER; OUT isSingle: BOOLEAN);
 		VAR t: TextModels.Model; res, adr: INTEGER; wr: TextModels.Writer; rd: MemReader;
@@ -716,7 +715,7 @@ MODULE HostTextConv;
 		Views.HandlePropMsg(v, pref);
 		w := pref.w; h := pref.h; isSingle := FALSE
 	END ImportDRichText;
-	
+
 	PROCEDURE ImportDUnicode* (VAR med: WinOle.STGMEDIUM; OUT v: Views.View;
 												OUT w, h: INTEGER; OUT isSingle: BOOLEAN);
 		VAR t: TextModels.Model; res, adr: INTEGER; wr: TextModels.Writer; uc: CHAR;
@@ -775,7 +774,7 @@ MODULE HostTextConv;
 		ELSE
 		END
 	END ExportDText;
-	
+
 	PROCEDURE ExportDRichText* (
 		v: Views.View; w, h, x, y: INTEGER; isSingle: BOOLEAN; VAR med: WinOle.STGMEDIUM
 	);
@@ -799,7 +798,7 @@ MODULE HostTextConv;
 		ELSE
 		END
 	END ExportDRichText;
-	
+
 	PROCEDURE ExportDUnicode* (
 		v: Views.View; w, h, x, y: INTEGER; isSingle: BOOLEAN; VAR med: WinOle.STGMEDIUM
 	);
@@ -830,6 +829,7 @@ MODULE HostTextConv;
 		ELSE
 		END
 	END ExportDUnicode;
+*)
 
 	PROCEDURE ImportText* (f: Files.File; OUT s: Stores.Store);
 		VAR r: Stores.Reader; t: TextModels.Model; wr: TextModels.Writer; ch, nch: SHORTCHAR;
@@ -875,7 +875,7 @@ MODULE HostTextConv;
 		s := TextViews.dir.New(t);
 		s(TextViews.View).SetDefaults(ruler, TextModels.dir.attr)
 	END ImportRichText;
-	
+
 	PROCEDURE ImportUnicode* (f: Files.File; OUT s: Stores.Store);
 		VAR r: Stores.Reader; t: TextModels.Model; v: TextViews.View; w: TextModels.Writer;
 			ch0, ch1: SHORTCHAR; len, res: INTEGER; uc: CHAR; rev: BOOLEAN;
@@ -898,10 +898,10 @@ MODULE HostTextConv;
 		v := TextViews.dir.New(t);
 		s := v
 	END ImportUnicode;
-	
+
 	PROCEDURE ImportDosText* (f: Files.File; OUT s: Stores.Store);
 		VAR r: Stores.Reader; t: TextModels.Model; wr: TextModels.Writer; ch, nch: SHORTCHAR;
-		
+
 		PROCEDURE ConvertChar (wr: TextModels.Writer; ch: CHAR);
 		(* PC Code Page Mappings M4 (Latin) to Unicode Encoding *)
 		(* Reference: The Unicode Standard, Version 1.0, Vol 1, Addison Wesley, p. 536 *)
@@ -1012,7 +1012,7 @@ MODULE HostTextConv;
 				wr.WriteChar(CHR(0EF00H + ORD(ch)))
 			END
 		END ConvertChar;
-		
+
 	BEGIN
 		ASSERT(f # NIL, 20);
 		r.ConnectTo(f); r.SetPos(0);
@@ -1057,7 +1057,7 @@ MODULE HostTextConv;
 			END
 		END
 	END ExportText;
-	
+
 	PROCEDURE ExportTabText* (s: Stores.Store; f: Files.File);
 		VAR w: Stores.Writer; t: TextModels.Model; r: TextModels.Reader; ch: CHAR;
 	BEGIN
@@ -1082,7 +1082,7 @@ MODULE HostTextConv;
 			END
 		END
 	END ExportTabText;
-	
+
 	PROCEDURE ExportRichText* (s: Stores.Store; f: Files.File);
 		VAR t: TextModels.Model; r: TextModels.Reader; ch: CHAR; w: Stores.Writer;
 	BEGIN
@@ -1100,7 +1100,7 @@ MODULE HostTextConv;
 		ELSE
 		END
 	END ExportRichText;
-	
+
 	PROCEDURE ExportUnicode* (s: Stores.Store; f: Files.File);
 		VAR w: Stores.Writer; t: TextModels.Model; r: TextModels.Reader; ch: CHAR;
 	BEGIN
@@ -1125,7 +1125,7 @@ MODULE HostTextConv;
 			END
 		END
 	END ExportUnicode;
-	
+
 	PROCEDURE ImportHex* (f: Files.File; OUT s: Stores.Store);
 		VAR r: Stores.Reader; t: TextModels.Model; w: TextMappers.Formatter; ch: SHORTCHAR; a: INTEGER;
 			i: INTEGER; str: ARRAY 17 OF CHAR;

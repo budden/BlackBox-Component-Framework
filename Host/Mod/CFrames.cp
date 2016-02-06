@@ -17,12 +17,34 @@ MODULE HostCFrames;
 
 	(* ColorField, DateField, TimeField, UpDownField *)
 
+	(* TODO:
+		- Mouse events are not received when the widget is disabled
+		- TimeField, DateField and ColorField are not implemented
+		- GroupBox: Would be nice to use GtkFrame, but how can this one be made transparent?
+	*)
+
+
+	(* Implementation docu
+		Most controls fit fine with widgets from Gtk.
+		Some controls (ListBoxes, Fields) need a scrolled window around their widget to allow for scrolling.
+		Some other widgets (Captions, CheckBoxes) do not have their own window and need to be wrapped in an event box.
+
+		BlackBox wants to filter mouse and keyboard events. To do this special handlers for these events are installed (done in NewInfo).
+		These handlers basically stops the events and resends the event only if the event comes back through the BlackBox framework.
+		 *)
+
 	IMPORT
-		SYSTEM, WinApi, WinCtl,
-		Kernel, Strings, Dates, Fonts, Ports, Views,
-		Controllers, Dialog, HostFonts, HostRegistry, HostPorts, HostWindows, StdCFrames;
+		SYSTEM,
+		GLib := LibsGlib, Gdk := LibsGdk, Key:=Gtk2Keysyms, Gtk := LibsGtk, GtkU:=Gtk2Util,
+
+		Kernel, Services, Strings, Dates, Files, Fonts, Ports, Views,
+		Controllers, Dialog, HostFiles, HostFonts, HostRegistry, HostPorts, HostWindows, StdCFrames,
+		(*Kernel, Files, Dialog, Fonts, Ports,  Views, Services,
+		HostFiles, HostFonts, HostPorts, StdCFrames,*)
+		Log, Utf8 := HostUtf8;
 
 	CONST
+(*
 		ENTER = 0DX; ESC = 1BX; DEL = 07X; BS = 08X; TAB = 09X; LTAB = 0AX;
 		AL = 1CX; AR = 1DX; AU = 1EX; AD = 1FX;
 		PL = 10X; PR = 11X; PU = 12X; PD = 13X;
@@ -31,116 +53,148 @@ MODULE HostCFrames;
 		dropDownHeight = 30 * Ports.point;
 		upDownWidth = 11 * Ports.point;
 		numColors = 7;
-		scrollRange = 16384;
+*)
+		dropDownHeight = 30 * Ports.point;
+
+		(* possible values for eventMaskState *)
+		eUndef = 0; eOn = 1; eOff = 2;
+
+		(* alignment  *)
+		none = 0; left = 1; right = 2; center = 3;
+
+		scrollRange = 16384; lineInc = 1; pageInc = 100; defThumbSize = scrollRange DIV 20;
+
+		off = 0; on = 1;
 
 	TYPE
-		Procedure = PROCEDURE;
-
-		Info = RECORD
-			wnd, ctrl, ud: WinApi.HANDLE;
-			x1, y1, w1, h1, x2, y2, w2, h2: INTEGER;
-			hasFocus, dropDown, readOnly, undef: BOOLEAN;
-			bkgnd: Ports.Color
+		Info = POINTER TO RECORD
+			frame: StdCFrames.Frame; (* pointer back to the frame that owns the Info *)
+			mainWidget: Gtk.GtkWidget; (* the outer most widget *)
+			eventWidget: Gtk.GtkWidget; (* widget to recieve events, not necessarily the same as mainWidget  *)
+			allowMouse, allowKey, hasFocus: BOOLEAN;
+			eventMaskState: INTEGER;
 		END;
 
 		PushButton = POINTER TO RECORD (StdCFrames.PushButton)
+			button: Gtk.GtkButton;
+			ebox: Gtk.GtkEventBox;
+			lbl: Gtk.GtkLabel;
+			hasFocus: BOOLEAN;
 			i: Info
 		END;
 
 		CheckBox = POINTER TO RECORD (StdCFrames.CheckBox)
+			checkButton:Gtk.GtkCheckButton;
+			ebox: Gtk.GtkEventBox;
+			lbl: Gtk.GtkLabel;
+			hasFocus: BOOLEAN;
 			i: Info
 		END;
 
 		RadioButton = POINTER TO RECORD (StdCFrames.RadioButton)
+			radioButton: Gtk.GtkRadioButton; (* RadioButton? *)
+			ebox: Gtk.GtkEventBox;
+			lbl: Gtk.GtkLabel;
 			i: Info
 		END;
 
 		ScrollBar = POINTER TO RECORD (StdCFrames.ScrollBar)
+			scrollBar: Gtk.GtkScrollbar;
+			isUpdate: BOOLEAN;
+			oldPos: REAL;
 			i: Info
 		END;
 
 		Field = POINTER TO RECORD (StdCFrames.Field)
 			i: Info;
-			isUpdate: BOOLEAN;
-			del: BOOLEAN (* needed know when an empty field is allowed. not perfect. *)
+			text: Gtk.GtkWidget; (* GtkText/GtkEntry *);
+			scrlw: Gtk.GtkScrolledWindow;
+			TextLen: Gtk.TextLenProc;
+			isUpdate: BOOLEAN
 		END;
 
 		UpDownField = POINTER TO RECORD (StdCFrames.UpDownField)
 			i: Info;
+			spin: Gtk.GtkSpinButton;
 			val: INTEGER;
-			isUpdate: BOOLEAN
+			hasFocus, isUpdate: BOOLEAN
 		END;
 
 		DateField = POINTER TO RECORD (StdCFrames.DateField)
+			(*
 			i: Info;
 			isUpdate: BOOLEAN;
 			cnt, val: INTEGER	(* input state: val = current val, cnt = number of key strokes *)
+			*)
 		END;
 
 		TimeField = POINTER TO RECORD (StdCFrames.TimeField)
+			(*
 			i: Info;
 			isUpdate: BOOLEAN;
 			cur: INTEGER
+			*)
 		END;
 
 		ColorField = POINTER TO RECORD (StdCFrames.ColorField)
+			(*
 			i: Info;
 			color: Ports.Color
+			*)
 		END;
 
 		ListBox = POINTER TO RECORD (StdCFrames.ListBox)
+			list: Gtk.GtkCList;
+			scrlw: Gtk.GtkScrolledWindow;
 			i: Info
 		END;
 
 		SelectionBox = POINTER TO RECORD (StdCFrames.SelectionBox)
 			i: Info;
-			num: INTEGER
+			list: Gtk.GtkCList;
+			scrlw: Gtk.GtkScrolledWindow;
+			num: INTEGER (* the number of items in the list, updated by UpdateList *)
 		END;
 
 		ComboBox = POINTER TO RECORD (StdCFrames.ComboBox)
 			i: Info;
-			edit: WinApi.HANDLE
+			combo: Gtk.GtkCombo;
+			isUpdate: BOOLEAN
 		END;
 
 		Caption = POINTER TO RECORD (StdCFrames.Caption)
+			labelWidget: Gtk.GtkLabel;
+			ebox: Gtk.GtkEventBox;
+			(* a label widget does not have its own GdkWindow, so it needs to be wrapped in an event box *)
 			i: Info
 		END;
 
 		Group = POINTER TO RECORD (StdCFrames.Group)
+			(*
 			i: Info
-		END;
-
-		TFInfo = RECORD
-			tn: Dialog.TreeNode;
-			wndAdr: INTEGER
+			*)
 		END;
 
 		TreeFrame = POINTER TO RECORD (StdCFrames.TreeFrame)
 			i: Info;
-			inUpdateList: BOOLEAN;
-			treeArray: POINTER TO ARRAY OF TFInfo;
-			curindex, selIndex: INTEGER;
-			folderimg, openimg, leafimg: INTEGER;
-			himl: WinCtl.Ptr_IMAGELIST
+			ctree: Gtk.GtkCTree;
+			scrlw: Gtk.GtkScrolledWindow;
+			hasFocus: BOOLEAN
 		END;
 
 		Directory = POINTER TO RECORD (StdCFrames.Directory) END;
 
 		TrapCleaner = POINTER TO RECORD (Kernel.TrapCleaner) END;
 
-		BrushCache = POINTER TO RECORD
-			next: BrushCache;
-			col: Ports.Color;
-			brush: WinApi.HANDLE
+		(* Delays mouse events until the end of the command *)
+		DelayedMouseEvent = POINTER TO RECORD (Services.Action)
+			eventPending: BOOLEAN;
+			forwardWidget: Gtk.GtkWidget;
+			forwardEvent: Gdk.GdkEventButtonDesc;
+			delayedEvent: Gdk.GdkEventButtonDesc
 		END;
 
 	VAR
-		instance: WinApi.HANDLE;
-		SubclassCtl: PROCEDURE(wnd: WinApi.HANDLE);
-		CtlColor: PROCEDURE(msg, wPar, lPar: INTEGER): INTEGER;
-		scW, scH: INTEGER;	(* screen width and height *)
-		updateAllowed: BOOLEAN;
-		colors: ARRAY numColors OF Ports.Color;
 		(* date format *)
 		dateSep: CHAR;	(* separator character *)
 		yearPart, monthPart, dayPart: INTEGER;	(* first = 1, last = 3 *)
@@ -148,472 +202,365 @@ MODULE HostCFrames;
 		(* time format *)
 		timeSep: CHAR;	(* separator character *)
 		lastPart: INTEGER;	(* 3 for 24h format, 4 for 12h format *)
-		desig: ARRAY 2, 8 OF CHAR;	(* AM, PM strings *)
-		inHandleMouse*: BOOLEAN; (* to disable the main window handler in HostMenus *)
-		brushes: BrushCache;
-		
+
+		mouseDelayer: DelayedMouseEvent;
+		(* icons for the tree *)
+		tree_closed, tree_open, tree_leaf: Gdk.GdkPixmap;
+		tree_closed_mask, tree_open_mask, tree_leaf_mask: Gdk.GdkBitmap;
+
+		(* used in HandleMouse *)
+		released: BOOLEAN;
+		currentInfo: Info;
+		(* holds the state of the last key event. this is used later widthin the same command. *)
+		lastKeyState: SET;
+
 
 	(* auxiliary procedures *)
 
-	PROCEDURE ConvertFromUnicode (VAR s: ARRAY OF CHAR);
-		VAR i: INTEGER;
+	PROCEDURE (t: TrapCleaner) Cleanup;
 	BEGIN
-		i := 0;
-		WHILE s[i] # 0X DO
-			INC(i)
-		END
-	END ConvertFromUnicode;
+		released := TRUE;
+		mouseDelayer.eventPending := FALSE;
+		currentInfo.allowMouse := FALSE;
+		currentInfo := NIL
+	END Cleanup;
 
-	PROCEDURE ConvertToUnicode (VAR s: ARRAY OF CHAR);
-		VAR i: INTEGER;
-	BEGIN
-		i := 0;
-		WHILE s[i] # 0X DO
-			INC(i)
-		END
-	END ConvertToUnicode;
+	(* Common mouse handling (filter mouse events throught the BlackBox framework) *)
 
-	PROCEDURE GetSize (f: StdCFrames.Frame; VAR x, y, w, h: INTEGER);
-		VAR u, x0, y0: INTEGER;
+	PROCEDURE (a: DelayedMouseEvent) Do-;
 	BEGIN
-		u := f.unit; f.view.context.GetSize(w, h); x0 := f.gx; y0 := f.gy;
-		x := x0 DIV u; y := y0 DIV u;
-		w := (x0 + w) DIV u - x; h := (y0 + h) DIV u - y;
-		IF (SubclassCtl # NIL)
-			& ((f IS Field) OR (f IS UpDownField) OR (f IS TimeField) OR (f IS DateField)
-				OR (f IS ColorField) OR (f IS ListBox) OR (f IS SelectionBox) OR (f IS ComboBox)) THEN
-			INC(x, 1); INC(y, 1); DEC(w, 2); DEC(h, 2)	(* space for 3d border *)
-		END
-	END GetSize;
+		ASSERT(a.forwardWidget # NIL, 20);
+		ASSERT(a.eventPending, 21);
+		Gtk.gtk_widget_event(a.forwardWidget,  a.forwardEvent);
+		a.forwardWidget := NIL;
+		a.eventPending := FALSE
+	END Do;
 
-	PROCEDURE Adapt (f: StdCFrames.Frame; VAR i: Info);
-		VAR res, x, y, w, h, cx, cy, cw, ch, udw, n, h0, h1: INTEGER; r: HostPorts.Rider;
+	PROCEDURE [ccall] MouseHandler (widget: Gtk.GtkWidget; event: Gdk.GdkEventButton; user_data: INTEGER): INTEGER;
+		VAR i: Info;
 	BEGIN
-		IF i.wnd # 0 THEN
-			r := f.rider(HostPorts.Rider);
-			IF r.port.wnd # 0 THEN	(* port is a window *)
-				GetSize(f, x, y, w, h);
-				IF i.dropDown THEN
-					n := WinApi.SendMessageW(i.ctrl, WinApi.CB_GETCOUNT, 0, 0);
-					h0 := WinApi.SendMessageW(i.ctrl, WinApi.CB_GETITEMHEIGHT, -1, 0);
-					h1 := WinApi.SendMessageW(i.ctrl, WinApi.CB_GETITEMHEIGHT, 0, 0);
-					IF n < 1 THEN n := 1 ELSIF n > 8 THEN n := 8 END;
-					h := h0 + h1 * n + 8
-				END;
-				cx := r.l; cy := r.t; cw := r.r - r.l; ch := r.b - r.t;
-				IF (cx # i.x1) OR (cy # i.y1) OR (cw # i.w1) OR (ch # i.h1) THEN
-					i.x1 := cx; i.y1 := cy; i.w1 := cw; i.h1 := ch;
-					res := WinApi.MoveWindow(i.wnd, cx, cy, cw, ch, 0)
-				END;
-				DEC(x, cx); DEC(y, cy);
-				IF (x # i.x2) OR (y # i.y2) OR (w # i.w2) OR (h # i.h2) THEN
-					i.x2 := x; i.y2 := y; i.w2 := w; i.h2 := h;
-					IF i.ud # 0 THEN
-						udw := upDownWidth DIV f.unit;
-						res := WinApi.MoveWindow(i.ud, x + w - udw, y + 1, udw, h - 2, 0);
-						DEC(w, udw);
-						IF SubclassCtl # NIL THEN DEC(w) END
-					END;
-					res := WinApi.MoveWindow(i.ctrl, x, y, w, h, 0)
-				END
-			END
-		END
-	END Adapt;
+		i := SYSTEM.VAL(Info, user_data);
+		IF ~i.allowMouse THEN
+			Gtk.gtk_signal_emit_stop_by_name(widget, "button-press-event");
+			IF (i.frame.rider(HostPorts.Rider).port.da # NIL) & (event.type = Gdk.GDK_BUTTON_PRESS) THEN
+				ASSERT(mouseDelayer.forwardWidget = NIL, 100);
+				ASSERT(~mouseDelayer.eventPending, 101);
 
-	PROCEDURE BkGndColor (f: Views.Frame): Ports.Color;
-		VAR bgnd: Ports.Color; g: Views.Frame;
-	BEGIN
-		g := f;
-		REPEAT
-			g := Views.HostOf(g);
-			bgnd := Views.transparent;
-			g.view.GetBackground(bgnd)
-		UNTIL bgnd # Views.transparent;
-		RETURN bgnd
-	END BkGndColor;
-
-	PROCEDURE Open (f: StdCFrames.Frame; class, name: WinApi.PtrWSTR;
-																style, ex: SET; VAR i: Info);
-		VAR res, x, y, w, h, cx, cy, cw, ch, udw: INTEGER; p: HostPorts.Port; s: SET; r: Ports.Rider;
-	BEGIN
-		f.noRedraw := TRUE;
-		r := f.rider; GetSize(f, x, y, w, h);
-		r.GetRect(cx, cy, cw, ch); cw := cw - cx; ch := ch - cy;
-		p := f.rider(HostPorts.Rider).port;
-		IF p.wnd # 0 THEN	(* port is a window *)
-			i.bkgnd := BkGndColor(f);
-			s := {27, 30};	(* disabled, child *)
-			i.wnd := WinApi.CreateWindowExW({}, "Oberon Ctrl", "", s, cx, cy, cw, ch, p.wnd, 0, instance, 0);
-			IF i.wnd # 0 THEN
-				DEC(x, cx); DEC(y, cy);
-				res := WinApi.SetWindowLongW(i.wnd, dlgWindowExtra, SYSTEM.VAL(INTEGER, f));
-				i.ctrl := WinApi.CreateWindowExW(ex, class, name, style, x, y, w, h, i.wnd, 0, instance, 0);
-				IF i.ctrl # 0 THEN
-					IF (SubclassCtl # NIL) & ~(f IS PushButton) THEN SubclassCtl(i.ctrl) END;
-					IF f.font # NIL THEN
-						res := WinApi.SendMessageW(i.ctrl, WinApi.WM_SETFONT, f.font(HostFonts.Font).dev.id, 0)
-					END;
-					IF (f IS UpDownField) OR (f IS TimeField) OR (f IS DateField) THEN
-						style := {23, 28, 30} + WinCtl.UDS_ALIGNRIGHT + WinCtl.UDS_ARROWKEYS;
-						udw := upDownWidth DIV f.unit;
-						i.ud := WinCtl.CreateUpDownControl(style, x + w - udw, y, udw, h, i.wnd, 0, instance, 0, 1, 0, 0)
-					END;
-					Adapt(f, i);
-					res := WinApi.ShowWindow(i.wnd, 1);
-					res := WinApi.ShowWindow(i.ctrl, 1);
-					IF i.ud # 0 THEN res := WinApi.ShowWindow(i.ud, 1) END
-				ELSE res := WinApi.DestroyWindow(i.wnd); i.wnd := 0
-				END
-			ELSE i.ctrl := 0
-			END
-		ELSE	(* port is a printer -> define temp windows *)
-			i.wnd := 0; i.ctrl := 0
-(*
-			s := {27, 31};	(* disabled, popup *)
-			i.wnd := WinApi.CreateWindowExW({}, "Oberon Ctrl", "", s, scW - cw, scH - ch, cw, ch, 0, 0, instance, 0);
-			res := WinApi.SetWindowLongW(i.wnd, dlgWindowExtra, SYSTEM.VAL(LONGINT, f));
-			i.ctrl := WinApi.CreateWindowExW({}, class, name, style, x - cx, y - cy, w, h, i.wnd, 0, instance, 0)
-*)
-		END
-	END Open;
-
-	PROCEDURE Paint (f: StdCFrames.Frame; VAR i: Info);
-		VAR res, u: INTEGER; r: HostPorts.Rider;
-	BEGIN
-		r := f.rider(HostPorts.Rider); u := f.unit;
-		r.port.CloseBuffer;
-		updateAllowed := TRUE;
-		res := WinApi.InvalidateRect(i.wnd, NIL, 0);
-		res := WinApi.InvalidateRect(i.ctrl, NIL, 0);
-		res := WinApi.UpdateWindow(i.wnd);
-		res := WinApi.UpdateWindow(i.ctrl);
-		IF i.ud # 0 THEN res := WinApi.UpdateWindow(i.ud) END;
-		updateAllowed := FALSE
-	END Paint;
-
-	PROCEDURE PaintRect (f: StdCFrames.Frame; VAR i: Info; l, t, r, b: INTEGER);
-		VAR res, u: INTEGER; ri: HostPorts.Rider; rect: WinApi.RECT;
-	BEGIN
-		ri := f.rider(HostPorts.Rider); u := f.unit;
-		ri.port.CloseBuffer;
-		updateAllowed := TRUE;
-		rect.left := l DIV f.unit; rect.top := t DIV f.unit; rect.right := r DIV f.unit; rect.bottom := b DIV f.unit;
-		rect.left := rect.left; rect.top := rect.top; rect.right := rect.right; rect.bottom := rect.bottom ;
-		(* round up if possible *)
-		IF rect.left > i.x1 THEN rect.left := rect.left - 1 END;
-		IF rect.top > i.y1 THEN rect.top := rect.top - 1 END;
-		IF rect.right < i.x1 + i.w1 THEN rect.right := rect.right + 1 END;
-		IF rect.bottom < i.y1 + i.h1 THEN rect.bottom := rect.bottom + 1 END;
-		res := WinApi.InvalidateRect(i.wnd, rect, 0);
-		res := WinApi.InvalidateRect(i.ctrl, rect, 0);
-		res := WinApi.UpdateWindow(i.wnd);
-		res := WinApi.UpdateWindow(i.ctrl);
-		IF i.ud # 0 THEN res := WinApi.UpdateWindow(i.ud) END;
-		updateAllowed := FALSE
-	END PaintRect;
-
-	PROCEDURE ExtractLine (IN s: ARRAY OF CHAR; beg: INTEGER; fnt: Fonts.Font; maxW: INTEGER;
-		OUT line: Dialog.String; OUT lineW, end: INTEGER
-	);
-		VAR i, len, w: INTEGER; ch: CHAR;
-	BEGIN
-		len := LEN(s$);
-		ASSERT(beg >= 0, 20); ASSERT(beg < LEN(s$), 21); ASSERT(maxW > 0, 22); ASSERT(fnt # NIL, 23);
-		i := 0; end := beg; lineW := 0; w := 0;
-		REPEAT
-			ch := s[i + beg];
-			IF ch <= " " THEN end := i + beg; lineW := w END;
-			line[i] := ch; INC(i); line[i] := 0X; w := fnt.StringWidth(line);
-			IF (w <= maxW) & ((ch = "-") OR (ch = "_")) THEN end := i + beg; lineW := w END
-		UNTIL (i + beg = len) OR (w > maxW);
-		IF w <= maxW THEN end := beg + i; line[end - beg] := 0X; lineW := w
-		ELSIF end # beg THEN line[end - beg] := 0X
-		ELSE end := beg + i - 1; line[i - 1] := 0X; lineW := fnt.StringWidth(line)
-		END;
-		ASSERT(end > beg, 80)
-	END ExtractLine;
-
-	PROCEDURE PrintString (f: Views.Frame; w: INTEGER;
-		IN string: ARRAY OF CHAR; fnt: Fonts.Font; col: Ports.Color;
-		x0, y0: INTEGER; left, right, multiLine: BOOLEAN
-	);
-		VAR x, sw, asc, dsc, fw, beg, end, len, n: INTEGER; s: Dialog.String;
-	BEGIN
-		fnt.GetBounds(asc, dsc, fw); sw := fnt.StringWidth(string);
-		w := MAX(fw, w - 2 * x0); (* ensures that always at least one character fits *)
-		beg := 0; len := LEN(string$); n := 0;
-		WHILE beg < len DO
-			IF multiLine THEN ExtractLine(string, beg, fnt, w, s, sw, end)
-			ELSE s := string$; sw := fnt.StringWidth(s); end := len
+				mouseDelayer.delayedEvent := event;
+				mouseDelayer.delayedEvent.send_event := 1;
+				mouseDelayer.forwardEvent := event;
+				mouseDelayer.forwardEvent.send_event := 1;
+				mouseDelayer.forwardEvent.window := i.frame.rider(HostPorts.Rider).port.da.window;
+				mouseDelayer.forwardEvent.x := mouseDelayer.forwardEvent.x + i.mainWidget.allocation.x;
+				mouseDelayer.forwardEvent.y := mouseDelayer.forwardEvent.y + i.mainWidget.allocation.y;
+				mouseDelayer.forwardWidget := i.frame.rider(HostPorts.Rider).port.da;
+				mouseDelayer.eventPending := TRUE;
+				(* wait with propagating event to parent until after this procedure has returned *)
+				Services.DoLater(mouseDelayer, Services.immediately)
 			END;
-			IF ~left & ~right THEN x := (w - sw) DIV 2 ELSIF right & ~left THEN x := w - sw ELSE x := 0 END;
-			f.DrawString(x0 + x, n * (asc + dsc) + y0, col, s, fnt);
-			beg := end; INC(n);
-			IF (beg < len) & (string[beg] = " ") THEN INC(beg) END
+			RETURN 1
+		ELSE
+			RETURN 1
 		END
-	END PrintString;
+	END MouseHandler;
 
-	PROCEDURE Print (f: StdCFrames.Frame; d, x, y: INTEGER; label: ARRAY OF CHAR);
-		VAR w, h, sw, a, asc, dsc, fw: INTEGER; font: Fonts.Font; on: BOOLEAN;
+	PROCEDURE [ccall] MouseRelease (widget: Gtk.GtkWidget; event: Gdk.GdkEventButton; user_data: INTEGER): INTEGER;
 	BEGIN
-		IF f.font # NIL THEN font := f.font ELSE font := HostFonts.dlgFont END;
-		f.view.context.GetSize(w, h);
-		font.GetBounds(asc, dsc, fw);
-		IF x < 0 THEN sw := font.StringWidth(label); x := (w - sw) DIV 2 END;
-		IF y < 0 THEN y := (h + asc - dsc) DIV 2
-		ELSIF y = 0 THEN y := asc
-		END;
-		a := (h - 8 * Ports.point) DIV 2;
-		IF d = -1 THEN
-			f.DrawRect(2 * Ports.point, a, 10 * Ports.point, a + 8 * Ports.point, f.dot, Ports.defaultColor);
-			IF (f IS CheckBox) & (f(CheckBox).Get # NIL) THEN
-				f(CheckBox).Get(f(CheckBox), on);
-				IF on THEN
-					f.DrawLine(
-						2 * Ports.point + 2 * f.dot, a + 4 * Ports.point, 5 * Ports.point, a + 8 * Ports.point - 2 * f.dot,
-						2 * Ports.point, Ports.defaultColor
-						);
-					f.DrawLine(
-						5 * Ports.point, a + 8 * Ports.point - 2 * f.dot, 10 * Ports.point - 2 * f.dot, a + 2 * f.dot,
-						2 * Ports.point, Ports.defaultColor
-						)
+		released := TRUE;
+		RETURN 0
+	END MouseRelease;
+
+	PROCEDURE HandleMouse (i: Info; x, y: INTEGER; buttons: SET);
+		VAR res: INTEGER; tc: TrapCleaner;
+	BEGIN
+		IF mouseDelayer.eventPending THEN
+			(* BlackBox tries to propagate an Event that the Gtk control didn't want *)
+			NEW(tc);
+			Kernel.PushTrapCleaner(tc);
+			currentInfo := i;
+			Gtk.gtk_grab_remove(i.frame.rider(HostPorts.Rider).port.da);
+
+	(*	ASSERT((mouseDelayer.delayedEvent.x = x + 1) & (mouseDelayer.delayedEvent.y = y + 1), 20);
+		(* TODO: why "+ 1" ? *)
+	*)
+
+			i.allowMouse := TRUE;
+			Gtk.gtk_widget_event(i.eventWidget, mouseDelayer.delayedEvent);
+			released := FALSE;
+			REPEAT
+				res := Gtk.gtk_main_iteration()
+			UNTIL released;
+			i.allowMouse := FALSE;
+			currentInfo := NIL;
+			Kernel.PopTrapCleaner(tc)
+		END
+	END HandleMouse;
+
+	PROCEDURE UpdateEventMask (i: Info);
+	(* This is a hack to get mouse events propagated to the parent when the widget is disabled *)
+	(* TODO: It only seems to work with buttons... *)
+		VAR mask: Gdk.GdkEventMask;
+	BEGIN
+		IF  i.eventWidget.window # NIL THEN
+			IF ~i.frame.disabled & ~i.frame.readOnly THEN
+				IF i.eventMaskState # eOn THEN
+					mask := Gdk.gdk_window_get_events(i.eventWidget.window);
+					mask := mask + Gdk.GDK_BUTTON_PRESS_MASK;
+					Gdk.gdk_window_set_events(i.eventWidget.window, mask);
+					i.eventMaskState := eOn
 				END
-			END
-		ELSIF d = -2 THEN f.DrawOval(2 * Ports.point, a, 10 * Ports.point, a + 8 * Ports.point, f.dot, Ports.defaultColor);
-			IF f(RadioButton).Get # NIL THEN f(RadioButton).Get(f(RadioButton), on);
-				IF on THEN f.DrawOval(2*Ports.point + 2*f.dot, a+2*f.dot,
-											10*Ports.point - 2*f.dot, a + 8*Ports.point-2*f.dot, Ports.fill, Ports.black)
-				END
-			END
-		ELSIF d = -3 THEN
-			f.DrawRect(0, MIN(asc - f.dot, h), w, MAX(asc - f.dot, h), f.dot, Ports.defaultColor);
-			f.DrawRect(x, y - asc, x + font.StringWidth(label), y + dsc, Ports.fill, Ports.background)
-		ELSIF d > 0 THEN f.DrawRect(0, 0, w, h, d, Ports.defaultColor)
-		END;
-(*
-		WITH f: Field DO
-			IF f.right & ~f.left THEN x := w - x - font.SStringWidth(label)
-			ELSIF ~f.right & ~f.left THEN x := (w DIV 2) - (font.SStringWidth(label) DIV 2)
-			END
-		| f: Caption DO
-			IF f.right & ~f.left THEN x := w - x - font.SStringWidth(label)
-			ELSIF ~f.right & ~f.left THEN x := (w DIV 2) - (font.SStringWidth(label) DIV 2)
+			ELSIF i.eventMaskState # eOff THEN
+				mask := Gdk.gdk_window_get_events(i.eventWidget.window);
+				mask := mask - Gdk.GDK_BUTTON_PRESS_MASK;
+				Gdk.gdk_window_set_events(i.eventWidget.window, mask);
+				i.eventMaskState := eOff
 			END
 		ELSE
-		END;
-		f.DrawSString(x, y, Ports.defaultColor, label, font)
-*)
-		WITH f: Field DO
-			PrintString(f, w, label, font, Ports.defaultColor, x, y, f.left, f.right, f.multiLine)
-		| f: Caption DO
-			PrintString(f, w, label, font, Ports.defaultColor, x, y, f.left, f.right, TRUE)
-		ELSE
-			PrintString(f, w, label, font, Ports.defaultColor, x, y, TRUE, FALSE, FALSE)
+			i.eventMaskState := eUndef
 		END
-	END Print;
+	END UpdateEventMask;
 
-	PROCEDURE SendKey (ch: CHAR; wnd: WinApi.HANDLE);
-		VAR res, code: INTEGER;
+	(* Common key handling (filter key events throught the BlackBox framework) *)
+
+	PROCEDURE [ccall] KeyHandler(widget: Gtk.GtkWidget; event: Gdk.GdkEventKey; user_data: INTEGER): INTEGER;
+		VAR i: Info;
 	BEGIN
-		CASE ch OF
-		| 10X: code := 21H
-		| 11X: code := 22H
-		| 12X: code := 21H
-		| 13X: code := 22H
-		| 14X: code := 24H
-		| 15X: code := 23H
-		| 16X: code := 24H
-		| 17X: code := 23H
-		| 1CX: code := 25H
-		| 1DX: code := 27H
-		| 1EX: code := 26H
-		| 1FX: code := 28H
-		| DEL: code := 2EH
+		i := SYSTEM.VAL(Info, user_data);
+		IF ~i.allowKey THEN
+			lastKeyState := event.state;
+			Gtk.gtk_signal_emit_stop_by_name(widget, "key-press-event");
+			RETURN 1
+		ELSE
+			RETURN 0
+		END
+	END KeyHandler;
+
+	PROCEDURE HandleKey (i: Info; char: CHAR);
+	CONST
+			RDEL = 07X; LDEL = 08X;  TAB = 09X; LTAB = 0AX; ENTER = 0DX;
+			PL = 10X; PR = 11X; PU = 12X; PD = 13X;
+			DL = 14X; DR = 15X; DU = 16X; DD = 17X; ESC = 1BX;
+			AL = 1CX; AR = 1DX; AU = 1EX; AD = 1FX;
+	VAR ne: Gdk.GdkEventKeyDesc;
+			code: INTEGER;
+	BEGIN
+		i.allowKey := TRUE;
+		CASE char OF
+			| PL, PU: code := Key.GDK_Page_Up
+			| PR, PD: code := Key.GDK_Page_Down
+			| DL, DU: code := Key.GDK_Home
+			| DR, DD: code := Key.GDK_End
+			| AL: code := Key.GDK_Left
+			| AR: code := Key.GDK_Right
+			| AU: code := Key.GDK_Up
+			| AD: code := Key.GDK_Down
+			| LDEL: code := Key.GDK_BackSpace
+			| RDEL: code := Key.GDK_Delete
+			| ESC: code := Key.GDK_Escape
+			| ENTER: code := Key.GDK_Return
+			| TAB : code := Key.GDK_Tab	(* ?*)
+			| LTAB : code := Key.GDK_Tab; (* ?*)
 		ELSE code := 0
 		END;
 		IF code # 0 THEN
-			res := WinApi.SendMessageW(wnd, WinApi.WM_KEYDOWN, code, 0);
-			res := WinApi.SendMessageW(wnd, WinApi.WM_KEYUP, code, 0)
+			ne.keyval := code
 		ELSE
-			res := WinApi.SendMessageW(wnd, WinApi.WM_CHAR, ORD(ch), 0)
-		END
-	END SendKey;
-
-	PROCEDURE (t: TrapCleaner) Cleanup;
-	BEGIN
-		inHandleMouse := FALSE
-	END Cleanup;
-
-	PROCEDURE HandleMouse (wnd: WinApi.HANDLE; x, y: INTEGER; buttons: SET);
-		VAR res, b, hc, m: INTEGER; pt: WinApi.POINT; w: WinApi.HANDLE; msg: WinApi.MSG;
-			tc: TrapCleaner;
-	BEGIN
-		NEW(tc); Kernel.PushTrapCleaner(tc); inHandleMouse := TRUE;
-		res := WinApi.ReleaseCapture(); b := 0;
-		IF HostPorts.left IN buttons THEN INC(b) END;
-		IF HostPorts.right IN buttons THEN INC(b, 2) END;
-		IF Controllers.extend IN buttons THEN INC(b, 4) END;
-		IF Controllers.modify IN buttons THEN INC(b, 8) END;
-		pt.x := x; pt.y := y;
-		REPEAT
-			w := wnd; wnd := WinApi.ChildWindowFromPoint(wnd, pt);
-			res := WinApi.ClientToScreen(w, pt);
-			hc := WinApi.SendMessageW(wnd, WinApi.WM_NCHITTEST, 0, pt.x + pt.y * 65536);
-			res := WinApi.ScreenToClient(wnd, pt)
-		UNTIL (hc # 1) OR (w = wnd);
-		IF hc > 1 THEN
-			res := WinApi.ClientToScreen(wnd, pt);
-			IF ODD(b) THEN m := WinApi.WM_NCLBUTTONDOWN ELSE m := WinApi.WM_NCRBUTTONDOWN END;
-			res := WinApi.SendMessageW(wnd, m, hc, pt.x + pt.y * 65536)
-		ELSE
-			res := WinApi.GetClassLongW(wnd, -26);	(* classStyle *)
-			IF (Controllers.doubleClick IN buttons) & ODD(res DIV 8) THEN	(* DblClks IN classStyle *)
-				IF ODD(b) THEN m := WinApi.WM_LBUTTONDBLCLK ELSE m := WinApi.WM_RBUTTONDBLCLK END
-			ELSE
-				IF ODD(b) THEN m := WinApi.WM_LBUTTONDOWN ELSE m := WinApi.WM_RBUTTONDOWN END
-			END;
-			res := WinApi.SendMessageW(wnd, m, b, pt.x + pt.y * 65536)
+			ne.keyval := Gdk.gdk_unicode_to_keyval(ORD(char))
 		END;
-		REPEAT
-			res := WinApi.GetMessageW(msg, 0, 0, 0);
-			IF (msg.message >= WinApi.WM_MOUSEMOVE) & (msg.message <= WinApi.WM_MBUTTONDBLCLK) THEN
-				b := msg.wParam
-			END;
-			res := WinApi.TranslateMessage(msg);
-			res := WinApi.DispatchMessageW(msg)
-		UNTIL b MOD 4 = 0;
-		inHandleMouse := FALSE; Kernel.PopTrapCleaner(tc)
-	END HandleMouse;
+		ne.length := 1;
+		ne.string := SYSTEM.VAL(Gdk.PString, SYSTEM.ADR(char));
+		ne.type := Gdk.GDK_KEY_PRESS;
+		ne.window := i.eventWidget.window;
+		ne.send_event := 1;
+		ne.time := Gdk.GDK_CURRENT_TIME;
+		ne.state := lastKeyState;
+		Gtk.gtk_widget_event(i.eventWidget, ne);
+		i.allowKey := FALSE
+	END HandleKey;
 
-	PROCEDURE HandleWheel (wnd: WinApi.HANDLE; x, y: INTEGER; op, nofLines: INTEGER;
-		VAR done: BOOLEAN
-	);
-		VAR res: INTEGER;
+
+	PROCEDURE NewInfo (frame: StdCFrames.Frame; mainWidget, eventWidget: Gtk.GtkWidget): Info;
+		VAR i: Info; res: INTEGER;
 	BEGIN
-		IF op = Controllers.incPage THEN
-			res := WinApi.SendMessageW(wnd, WinApi.WM_VSCROLL, WinApi.SB_PAGEDOWN, WinApi.NULL)
-		ELSIF op = Controllers.decPage THEN
-			res := WinApi.SendMessageW(wnd, WinApi.WM_VSCROLL, WinApi.SB_PAGEUP, WinApi.NULL)
-		ELSE
-			IF op = Controllers.incLine THEN
-				op := WinApi.SB_LINEDOWN
-			ELSE
-				op := WinApi.SB_LINEUP
-			END;
-			WHILE nofLines > 0 DO
-				res := WinApi.SendMessageW(wnd, WinApi.WM_VSCROLL, op, WinApi.NULL);
-				DEC(nofLines)
-			END
+		ASSERT(frame # NIL, 20); ASSERT(mainWidget # NIL, 21); ASSERT(eventWidget # NIL, 22);
+		NEW(i);
+		i.allowMouse := FALSE;
+		i.frame := frame; i.mainWidget := mainWidget; i.eventWidget := eventWidget;
+		i.eventMaskState := eUndef;
+		(* connect signals for the mouse handling - the new info is passed as user_data *)
+		res := GtkU.gtk_signal_connect(eventWidget, "button_press_event", SYSTEM.ADR(MouseHandler), SYSTEM.VAL(INTEGER, i));
+		res := GtkU.gtk_signal_connect_after(eventWidget, "button-release-event", SYSTEM.ADR(MouseRelease), SYSTEM.VAL(INTEGER, i));
+		res := GtkU.gtk_signal_connect(eventWidget, "key-press-event", SYSTEM.ADR(KeyHandler), SYSTEM.VAL(INTEGER, i));
+		RETURN i
+	END NewInfo;
+
+	PROCEDURE [ccall] EditableTextLen (editable: Gtk.GtkWidget): INTEGER;
+		VAR s: Gtk.PString; res: INTEGER;
+	BEGIN
+		res := 0;
+		s := Gtk.gtk_editable_get_chars(editable, 0, -1);
+		IF s # NIL THEN
+			res := LEN(s$);
+			GLib.g_free(SYSTEM.VAL(GLib.gpointer, s))
 		END;
-		done := TRUE
-	END HandleWheel;
+		RETURN res
+	END EditableTextLen;
 
-	PROCEDURE Mark (on, focus: BOOLEAN; VAR i: Info);
-		VAR res: INTEGER;
+	PROCEDURE Mark (on, focus: BOOLEAN; i: Info);
 	BEGIN
-		IF focus THEN
+		IF focus & (i # NIL) & (i.eventWidget # NIL) THEN
 			IF on THEN
 				IF ~i.hasFocus THEN
-					res := WinApi.SendMessageW(i.ctrl, WinApi.WM_SETFOCUS, 0, 0);
+					Gtk.gtk_container_set_focus_child(i.frame.rider(HostPorts.Rider).port.fixed,
+						 i.eventWidget);
+					Gtk.gtk_widget_grab_focus(i.eventWidget);
+(*				Gtk.gtk_widget_draw_focus(i.eventWidget); *)
 					i.hasFocus := TRUE
 				END
 			ELSE
 				IF i.hasFocus THEN
-					res := WinApi.SendMessageW(i.ctrl, WinApi.WM_KILLFOCUS, 0, 0);
+					Gtk.gtk_container_set_focus_child(i.frame.rider(HostPorts.Rider).port.fixed, NIL);
+					(* Gtk.gtk_widget_draw_default(i.eventWidget);   *)
 					i.hasFocus := FALSE
 				END
 			END
 		END
 	END Mark;
 
-	PROCEDURE SetLabel (IN in: ARRAY OF CHAR; OUT out: ARRAY OF CHAR);
+	PROCEDURE NewStyle (font: Fonts.Font): Gtk.GtkRcStyle;
+		VAR style: Gtk.GtkRcStyle;
 	BEGIN
-		Dialog.MapString(in, out); ConvertFromUnicode(out);
-	END SetLabel;
+		style := Gtk.gtk_rc_style_new();
+		style.font_desc := font(HostFonts.Font).desc; (*!!!*)
+		RETURN style
+	END NewStyle;
 
-	PROCEDURE CheckLabel (IN label: ARRAY OF CHAR; ctrl: INTEGER);
-		VAR res: INTEGER; lbl, s: Dialog.String;
+	(* On Windows & is used to mark an Alt-shortcut. This is not available on Linux. *)
+	PROCEDURE AmpersandToUline (VAR ss: ARRAY OF CHAR);
+		VAR i: INTEGER;
 	BEGIN
-		Dialog.MapString(label, lbl);
-		ConvertFromUnicode(lbl);
-		res := WinApi.GetWindowTextW(ctrl, s, LEN(s));
-		IF s # lbl THEN res := WinApi.SetWindowTextW(ctrl, lbl) END
-	END CheckLabel;
+	i:=0;
+		WHILE (ss[i] # 0X) DO IF ss[i] = "&" THEN ss[i] := "_" END ;	INC(i)	END;
+	END AmpersandToUline;
+
+	PROCEDURE NewLabel (VAR text: ARRAY OF CHAR; style: Gtk.GtkRcStyle): Gtk.GtkLabel;
+		VAR lbl: Gtk.GtkLabel;
+			us: GLib.PString;
+	BEGIN
+		Dialog.MapString(text, text);
+		AmpersandToUline(text);
+		us := GLib.g_utf16_to_utf8(text, -1, NIL, NIL, NIL);
+		lbl := Gtk.gtk_label_new_with_mnemonic(us);
+		GLib.g_free(SYSTEM.VAL(GLib.gpointer, us));
+		Gtk.gtk_widget_ref(lbl);
+		Gtk.gtk_widget_modify_style(lbl, style);
+		RETURN lbl
+	END NewLabel;
+
+	PROCEDURE DummyRestore (f: StdCFrames.Frame; lbl: Dialog.String; l, t, r, b: INTEGER);
+		VAR w, h, mx, my, dw, dh, asc, dsc: INTEGER;
+	BEGIN
+		AmpersandToUline(lbl);
+		f.view.context.GetSize(w, h);
+		mx := w DIV 2; my := h DIV 2;
+		dw := HostFonts.dlgFont.StringWidth(lbl) DIV 2;
+		HostFonts.dlgFont.GetBounds(asc, dsc, dh); dh := (asc + dsc) DIV 2;
+		f.DrawRect(0, 0, w, h, Ports.fill, Ports.grey50);
+		f.DrawRect(0, 0, w, h, 1, Ports.black);
+		f.DrawString(mx - dw, my + dh, Ports.white, lbl, HostFonts.dlgFont)
+	END DummyRestore;
+
+	PROCEDURE Paint (i: Info);
+	BEGIN
+		i.frame.rider(HostPorts.Rider).port.CloseBuffer;
+		Gtk.gtk_widget_show_all(i.mainWidget)
+	END Paint;
+
 
 	(* PushButton *)
 
+	PROCEDURE Execute (f: PushButton);
+	BEGIN
+		IF f.Do # NIL THEN
+			Dialog.ShowStatus("");
+			f.Do(f);
+		END
+	END Execute;
+(*
 	PROCEDURE (f: PushButton) SetOffset (x, y: INTEGER);
 	BEGIN
 		f.SetOffset^(x, y);
-		Adapt(f, f.i)
+		(*Adapt(f, f.i)*)
 	END SetOffset;
-
-	PROCEDURE (f: PushButton) Close;
-		VAR res: INTEGER;
+*)
+	PROCEDURE (c: PushButton) Close;
 	BEGIN
-		IF f.i.wnd # 0 THEN	(* deallocate *)
-			ASSERT(f.rider # NIL, 100); ASSERT(f.rider.Base() # NIL, 101);
-			res := WinApi.DestroyWindow(f.i.wnd);
-			f.i.wnd := 0; f.i.ctrl := 0
-		END
-		(*f.Close^*)
+		IF c.button # NIL THEN
+			Gtk.gtk_widget_unref(c.button);
+			Gtk.gtk_widget_unref(c.lbl);
+			Gtk.gtk_widget_unref(c.ebox);
+			Gtk.gtk_container_remove(c.rider(HostPorts.Rider).port.fixed, c.ebox)
+		END;
+	  c.button := NIL; c.i := NIL
 	END Close;
 
-	PROCEDURE (f: PushButton) Update;
-		VAR res: INTEGER; style: SET;
+	PROCEDURE [ccall] ButtonClick (button: Gtk.GtkWidget; user_data: INTEGER);
+		VAR f: PushButton;
 	BEGIN
-		IF ~f.disabled & ~f.readOnly THEN
-			IF WinApi.IsWindowEnabled(f.i.ctrl) = 0 THEN
-				IF f.default THEN
-					style := BITS(WinApi.GetWindowLongW(f.i.ctrl, -16));	(* window style *)
-					res := WinApi.SetWindowLongW(f.i.ctrl, -16, ORD(style + {0}))
-				END;
-				res := WinApi.EnableWindow(f.i.ctrl, 1)
+		f := SYSTEM.VAL(PushButton, user_data);
+		ASSERT(~f.disabled, 100);
+		Execute(f);
+		released := TRUE
+	END ButtonClick;
+
+	PROCEDURE (c: PushButton) Update;
+		VAR mask: Gdk.GdkEventMask;
+	BEGIN
+		ASSERT(c.button # NIL);
+		IF ~c.disabled & ~c.readOnly THEN
+			Gtk.gtk_widget_set_sensitive(c.button, on);
+			IF c.default THEN
+				INCL(c.button.flags, 13); (* GTK_CAN_DEFAULT *)
+				Gtk.gtk_widget_grab_default(c.button)
 			END
 		ELSE
-			IF WinApi.IsWindowEnabled(f.i.ctrl) # 0 THEN
-				IF f.default THEN
-					style := BITS(WinApi.GetWindowLongW(f.i.ctrl, -16));	(* window style *)
-					res := WinApi.SetWindowLongW(f.i.ctrl, -16, ORD(style - {0}))
-				END;
-				res := WinApi.EnableWindow(f.i.ctrl, 0)
-			END
+			Gtk.gtk_widget_set_sensitive(c.button, off)
 		END;
-		CheckLabel(f.label, f.i.ctrl);
-		res := WinApi.UpdateWindow(f.i.ctrl)
+(**)
+		Gtk.gtk_widget_show_all(c.button);
+		UpdateEventMask(c.i)
 	END Update;
 
-	PROCEDURE (f: PushButton) Restore (l, t, r, b: INTEGER);
-		VAR style: SET; lbl: Dialog.String;
+	PROCEDURE (c: PushButton) Restore (l, t, r, b: INTEGER);
+		VAR w, h, cx, cy, cw, ch, res: INTEGER;
+		s: Dialog.String;
 	BEGIN
-		SetLabel(f.label, lbl);
-		IF f.i.ctrl = 0 THEN	(* lazy allocation *)
-			style := {16, 30};	(* pushbutton, tabstop, child *)
-			IF f.default & ~f.disabled THEN INCL(style, 0) END;	(* default *)
-			Open(f, "BUTTON", lbl, style, {}, f.i)
+		IF c.button = NIL THEN
+			c.noRedraw := TRUE;
+			c.rider(HostPorts.Rider).GetRect(cx, cy, cw, ch);
+			cw := cw - cx; ch := ch - cy;
+			c.lbl := NewLabel(c.label, NewStyle(c.font));
+			c.button := Gtk.gtk_button_new(); Gtk.gtk_widget_ref(c.button);
+			Gtk.gtk_container_add(c.button, c.lbl);
+			c.ebox := Gtk.gtk_event_box_new(); 	Gtk.gtk_widget_ref(c.ebox);
+
+			res := GtkU.gtk_signal_connect(c.button, "clicked", SYSTEM.ADR(ButtonClick), SYSTEM.VAL(INTEGER, c));
+			c.i := NewInfo(c, c.ebox, c.ebox);
+			Gtk.gtk_container_add(c.ebox, c.button);
+			Gtk.gtk_widget_set_usize(c.ebox, cw, ch); (*	*)
+			Gtk.gtk_fixed_put(c.rider(HostPorts.Rider).port.fixed, c.ebox, cx, cy)
 		END;
-		f.Update;
-		IF f.i.wnd # 0 THEN Paint(f, f.i) ELSE Print(f, f.dot, -1, -1, lbl) END
+		c.Update;
+		Paint(c.i)
 	END Restore;
 
 	PROCEDURE (f: PushButton) MouseDown (x, y: INTEGER; buttons: SET);
 	BEGIN
 		ASSERT(~f.disabled, 100);
 		IF f.rider # NIL THEN
-			HandleMouse(f.i.wnd, x DIV f.unit, y DIV f.unit, buttons)
+			HandleMouse(f.i, x DIV f.unit, y DIV f.unit, buttons)
 		END
 	END MouseDown;
-
-	PROCEDURE Execute (f: PushButton);
-		VAR old: WinApi.HANDLE;
-	BEGIN
-		IF f.Do # NIL THEN
-			old := WinApi.SetCursor(HostPorts.cursors[HostPorts.busyCursor]);
-			Dialog.ShowStatus("");
-			f.Do(f);
-			old := WinApi.SetCursor(old)
-		END
-	END Execute;
 
 	PROCEDURE (f: PushButton) KeyDown (ch: CHAR);
 	BEGIN
@@ -623,87 +570,105 @@ MODULE HostCFrames;
 
 	PROCEDURE (f: PushButton) Mark (on, focus: BOOLEAN);
 	BEGIN
-		Mark(on, f.front, f.i)
+(*		Mark(on, f.front, f.button, f.hasFocus);*)
+		Mark(on, f.front, f.i);
 	END Mark;
 
 
 
 	(* CheckBox *)
 
+	PROCEDURE [ccall] CheckToggled (checkButton: Gtk.GtkWidget; user_data: INTEGER);
+		VAR f: CheckBox;
+	BEGIN
+		f := SYSTEM.VAL(CheckBox, user_data);
+		IF ~f.disabled THEN
+			f.Set(f, Gtk.gtk_toggle_button_get_active(f.checkButton) # 0)
+		END
+	END CheckToggled;
+(*
 	PROCEDURE (f: CheckBox) SetOffset (x, y: INTEGER);
 	BEGIN
 		f.SetOffset^(x, y);
-		Adapt(f, f.i)
+		(*Adapt(f, f.i)*)
 	END SetOffset;
-
-	PROCEDURE (f: CheckBox) Close;
-		VAR res: INTEGER;
+*)
+	PROCEDURE (c: CheckBox) Close;
 	BEGIN
-		IF f.i.wnd # 0 THEN	(* deallocate *)
-			ASSERT(f.rider # NIL, 100); ASSERT(f.rider.Base() # NIL, 101);
-			res := WinApi.DestroyWindow(f.i.wnd);
-			f.i.wnd := 0; f.i.ctrl := 0
-		END
-		(*f.Close^*)
+		IF c.checkButton # NIL THEN
+			Gtk.gtk_widget_unref(c.lbl);
+			Gtk.gtk_widget_unref(c.checkButton);
+			Gtk.gtk_widget_unref(c.ebox);
+			Gtk.gtk_container_remove(c.rider(HostPorts.Rider).port.fixed, c.ebox)
+		END;
+		c.i := NIL; c.lbl := NIL; c.checkButton := NIL; c.ebox := NIL
 	END Close;
 
-	PROCEDURE (f: CheckBox) Update;
-		VAR res: INTEGER; value: BOOLEAN;
+	PROCEDURE (c: CheckBox) Update;
+		VAR res: INTEGER; value, mixed: BOOLEAN; mask: Gdk.GdkEventMask;
 	BEGIN
-		IF ~f.disabled THEN
-			f.Get(f, value);
-			IF WinApi.IsWindowEnabled(f.i.ctrl) = 0 THEN res := WinApi.EnableWindow(f.i.ctrl, 1) END;
-			IF f.undef THEN res := WinApi.SendMessageW(f.i.ctrl, WinApi.BM_SETCHECK, 2, 0)
-			ELSIF value THEN res := WinApi.SendMessageW(f.i.ctrl, WinApi.BM_SETCHECK, 1, 0)
-			ELSE res := WinApi.SendMessageW(f.i.ctrl, WinApi.BM_SETCHECK, 0, 0)
+		IF ~c.disabled THEN
+			c.Get(c, value);
+			IF c.undef THEN
+(*				res := USER32.SendMessageA(f.i.ctrl, USER32.BMSetCheck, 2, 0) TODO: Here what? *)
+			ELSIF value THEN Gtk.gtk_toggle_button_set_active(c.checkButton, 1)
+			ELSE Gtk.gtk_toggle_button_set_active(c.checkButton, 0)
 			END;
-			IF f.readOnly THEN res := WinApi.SendMessageW(f.i.ctrl, WinApi.BM_SETSTATE, WinApi.TRUE, 0)
-			ELSE res := WinApi.SendMessageW(f.i.ctrl, WinApi.BM_SETSTATE, WinApi.FALSE, 0)
+			IF c.readOnly THEN Gtk.gtk_widget_set_sensitive(c.checkButton, off)
+			ELSE Gtk.gtk_widget_set_sensitive(c.checkButton, on)
 			END
 		ELSE
-			res := WinApi.SendMessageW(f.i.ctrl, WinApi.BM_SETCHECK, 0, 0);
-			res := WinApi.SendMessageW(f.i.ctrl, WinApi.BM_SETSTATE, WinApi.FALSE, 0);
-			IF WinApi.IsWindowEnabled(f.i.ctrl) # 0 THEN
-				res := WinApi.EnableWindow(f.i.ctrl, 0)
-			END
+			Gtk.gtk_toggle_button_set_active(c.checkButton, 0);
+			Gtk.gtk_widget_set_sensitive(c.checkButton, off)
 		END;
-		CheckLabel(f.label, f.i.ctrl);
-		res := WinApi.UpdateWindow(f.i.ctrl)
+(*		CheckLabel(f.label, f.i.ctrl);*)
+(*
+		UpdateEventMask(c.i);
+		IF c.lbl.window # NIL THEN
+			mask := Gdk.gdk_window_get_events(c.lbl.window);
+			mask := mask - Gdk.GDK_BUTTON_PRESS_MASK;
+			Gdk.gdk_window_set_events(c.lbl.window, mask)
+		END
+*)
 	END Update;
 
-	PROCEDURE (f: CheckBox) Restore (l, t, r, b: INTEGER);
-		VAR style: SET; lbl: Dialog.String;
+	PROCEDURE (c: CheckBox) Restore (l, t, r, b: INTEGER);
+		VAR w, h, cx, cy, cw, ch, res: INTEGER;
+		s: Dialog.String;
 	BEGIN
-		SetLabel(f.label, lbl);
-		IF f.i.ctrl = 0 THEN	(* lazy allocation *)
-(*
-			f.Get(f, value);	(* update f.undef *)
-			IF f.undef THEN style := {1, 2, 16, 30}	(* auto 3state, tabstop, child *)
-			ELSE style := {0, 1, 16, 30}	(* auto checkbox, tabstop, child *)
-			END;
-*)
-			style := {0, 2, 16, 30};	(* 3state, tabstop, child *)
-			Open(f, "BUTTON", lbl, style, {}, f.i)
+		IF c.checkButton = NIL THEN
+			c.noRedraw := TRUE;
+			c.rider(HostPorts.Rider).GetRect(cx, cy, cw, ch);
+			cw := cw - cx; ch := ch - cy;
+
+			c.lbl := NewLabel(c.label, NewStyle(c.font));
+			c.checkButton := Gtk.gtk_check_button_new();		Gtk.gtk_widget_ref(c.checkButton);
+			Gtk.gtk_container_add(c.checkButton, c.lbl);
+
+			res := GtkU.gtk_signal_connect(c.checkButton, "toggled", SYSTEM.ADR(CheckToggled),SYSTEM.VAL(INTEGER, c));
+			c.ebox := Gtk.gtk_event_box_new(); 	Gtk.gtk_widget_ref(c.ebox);
+			c.i := NewInfo(c, c.ebox, c.checkButton);
+			Gtk.gtk_widget_set_usize(c.ebox, cw, ch);
+			Gtk.gtk_container_add(c.ebox, c.checkButton);
+			Gtk.gtk_fixed_put(c.rider(HostPorts.Rider).port.fixed, c.ebox, cx, cy)
 		END;
-		f.Update;
-		IF f.i.wnd # 0 THEN Paint(f, f.i) ELSE Print(f, -1, 12 * Ports.point, -1, lbl) END
+		c.Update;
+		Paint(c.i)
 	END Restore;
 
 	PROCEDURE (f: CheckBox) MouseDown (x, y: INTEGER; buttons: SET);
 	BEGIN
 		ASSERT(~f.disabled, 100);
 		IF f.rider # NIL THEN
-			HandleMouse(f.i.wnd, x DIV f.unit, y DIV f.unit, buttons)
+			HandleMouse(f.i, x DIV f.unit, y DIV f.unit, buttons)
 		END
 	END MouseDown;
 
 	PROCEDURE (f: CheckBox) KeyDown (ch: CHAR);
-		VAR res: INTEGER;
 	BEGIN
 		ASSERT(~f.disabled, 100);
-		IF ch >= " " THEN
-			res := WinApi.SendMessageW(f.i.ctrl, WinApi.WM_KEYDOWN, ORD(" "), 0);
-			res := WinApi.SendMessageW(f.i.ctrl, WinApi.WM_KEYUP, ORD(" "), 0)
+		IF ch = " " THEN
+			Gtk.gtk_button_clicked(f.checkButton)
 		END
 	END KeyDown;
 
@@ -716,70 +681,97 @@ MODULE HostCFrames;
 
 	(* RadioButton *)
 
+	PROCEDURE [ccall] RadioToggled (radioButton: Gtk.GtkWidget; user_data: INTEGER);
+		VAR f: RadioButton;
+	BEGIN
+		f := SYSTEM.VAL(RadioButton, user_data);
+		IF ~f.disabled THEN
+			(* f.Set(f, Gtk.gtk_radio_button_get_active(f.radioButton) # 0) *)
+		END
+	END RadioToggled;
+(*
 	PROCEDURE (f: RadioButton) SetOffset (x, y: INTEGER);
 	BEGIN
 		f.SetOffset^(x, y);
-		Adapt(f, f.i)
+		(*Adapt(f, f.i)*)
 	END SetOffset;
-
-	PROCEDURE (f: RadioButton) Close;
-		VAR res: INTEGER;
+*)
+	PROCEDURE (c: RadioButton) Close;
 	BEGIN
-		IF f.i.wnd # 0 THEN	(* deallocate *)
-			ASSERT(f.rider # NIL, 100); ASSERT(f.rider.Base() # NIL, 101);
-			res := WinApi.DestroyWindow(f.i.wnd);
-			f.i.wnd := 0; f.i.ctrl := 0
-		END
-		(*f.Close^*)
+		IF c.radioButton # NIL THEN
+			Gtk.gtk_widget_unref(c.lbl);
+			Gtk.gtk_widget_unref(c.radioButton);
+			Gtk.gtk_widget_unref(c.ebox);
+			Gtk.gtk_container_remove(c.rider(HostPorts.Rider).port.fixed, c.ebox)
+		END;
+		c.i := NIL; c.lbl := NIL; c.radioButton := NIL; c.ebox := NIL
 	END Close;
 
-	PROCEDURE (f: RadioButton) Update;
-		VAR res: INTEGER; value: BOOLEAN;
+	PROCEDURE (c: RadioButton) Update;
+		VAR res: INTEGER; value, mixed: BOOLEAN; mask: Gdk.GdkEventMask;
 	BEGIN
-		IF ~f.disabled THEN
-			f.Get(f, value);
-			IF WinApi.IsWindowEnabled(f.i.ctrl) = 0 THEN res := WinApi.EnableWindow(f.i.ctrl, 1) END;
-			IF f.undef THEN res := WinApi.SendMessageW(f.i.ctrl, WinApi.BM_SETCHECK, 0, 0)
-			ELSIF value THEN res := WinApi.SendMessageW(f.i.ctrl, WinApi.BM_SETCHECK, 1, 0)
-			ELSE res := WinApi.SendMessageW(f.i.ctrl, WinApi.BM_SETCHECK, 0, 0)
+		IF ~c.disabled THEN
+			c.Get(c, value);
+(*			IF USER32.IsWindowEnabled(f.i.ctrl) = 0 THEN res := USER32.EnableWindow(f.i.ctrl, 1) END;*)
+			IF c.undef THEN
+(*				res := USER32.SendMessageA(f.i.ctrl, USER32.BMSetCheck, 2, 0) TODO: Here what? *)
+			ELSIF value THEN Gtk.gtk_toggle_button_set_active(c.radioButton, 1)
+			ELSE Gtk.gtk_toggle_button_set_active(c.radioButton, 0)
 			END;
-			IF f.readOnly THEN res := WinApi.SendMessageW(f.i.ctrl, WinApi.BM_SETSTATE, WinApi.TRUE, 0)
-			ELSE res := WinApi.SendMessageW(f.i.ctrl, WinApi.BM_SETSTATE, WinApi.FALSE, 0)
+
+			IF c.readOnly THEN Gtk.gtk_widget_set_sensitive(c.radioButton, off)
+			ELSE Gtk.gtk_widget_set_sensitive(c.radioButton, on)
 			END
 		ELSE
-			res := WinApi.SendMessageW(f.i.ctrl, WinApi.BM_SETCHECK, 0, 0);
-			res := WinApi.SendMessageW(f.i.ctrl, WinApi.BM_SETSTATE, WinApi.FALSE, 0);
-			IF WinApi.IsWindowEnabled(f.i.ctrl) # 0 THEN res := WinApi.EnableWindow(f.i.ctrl, 0) END
+			Gtk.gtk_toggle_button_set_active(c.radioButton, 0);
+			Gtk.gtk_widget_set_sensitive(c.radioButton, off)
 		END;
-		CheckLabel(f.label, f.i.ctrl);
-		res := WinApi.UpdateWindow(f.i.ctrl)
+(*		CheckLabel(f.label, f.i.ctrl);*)
+		UpdateEventMask(c.i);
+	(*
+		IF c.lbl.window # NIL THEN
+			mask := Gdk.gdk_window_get_events(c.lbl.window);
+			mask := mask - Gdk.GDK_BUTTON_PRESS_MASK;
+			Gdk.gdk_window_set_events(c.lbl.window, mask)
+		END
+	*)
 	END Update;
 
-	PROCEDURE (f: RadioButton) Restore (l, t, r, b: INTEGER);
-		VAR lbl: Dialog.String;
+	PROCEDURE (c: RadioButton) Restore (l, t, r, b: INTEGER);
+		VAR w, h, cx, cy, cw, ch, res: INTEGER;
 	BEGIN
-		SetLabel(f.label, lbl);
-		IF f.i.ctrl = 0 THEN	(* lazy allocation *)
-			Open(f, "BUTTON", lbl, {0, 3, 16, 30}, {}, f.i)	(* auto radiobutton, tabstop, child *)
+		IF c.radioButton = NIL THEN
+			c.noRedraw := TRUE;
+			c.rider(HostPorts.Rider).GetRect(cx, cy, cw, ch); cw := cw - cx; ch := ch - cy;
+			c.lbl := NewLabel(c.label, NewStyle(c.font));
+			c.radioButton := Gtk.gtk_radio_button_new(NIL);
+			Gtk.gtk_widget_ref(c.radioButton);
+			Gtk.gtk_container_add(c.radioButton, c.lbl);
+			res := GtkU.gtk_signal_connect(c.radioButton, "toggled", SYSTEM.ADR(RadioToggled), SYSTEM.ADR(c));
+			c.ebox := Gtk.gtk_event_box_new(); 	Gtk.gtk_widget_ref(c.ebox);
+			c.i := NewInfo(c, c.ebox, c.radioButton);
+			Gtk.gtk_widget_set_usize(c.ebox, cw, ch);
+			Gtk.gtk_container_add(c.ebox, c.radioButton);
+			Gtk.gtk_fixed_put(c.rider(HostPorts.Rider).port.fixed, c.ebox, cx, cy)
 		END;
-		f.Update;
-		IF f.i.wnd # 0 THEN Paint(f, f.i) ELSE Print(f, -2, 12 * Ports.point, -1, lbl) END
+		c.Update;
+		Paint(c.i)
 	END Restore;
 
 	PROCEDURE (f: RadioButton) MouseDown (x, y: INTEGER; buttons: SET);
 	BEGIN
 		ASSERT(~f.disabled, 100);
 		IF f.rider # NIL THEN
-			HandleMouse(f.i.wnd, x DIV f.unit, y DIV f.unit, buttons)
+			HandleMouse(f.i, x DIV f.unit, y DIV f.unit, buttons)
 		END
 	END MouseDown;
 
 	PROCEDURE (f: RadioButton) KeyDown (ch: CHAR);
-		VAR res: INTEGER;
 	BEGIN
 		ASSERT(~f.disabled, 100);
-		res := WinApi.SendMessageW(f.i.ctrl, WinApi.WM_KEYDOWN, ORD(" "), 0);
-		res := WinApi.SendMessageW(f.i.ctrl, WinApi.WM_KEYUP, ORD(" "), 0)
+		IF ch = " "  THEN
+			Gtk.gtk_button_clicked(f.radioButton)
+		END
 	END KeyDown;
 
 	PROCEDURE (f: RadioButton) Mark (on, focus: BOOLEAN);
@@ -791,86 +783,113 @@ MODULE HostCFrames;
 
 	(* ScrollBar *)
 
+	PROCEDURE [ccall] ScrollChanged (adjustment: Gtk.GtkAdjustment; user_data: INTEGER);
+		VAR c: ScrollBar; size, sect, pos: INTEGER;
+	BEGIN
+		c := SYSTEM.VAL(ScrollBar, user_data);
+		IF ~c.isUpdate THEN
+			Views.ValidateRoot(Views.RootOf(c));
+			c.Get(c, size, sect, pos);
+			IF adjustment.value = c.oldPos - lineInc THEN
+				c.Track(c, StdCFrames.lineUp, pos)
+			ELSIF adjustment.value = c.oldPos + lineInc THEN
+				c.Track(c, StdCFrames.lineDown, pos)
+			ELSIF adjustment.value = c.oldPos - pageInc THEN
+				c.Track(c, StdCFrames.pageUp, pos)
+			ELSIF adjustment.value = c.oldPos + pageInc THEN
+				c.Track(c, StdCFrames.pageDown, pos)
+			ELSE
+				c.Set(c, SHORT(ENTIER((size / scrollRange) * adjustment.value)))
+			END;
+			c.oldPos := adjustment.value
+		END
+	END ScrollChanged;
+(*
 	PROCEDURE (f: ScrollBar) SetOffset (x, y: INTEGER);
 	BEGIN
 		f.SetOffset^(x, y);
-		Adapt(f, f.i)
+		(*Adapt(f, f.i)*)
 	END SetOffset;
-
-	PROCEDURE (f: ScrollBar) Close;
-		VAR res: INTEGER;
+*)
+	PROCEDURE (c: ScrollBar) Close;
 	BEGIN
-		IF f.i.wnd # 0 THEN	(* deallocate *)
-			ASSERT(f.rider # NIL, 100); ASSERT(f.rider.Base() # NIL, 101);
-			res := WinApi.DestroyWindow(f.i.wnd);
-			f.i.wnd := 0; f.i.ctrl := 0
-		END
-		(*f.Close^*)
+		IF c.scrollBar # NIL THEN
+			Gtk.gtk_widget_unref(c.scrollBar);
+			Gtk.gtk_container_remove(c.rider(HostPorts.Rider).port.fixed, c.scrollBar)
+		END;
+		c.scrollBar := NIL; c.i := NIL
 	END Close;
 
-	PROCEDURE (f: ScrollBar) Update;
-		VAR res, size, sect, pos, p, q, m: INTEGER; i: WinApi.SCROLLINFO;
+	PROCEDURE (c: ScrollBar) Update;
+		VAR  size, sect, pos, q, m: INTEGER; adj: Gtk.GtkAdjustment; trans: REAL;
 	BEGIN
-		IF ~f.disabled THEN
-			f.Get(f, size, sect, pos);
+		IF ~c.disabled THEN
+			c.Get(c, size, sect, pos);
+			IF sect > size THEN sect := size END; (* c.Get does not fullfill the invariants from Controllers.PollSectionMsg *)
+			ASSERT(size >= 1, 100); ASSERT((sect >= 0) & (sect <= size), 101);  (* Invariants from Controllers.PollSectionMsg *)
+			ASSERT((pos >= 0) & (pos <= size - sect), 102);
 			IF size > sect THEN
-				IF WinApi.IsWindowEnabled(f.i.ctrl) = 0 THEN res := WinApi.EnableWindow(f.i.ctrl, 1) END;
-
-				p := WinApi.MulDiv(pos, scrollRange, size - sect);
-				i.cbSize := SIZE(WinApi.SCROLLINFO); i.fMask := {0, 1, 2};	(* range, page, pos *)
-				res := WinApi.GetScrollInfo(f.i.ctrl, WinApi.SB_CTL, i);
-				IF (res # 0) THEN
-					IF sect > 0 THEN q := WinApi.MulDiv(sect, scrollRange, size - sect); m := scrollRange + q
-					ELSE q := -1; m := scrollRange
-					END;
-					IF (i.nPos # p) OR (i.nPage # q + 1) THEN
-						i.nPos := p; i.nPage := q + 1; i.nMax := m;
-						res := WinApi.SetScrollInfo(f.i.ctrl, WinApi.SB_CTL, i, 1)
-					END
-				ELSIF p # WinApi.GetScrollPos(f.i.ctrl, WinApi.SB_CTL) THEN
-					res := WinApi.SetScrollPos(f.i.ctrl, WinApi.SB_CTL, p, 1)
-				END
-	(*
-				IF WinApi.GetScrollPos(f.i.ctrl, WinApi.SBCtl) # pos THEN
-					res := WinApi.SetScrollRange(f.i.ctrl, WinApi.SBCtl, 0, size, 1);
-					res := WinApi.SetScrollPos(f.i.ctrl, WinApi.SBCtl, pos, 1)
-				END
-	*)
+				Gtk.gtk_widget_set_sensitive(c.scrollBar, on);
+				adj := Gtk.gtk_range_get_adjustment(c.scrollBar);
+				trans := scrollRange / (size - sect);
+				adj.value := SHORT(ENTIER(pos * trans));
+				IF sect > 0 THEN
+					adj.page_size := SHORT(ENTIER(sect * trans))
+				ELSE
+					adj.page_size := defThumbSize
+				END;
+				adj.lower := 0;
+				adj.upper := scrollRange + adj.page_size;
+				c.isUpdate := TRUE;
+				Gtk.gtk_adjustment_changed(adj);
+				c.oldPos := adj.value;
+				c.isUpdate := FALSE
 			ELSE
-				IF WinApi.IsWindowEnabled(f.i.ctrl) # 0 THEN res := WinApi.EnableWindow(f.i.ctrl, 0) END
+				Gtk.gtk_widget_set_sensitive(c.scrollBar, off)
 			END
 		ELSE
-			IF WinApi.IsWindowEnabled(f.i.ctrl) # 0 THEN res := WinApi.EnableWindow(f.i.ctrl, 0) END
+			Gtk.gtk_widget_set_sensitive(c.scrollBar, off)
 		END;
-		res := WinApi.UpdateWindow(f.i.ctrl)
+		Gtk.gtk_widget_show_all(c.scrollBar)
 	END Update;
 
-	PROCEDURE (f: ScrollBar) Restore (l, t, r, b: INTEGER);
-		VAR res, w, h: INTEGER; style: SET;
+	PROCEDURE (c: ScrollBar) Restore (l, t, r, b: INTEGER);
+		VAR w, h, cx, cy, cw, ch, res: INTEGER; lbl: Gtk.GtkWidget; adj: Gtk.GtkAdjustment;
 	BEGIN
-		IF f.i.ctrl = 0 THEN	(* lazy allocation *)
-			style := {(*1,*) 16, 30};	(* topalign, tabstop, child *)
-			f.view.context.GetSize(w, h);
-			IF h > w THEN INCL(style, 0) END;	(* vertical *)
-			Open(f, "SCROLLBAR", "", style, {}, f.i);
-			res := WinApi.SetScrollRange(f.i.ctrl, WinApi.SB_CTL, 0, scrollRange, 1)
+		IF c.scrollBar = NIL THEN
+			c.noRedraw := TRUE;
+			c.rider(HostPorts.Rider).GetRect(cx, cy, cw, ch); cw := cw - cx; ch := ch - cy;
+
+			adj := Gtk.gtk_adjustment_new(0, 0, scrollRange, lineInc, pageInc, defThumbSize);
+			res := GtkU.gtk_signal_connect(adj, "value_changed", SYSTEM.ADR(ScrollChanged),SYSTEM.VAL(INTEGER, c));
+			c.view.context.GetSize(w, h);
+			IF h > w THEN
+				c.scrollBar := Gtk.gtk_vscrollbar_new(adj)
+			ELSE
+				c.scrollBar := Gtk.gtk_hscrollbar_new(adj)
+			END;
+
+			Gtk.gtk_widget_ref(c.scrollBar);
+			c.i := NewInfo(c, c.scrollBar, c.scrollBar);
+			Gtk.gtk_widget_set_usize(c.scrollBar, cw, ch);
+			Gtk.gtk_fixed_put(c.rider(HostPorts.Rider).port.fixed, c.scrollBar, cx, cy);
 		END;
-		f.Update;
-		IF f.i.wnd # 0 THEN Paint(f, f.i) ELSE Print(f, f.dot, -1, -1, "") END
+		c.Update;
+		Paint(c.i)
 	END Restore;
 
 	PROCEDURE (f: ScrollBar) MouseDown (x, y: INTEGER; buttons: SET);
 	BEGIN
 		ASSERT(~f.disabled, 100);
 		IF f.rider # NIL THEN
-			HandleMouse(f.i.wnd, x DIV f.unit, y DIV f.unit, buttons)
+			HandleMouse(f.i, x DIV f.unit, y DIV f.unit, buttons)
 		END
 	END MouseDown;
 
 	PROCEDURE (f: ScrollBar) KeyDown (ch: CHAR);
 	BEGIN
 		ASSERT(~f.disabled, 100);
-		SendKey(ch, f.i.ctrl)
+		HandleKey(f.i, ch)
 	END KeyDown;
 
 	PROCEDURE (f: ScrollBar) Mark (on, focus: BOOLEAN);
@@ -882,21 +901,36 @@ MODULE HostCFrames;
 
 	(* Field *)
 
+	PROCEDURE [ccall] TextChanged (editable: Gtk.GtkWidget; user_data: INTEGER);
+		VAR s: Gtk.PString; c: Field;
+	BEGIN
+		c := SYSTEM.VAL(Field, user_data);
+		ASSERT(c # NIL, 20);
+		IF ~c.isUpdate THEN
+			s := Gtk.gtk_editable_get_chars(editable, 0, -1);
+			IF s= NIL THEN
+				c.Set(c, "");
+			ELSE
+				c.Set(c, s$);
+				GLib.g_free(SYSTEM.VAL(GLib.gpointer, s))
+			END
+		END
+	END TextChanged;
+(*
 	PROCEDURE (f: Field) SetOffset (x, y: INTEGER);
 	BEGIN
 		f.SetOffset^(x, y);
-		Adapt(f, f.i)
+		(*Adapt(f, f.i)*)
 	END SetOffset;
-
-	PROCEDURE (f: Field) Close;
-		VAR res: INTEGER;
+*)
+	PROCEDURE (c: Field) Close;
 	BEGIN
-		IF f.i.wnd # 0 THEN	(* deallocate *)
-			ASSERT(f.rider # NIL, 100); ASSERT(f.rider.Base() # NIL, 101);
-			res := WinApi.DestroyWindow(f.i.wnd);
-			f.i.wnd := 0; f.i.ctrl := 0
-		END
-		(*f.Close^*)
+		IF c.text # NIL THEN
+			Gtk.gtk_widget_unref(c.text);
+			IF c.scrlw # NIL THEN Gtk.gtk_widget_unref(c.scrlw) END;
+			Gtk.gtk_container_remove(c.rider(HostPorts.Rider).port.fixed, c.i.mainWidget)
+		END;
+		c.i := NIL; c.text := NIL; c.scrlw := NIL
 	END Close;
 
 	PROCEDURE InsLF (VAR x: ARRAY OF CHAR);
@@ -933,87 +967,116 @@ MODULE HostCFrames;
 	END Equal;
 
 	PROCEDURE (f: Field) Update;
-		VAR res: INTEGER; s, s1: ARRAY 512 OF CHAR; ps, ps1: POINTER TO ARRAY OF CHAR; style: SET;
+		VAR pos: INTEGER; style: SET;
+			s, s1: ARRAY 512 OF CHAR;
+			ps, ps1: POINTER TO ARRAY OF CHAR;
+			pss: POINTER TO ARRAY OF SHORTCHAR;
+			us: GLib.PString;
+			pstr: Gtk.PString;
 	BEGIN
-		IF f.maxLen > 255 THEN
-			NEW(ps, 2 * f.maxLen + 1); NEW(ps1, 2 * f.maxLen + 1);
-			IF f.undef OR f.disabled THEN ps[0] := 0X ELSE f.Get(f, ps^) END;
-			res := WinApi.GetWindowTextW(f.i.ctrl, ps1^, LEN(ps1^)); ConvertToUnicode(ps1^);
-			IF (WinApi.GetWindowTextLengthW(f.i.ctrl) >= LEN(ps^)) OR ~Equal(f, ps^, ps1^) THEN
-				f.isUpdate := TRUE;
-				IF f.multiLine THEN InsLF(ps^) END;
-				ConvertFromUnicode(ps^);
-				res := WinApi.SetWindowTextW(f.i.ctrl, ps^);
-				f.isUpdate := FALSE
-			END
-		ELSE
+		ASSERT(f.text # NIL, 20);
+		IF f.maxLen < 256 THEN
 			IF f.undef OR f.disabled THEN s := "" ELSE f.Get(f, s) END;
-			res := WinApi.GetWindowTextW(f.i.ctrl, s1, LEN(s1)); ConvertToUnicode(s1);
-			IF (WinApi.GetWindowTextLengthW(f.i.ctrl) >= LEN(s)) OR ~Equal(f, s, s1) THEN
+			pstr :=  Gtk.gtk_editable_get_chars(f.text, 0, -1);
+			IF pstr= NIL THEN
+				s1 := ""
+			ELSE
+				s1 := pstr$; (* FIXME: UTF-8 -> UCS-2 ? *)
+				GLib.g_free(SYSTEM.VAL(GLib.gpointer, pstr));
+			END;
+
+			IF (f.TextLen(f.text) >= LEN(s)) OR ~Equal(f, s, s1) THEN
 				f.isUpdate := TRUE;
 				IF f.multiLine THEN InsLF(s) END;
-				ConvertFromUnicode(s);
-				res := WinApi.SetWindowTextW(f.i.ctrl, s);
+				us := GLib.g_utf16_to_utf8(s, -1, NIL, NIL, NIL);
+				Gtk.gtk_editable_delete_text(f.text, 0, -1);
+				pos := 0;
+				Gtk.gtk_editable_insert_text(f.text, us, LEN(us$), pos);
+				GLib.g_free(SYSTEM.VAL(GLib.gpointer, us));
+				f.isUpdate := FALSE
+			END
+		ELSE
+			NEW(ps, 2 * f.maxLen + 1);
+			NEW(ps1, 2 * f.maxLen + 1);
+			NEW(pss, 2 * f.maxLen + 1);
+
+			IF f.undef OR f.disabled THEN ps^ := "" ELSE f.Get(f, ps^) END;
+
+			pstr :=  Gtk.gtk_editable_get_chars(f.text, 0, -1);
+			IF pstr= NIL THEN
+				pss^ := "";
+			ELSE
+				pss^ := pstr$;
+				GLib.g_free(SYSTEM.VAL(GLib.gpointer, pstr));
+			END;
+
+			ps1^ := pss^$;
+			IF (f.TextLen(f.text) >= LEN(ps^)) OR ~Equal(f, ps^, ps1^) THEN
+				f.isUpdate := TRUE;
+				IF f.multiLine THEN InsLF(ps^) END;
+				us := GLib.g_utf16_to_utf8(ps, -1, NIL, NIL, NIL);
+				Gtk.gtk_editable_delete_text(f.text, 0, -1);
+				pos := 0;
+				Gtk.gtk_editable_insert_text(f.text, us, LEN(us$), pos);
+				GLib.g_free(SYSTEM.VAL(GLib.gpointer, us));
 				f.isUpdate := FALSE
 			END
 		END;
-		style := BITS(WinApi.GetWindowLongW(f.i.ctrl, -16));	(* window style *)
-		IF (f.readOnly # f.i.readOnly) OR (f.undef # f.i.undef) THEN
-(*
-			res := WinApi.SetWindowLongW(f.i.ctrl, -16, ORD(style / {11}));
-*)
-			res := WinApi.InvalidateRect(f.i.ctrl, NIL, 1);
-			f.i.readOnly := f.readOnly; f.i.undef := f.undef
-		END;
-		IF f.disabled THEN
-			IF WinApi.IsWindowEnabled(f.i.ctrl) # 0 THEN res := WinApi.EnableWindow(f.i.ctrl, 0) END
+		IF (~f.readOnly & ~f.undef) THEN
+			Gtk.gtk_editable_set_editable(f.text, on);
 		ELSE
-			IF WinApi.IsWindowEnabled(f.i.ctrl) = 0 THEN res := WinApi.EnableWindow(f.i.ctrl, 1) END
+			Gtk.gtk_editable_set_editable(f.text, off);
 		END;
-		res := WinApi.UpdateWindow(f.i.ctrl)
+		IF (~f.disabled & ~f.readOnly) THEN
+			Gtk.gtk_widget_set_sensitive(f.text, on);
+		ELSE
+			Gtk.gtk_widget_set_sensitive(f.text, off);
+		END;
+		Gtk.gtk_widget_show_all(f.i.mainWidget);
+		UpdateEventMask(f.i);
 	END Update;
 
-	PROCEDURE (f: Field) Restore (l, t, r, b: INTEGER);
-		VAR res, w, h: INTEGER; style: SET; s: Dialog.String;
+	PROCEDURE (c: Field) Restore (l, t, r, b: INTEGER);
+		VAR w, h, cx, cy, cw, ch, res: INTEGER;
 	BEGIN
-		IF f.i.ctrl = 0 THEN	(* lazy allocation *)
-			f.view.context.GetSize(w, h);
-			IF h > dropDownHeight THEN
-				style := {2, 6, 16, 23, 30};	(* multiline, autovscroll, tabstop, border, child *)
-				IF f.multiLine THEN INCL(style, 21) END	(* ver scroll *)
+		IF c.text = NIL THEN
+			c.noRedraw := TRUE;
+			c.view.context.GetSize(w, h);
+			IF c.multiLine OR (h > dropDownHeight) THEN
+				c.TextLen := Gtk.gtk_text_get_length;
+				c.text := Gtk.gtk_text_new(NIL, NIL);
+				c.scrlw := Gtk.gtk_scrolled_window_new(NIL, NIL); Gtk.gtk_widget_ref(c.scrlw);
+				Gtk.gtk_container_add(c.scrlw, c.text);
+				c.i := NewInfo(c, c.scrlw, c.text);
+				Gtk.gtk_text_set_line_wrap(c.text, 1);
+				IF c.multiLine THEN
+					Gtk.gtk_scrolled_window_set_policy(c.scrlw,Gtk.GTK_POLICY_NEVER, Gtk.GTK_POLICY_ALWAYS)
+				ELSE
+					Gtk.gtk_scrolled_window_set_policy(c.scrlw,Gtk.GTK_POLICY_NEVER, Gtk.GTK_POLICY_NEVER)
+				END
 			ELSE
-				style := {7, 16, 23, 30}	(* autohscroll, tabstop, border, child *)
+				(* Use a GtkEntry instead of a GtkText. No GtkScrolledWindow is needed. *)
+				c.TextLen := EditableTextLen;
+				c.text := Gtk.gtk_entry_new();
+				c.scrlw := NIL;
+				c.i := NewInfo(c, c.text, c.text);
 			END;
-(*
-			IF f.readOnly THEN INCL(style, 11) END;	(* readonly *)
-*)
-			f.i.readOnly := f.readOnly; f.i.undef := f.undef;
-			IF f.right & ~f.left THEN style := style + {1, 2}	(* right align, multiline *)
-			ELSIF ~f.left THEN style := style + {0, 2}	(* center, multiline *)
-			END;
-			IF f.password THEN INCL(style, 5) END;	(* password *)
-			Open(f, "EDIT", "", style, WinApi.WS_EX_CLIENTEDGE, f.i);
-			res := WinApi.SendMessageW(f.i.ctrl, WinApi.EM_LIMITTEXT, f.maxLen, 0);
-			f.Update;
-			IF f.front & ~f.disabled THEN
-				res := WinApi.SendMessageW(f.i.ctrl, WinApi.WM_SETFOCUS, 0, 0);
-				res := WinApi.SendMessageW(f.i.ctrl, WinApi.WM_KEYDOWN, 23H, 0)
-			END
-		ELSE f.Update
+			Gtk.gtk_widget_ref(c.text);
+			Gtk.gtk_widget_modify_style(c.text, NewStyle(c.font));
+			res := GtkU.gtk_signal_connect(c.text, "changed",SYSTEM.ADR(TextChanged), SYSTEM.VAL(INTEGER, c));
+			c.rider(HostPorts.Rider).GetRect(cx, cy, cw, ch); cw := cw - cx; ch := ch - cy;
+			Gtk.gtk_widget_set_usize(c.i.mainWidget, cw, ch);
+			Gtk.gtk_fixed_put(c.rider(HostPorts.Rider).port.fixed, c.i.mainWidget, cx, cy);
 		END;
-		IF f.i.wnd # 0 THEN
-			Paint(f, f.i)
-		ELSE
-			f.Get(f, s);
-			Print(f, f.dot, 2 * Ports.point, 0, s)
-		END
+		c.Update;
+		Paint(c.i)
 	END Restore;
 
 	PROCEDURE (f: Field) MouseDown (x, y: INTEGER; buttons: SET);
 	BEGIN
 		ASSERT(~f.disabled, 100);
 		IF f.rider # NIL THEN
-			HandleMouse(f.i.wnd, x DIV f.unit, y DIV f.unit, buttons)
+			HandleMouse(f.i, x DIV f.unit, y DIV f.unit, buttons)
 		END
 	END MouseDown;
 
@@ -1021,41 +1084,39 @@ MODULE HostCFrames;
 	BEGIN
 		ASSERT(~f.disabled, 100);
 		IF f.multiLine OR (ch # 0DX) THEN
-			f.del := FALSE;
-			IF (ch = DEL) OR (ch = BS) THEN f.del := TRUE END;
-			SendKey(ch, f.i.ctrl)
+			HandleKey(f.i, ch)
 		END
 	END KeyDown;
 
 	PROCEDURE (f: Field) Edit (op: INTEGER; VAR v: Views.View; VAR w, h: INTEGER;
 										VAR singleton, clipboard: BOOLEAN);
-		VAR res: INTEGER;
 	BEGIN
-		IF clipboard THEN
-			IF op = Controllers.cut THEN
-				res := WinApi.SendMessageW(f.i.ctrl, WinApi.WM_CUT, 0, 0)
-			ELSIF op = Controllers.copy THEN
-				res := WinApi.SendMessageW(f.i.ctrl, WinApi.WM_COPY, 0, 0)
-			ELSIF op = Controllers.paste THEN
-				res := WinApi.SendMessageW(f.i.ctrl, WinApi.WM_PASTE, 0, 0)
-			END
-		END
 	END Edit;
 
 	PROCEDURE (f: Field) Idle, EMPTY;
 
 	PROCEDURE (f: Field) Select (from, to: INTEGER);
-		VAR res: INTEGER;
 	BEGIN
-		IF to = MAX(INTEGER) THEN to := -1 END;
-		res := WinApi.SendMessageW(f.i.ctrl, WinApi.EM_SETSEL, from, to)
+		IF f.text # NIL THEN
+			IF to = MAX(INTEGER) THEN to := -1 END;
+			Gtk.gtk_editable_select_region(f.text, from, to)
+		END
 	END Select;
 
 	PROCEDURE (f: Field) GetSelection (OUT from, to: INTEGER);
-		VAR res: INTEGER;
+		VAR e: Gtk.GtkOldEditable;
 	BEGIN
-		res := WinApi.SendMessageW(f.i.ctrl, WinApi.EM_GETSEL, SYSTEM.ADR(from), SYSTEM.ADR(to));
-		IF from = -1 THEN to := -1 ELSIF to = -1 THEN to := MAX(INTEGER) END
+		(*
+		e := f.text(Gtk.GtkOldEditable);
+		IF 0 IN e.has_selection (* testing bit field *) THEN
+			from := e.selection_start_pos; to := e.selection_end_pos
+		ELSE
+		*)
+			from := -1; to := -1
+		(*
+			from := -1; to := -1;
+		END
+		*)
 	END GetSelection;
 
 	PROCEDURE (f: Field) Mark (on, focus: BOOLEAN);
@@ -1064,166 +1125,132 @@ MODULE HostCFrames;
 	END Mark;
 
 	PROCEDURE (f: Field) Length (): INTEGER;
-		VAR res: INTEGER;
 	BEGIN
-		res := WinApi.GetWindowTextLengthW(f.i.ctrl);
-		RETURN res
+		RETURN f.TextLen(f.text)
 	END Length;
 
+(*
 	PROCEDURE (f: Field) GetCursor (x, y: INTEGER; modifiers: SET; VAR cursor: INTEGER);
-		VAR res, hc: INTEGER; pt: WinApi.POINT;
 	BEGIN
-		pt.x := (x - 1) DIV f.unit + 1; pt.y := (y - 1) DIV f.unit + 1;
-		res := WinApi.ClientToScreen(f.i.wnd, pt);
-		hc := WinApi.SendMessageW(f.i.ctrl, WinApi.WM_NCHITTEST, 0, pt.x + pt.y * 65536);
-		IF hc = 1 THEN cursor := Ports.textCursor END
+		(* TODO *)
 	END GetCursor;
-
+*)
 
 
 	(* UpDownField *)
 
+	PROCEDURE [ccall] SpinChanged (spin: Gtk.GtkWidget; user_data: INTEGER);
+		VAR s: Gtk.PString; c: UpDownField;
+	BEGIN
+		c := SYSTEM.VAL(UpDownField, user_data);
+		IF ~c.isUpdate THEN
+			c.val := Gtk.gtk_spin_button_get_value_as_int(spin);
+			c.Set(c, c.val)
+		END
+	END SpinChanged;
+(*
 	PROCEDURE (f: UpDownField) SetOffset (x, y: INTEGER);
 	BEGIN
 		f.SetOffset^(x, y);
-		Adapt(f, f.i)
+		(*Adapt(f, f.i)*)
 	END SetOffset;
-
-	PROCEDURE (f: UpDownField) Close;
-		VAR res: INTEGER;
+*)
+	PROCEDURE (c: UpDownField) Close;
 	BEGIN
-		IF f.i.wnd # 0 THEN	(* deallocate *)
-			ASSERT(f.rider # NIL, 100); ASSERT(f.rider.Base() # NIL, 101);
-			res := WinApi.DestroyWindow(f.i.wnd);
-			f.i.wnd := 0; f.i.ctrl := 0; f.i.ud := 0
-		END
-		(*f.Close^*)
+		IF c.spin # NIL THEN
+			Gtk.gtk_widget_unref(c.spin);
+			Gtk.gtk_container_remove(c.rider(HostPorts.Rider).port.fixed, c.spin)
+		END;
+		c.spin := NIL; c.i := NIL
 	END Close;
 
 	PROCEDURE (f: UpDownField) Update;
-		VAR res, val: INTEGER; s: ARRAY 16 OF CHAR; style: SET; upd: BOOLEAN;
+		VAR val: INTEGER;
 	BEGIN
+		f.isUpdate := TRUE;
 		IF ~f.disabled THEN
-			IF f.undef THEN upd := TRUE ELSE f.Get(f, val); upd := val # f.val END;
-			IF WinApi.IsWindowEnabled(f.i.ctrl) = 0 THEN
-				res := WinApi.EnableWindow(f.i.ctrl, 1); upd := TRUE
-			END;
-			IF f.readOnly THEN
-				IF WinApi.IsWindowEnabled(f.i.ud) # 0 THEN res := WinApi.EnableWindow(f.i.ud, 0) END
+			f.Get(f, val);
+			Gtk.gtk_spin_button_set_value(f.spin, val);
+			IF ~f.readOnly THEN
+				Gtk.gtk_widget_set_sensitive(f.spin, on)
 			ELSE
-				IF WinApi.IsWindowEnabled(f.i.ud) = 0 THEN res := WinApi.EnableWindow(f.i.ud, 1) END
-			END;
-			IF upd THEN
-				f.isUpdate := TRUE;
-				IF f.undef THEN s := ""
-				ELSE Strings.IntToString(val, s)
-				END;
-				res := WinApi.SetWindowTextW(f.i.ctrl, s);
-				f.val := val; f.isUpdate := FALSE
-			END;
-			style := BITS(WinApi.GetWindowLongW(f.i.ctrl, -16));	(* window style *)
-		IF (f.readOnly # f.i.readOnly) OR (f.undef # f.i.undef) THEN
-(*
-			res := WinApi.SetWindowLongW(f.i.ctrl, -16, ORD(style / {11}));
-*)
-			res := WinApi.InvalidateRect(f.i.ctrl, NIL, 1);
-			f.i.readOnly := f.readOnly; f.i.undef := f.undef
-		END
+				Gtk.gtk_widget_set_sensitive(f.spin, off)
+			END
 		ELSE
-			IF WinApi.IsWindowEnabled(f.i.ctrl) # 0 THEN
-				f.isUpdate := TRUE;
-				res := WinApi.SetWindowTextW(f.i.ctrl, "");
-				f.isUpdate := FALSE;
-				res := WinApi.EnableWindow(f.i.ctrl, 0)
-			END;
-			IF WinApi.IsWindowEnabled(f.i.ud) # 0 THEN res := WinApi.EnableWindow(f.i.ud, 0) END
+			Gtk.gtk_entry_set_text(f.spin, "");
+			Gtk.gtk_widget_set_sensitive(f.spin, off)
 		END;
-		res := WinApi.UpdateWindow(f.i.ctrl)
+		f.isUpdate := FALSE
+		;UpdateEventMask (f.i)
 	END Update;
 
-	PROCEDURE (f: UpDownField) Restore (l, t, r, b: INTEGER);
-		VAR res, w, h: INTEGER; style: SET; s: ARRAY 16 OF CHAR;
+	PROCEDURE (c: UpDownField) Restore (l, t, r, b: INTEGER);
+		VAR w, h, cx, cy, cw, ch, res: INTEGER; lbl: Gtk.GtkWidget; adj: Gtk.GtkAdjustment;
 	BEGIN
-		IF f.i.ctrl = 0 THEN	(* lazy allocation *)
-			f.view.context.GetSize(w, h);
-			style := {7, 16, 23, 30};	(* autohscroll, tabstop, border, child *)
-(*
-			IF f.readOnly THEN INCL(style, 11) END;	(* readonly *)
-*)
-			f.i.readOnly := f.readOnly; f.i.undef := f.undef;
-			f.val := 0;
-			Open(f, "EDIT", "0", style, WinApi.WS_EX_CLIENTEDGE, f.i);
-			res := WinApi.SendMessageW(f.i.ctrl, WinApi.EM_LIMITTEXT, 16, 0);
-			f.Update;
-			IF f.front & ~f.disabled THEN
-				res := WinApi.SendMessageW(f.i.ctrl, WinApi.WM_SETFOCUS, 0, 0);
-				res := WinApi.SendMessageW(f.i.ctrl, WinApi.WM_KEYDOWN, 23H, 0)
-			END
-		ELSE f.Update
+		IF c.spin = NIL THEN
+			c.noRedraw := TRUE;
+			c.val := 0;
+			c.rider(HostPorts.Rider).GetRect(cx, cy, cw, ch); cw := cw - cx; ch := ch - cy;
+			adj := Gtk.gtk_adjustment_new(c.val, c.min, c.max, c.inc,
+				c.inc, (c.max - c.min) DIV MAX(1, c.inc)); (* waste of pgup & pgdn *)
+			c.spin := Gtk.gtk_spin_button_new(adj, 1, 0);			Gtk.gtk_widget_ref(c.spin);
+			Gtk.gtk_widget_modify_style(c.spin, NewStyle(c.font));
+			Gtk.gtk_spin_button_set_numeric(c.spin, 1);
+(*		Gtk.gtk_spin_button_set_shadow_type(c.spin, Gtk.GTK_SHADOW_NONE); *)
+(*		Gtk.gtk_spin_button_set_snap_to_ticks(c.spin, 1);*)
+			Gtk.gtk_spin_button_set_wrap(c.spin, 1);
+			res := GtkU.gtk_signal_connect(c.spin, "changed", SYSTEM.ADR(SpinChanged), SYSTEM.VAL(INTEGER, c));
+			c.i := NewInfo(c, c.spin, c.spin);
+			Gtk.gtk_widget_set_usize(c.spin, cw, ch);
+			Gtk.gtk_fixed_put(c.rider(HostPorts.Rider).port.fixed, c.spin, cx, cy)
 		END;
-		IF f.i.wnd # 0 THEN
-			Paint(f, f.i)
-		ELSE
-			f.Get(f, w);
-			Strings.IntToString(w, s);
-			Print(f, f.dot, 2 * Ports.point, 0, s)
-		END
+		c.Update;
+		Paint(c.i)
 	END Restore;
 
 	PROCEDURE (f: UpDownField) MouseDown (x, y: INTEGER; buttons: SET);
 	BEGIN
 		ASSERT(~f.disabled, 100);
 		IF f.rider # NIL THEN
-			HandleMouse(f.i.wnd, x DIV f.unit, y DIV f.unit, buttons)
+			HandleMouse(f.i, x DIV f.unit, y DIV f.unit, buttons)
 		END
 	END MouseDown;
 
 	PROCEDURE (f: UpDownField) KeyDown (ch: CHAR);
-		VAR val: INTEGER;
 	BEGIN
 		ASSERT(~f.disabled, 100);
-		IF (ch = AU) OR (ch = AD) THEN
-			val := f.val;
-			IF ch = AU THEN
-				IF val <= f.max - f.inc THEN val := val + f.inc ELSE val := f.max END
-			ELSE
-				IF val >= f.min + f.inc THEN val := val - f.inc ELSE val := f.min END
-			END;
-			IF val # f.val THEN f.Set(f, val); f.Update END
-		ELSIF (ch # 0DX) THEN
-			SendKey(ch, f.i.ctrl)
-		END
+		HandleKey(f.i, ch)
 	END KeyDown;
 
+(*
 	PROCEDURE (f: UpDownField) Edit (op: INTEGER; VAR v: Views.View; VAR w, h: INTEGER;
 										VAR singleton, clipboard: BOOLEAN);
-		VAR res: INTEGER;
 	BEGIN
-		IF clipboard THEN
-			IF op = Controllers.cut THEN
-				res := WinApi.SendMessageW(f.i.ctrl, WinApi.WM_CUT, 0, 0)
-			ELSIF op = Controllers.copy THEN
-				res := WinApi.SendMessageW(f.i.ctrl, WinApi.WM_COPY, 0, 0)
-			ELSIF op = Controllers.paste THEN
-				res := WinApi.SendMessageW(f.i.ctrl, WinApi.WM_PASTE, 0, 0)
-			END
-		END
+		(* TODO *)
 	END Edit;
+*)
 
 	PROCEDURE (f: UpDownField) Idle, EMPTY;
 
 	PROCEDURE (f: UpDownField) Select (from, to: INTEGER);
-		VAR res: INTEGER;
 	BEGIN
 		IF to = MAX(INTEGER) THEN to := -1 END;
-		res := WinApi.SendMessageW(f.i.ctrl, WinApi.EM_SETSEL, from, to)
+		Gtk.gtk_editable_select_region(f.spin, from, to)
 	END Select;
 
 	PROCEDURE (f: UpDownField) GetSelection (OUT from, to: INTEGER);
-		VAR res: INTEGER;
+		VAR e: Gtk.GtkOldEditable;
 	BEGIN
-		res := WinApi.SendMessageW(f.i.ctrl, WinApi.EM_GETSEL, SYSTEM.ADR(from), SYSTEM.ADR(to));
-		IF from = -1 THEN to := -1 ELSIF to = -1 THEN to := MAX(INTEGER) END
+		(*
+		e := f.spin(Gtk.GtkOldEditable);
+		IF 0 IN e.has_selection (* testing bit field *) THEN
+			from := e.selection_start_pos; to := e.selection_end_pos
+		ELSE
+		*)
+			from := -1; to := -1
+		(*
+		END
+		*)
 	END GetSelection;
 
 	PROCEDURE (f: UpDownField) Mark (on, focus: BOOLEAN);
@@ -1231,19 +1258,17 @@ MODULE HostCFrames;
 		Mark(on, f.front, f.i)
 	END Mark;
 
+(*
 	PROCEDURE (f: UpDownField) GetCursor (x, y: INTEGER; modifiers: SET; VAR cursor: INTEGER);
-		VAR res, hc: INTEGER; pt: WinApi.POINT;
 	BEGIN
-		pt.x := (x - 1) DIV f.unit + 1; pt.y := (y - 1) DIV f.unit + 1;
-		res := WinApi.ClientToScreen(f.i.wnd, pt);
-		hc := WinApi.SendMessageW(f.i.ctrl, WinApi.WM_NCHITTEST, 0, pt.x + pt.y * 65536);
-		IF hc = 1 THEN cursor := Ports.textCursor END
+		(* TODO *)
 	END GetCursor;
-
+*)
 
 
 	(* TimeField *)
 
+(*
 	PROCEDURE GetTimePart (VAR time: Dates.Time; part: INTEGER; VAR val, min, max: INTEGER);
 	BEGIN
 		IF part = -1 THEN part := lastPart END;
@@ -1289,178 +1314,61 @@ MODULE HostCFrames;
 			str[i] := 0X
 		END
 	END TimeToString;
-
+*)
+(*
 	PROCEDURE (f: TimeField) Select, NEW;
-		VAR res: INTEGER; sel: INTEGER;
 	BEGIN
-		f.GetSel(f, sel);
-		IF sel = -1 THEN sel := lastPart END;
-		res := WinApi.SendMessageW(f.i.ctrl, WinApi.EM_SETSEL, 3 * sel - 3, 3 * sel - 1)
+		(* TODO *)
 	END Select;
-
+*)
 	PROCEDURE (f: TimeField) SetOffset (x, y: INTEGER);
 	BEGIN
+		(*
 		f.SetOffset^(x, y);
-		Adapt(f, f.i)
+		(*Adapt(f, f.i)*)
+		*)
 	END SetOffset;
 
 	PROCEDURE (f: TimeField) Close;
-		VAR res: INTEGER;
 	BEGIN
-		IF f.i.wnd # 0 THEN	(* deallocate *)
-			ASSERT(f.rider # NIL, 100); ASSERT(f.rider.Base() # NIL, 101);
-			res := WinApi.DestroyWindow(f.i.wnd);
-			f.i.wnd := 0; f.i.ctrl := 0; f.i.ud := 0
-		END
-		(*f.Close^*)
+		(* TODO *)
 	END Close;
 
 	PROCEDURE (f: TimeField) Update;
-		VAR res: INTEGER; s, s1: ARRAY 20 OF CHAR; time: Dates.Time; style: SET;
 	BEGIN
-		IF ~f.disabled THEN
-			IF f.undef THEN s := "" ELSE f.Get(f, time); TimeToString(time, s) END;
-			IF WinApi.IsWindowEnabled(f.i.ctrl) = 0 THEN res := WinApi.EnableWindow(f.i.ctrl, 1) END;
-			IF f.readOnly THEN
-				IF WinApi.IsWindowEnabled(f.i.ud) # 0 THEN res := WinApi.EnableWindow(f.i.ud, 0) END
-			ELSE
-				IF WinApi.IsWindowEnabled(f.i.ud) = 0 THEN res := WinApi.EnableWindow(f.i.ud, 1) END
-			END;
-			res := WinApi.GetWindowTextW(f.i.ctrl, s1, LEN(s1));
-			IF s # s1 THEN
-				f.isUpdate := TRUE;
-				res := WinApi.SetWindowTextW(f.i.ctrl, s);
-				f.isUpdate := FALSE
-			END;
-			style := BITS(WinApi.GetWindowLongW(f.i.ctrl, -16));	(* window style *)
-		IF (f.readOnly # f.i.readOnly) OR (f.undef # f.i.undef) THEN
-(*
-			res := WinApi.SetWindowLongW(f.i.ctrl, -16, ORD(style / {11}));
-*)
-			res := WinApi.InvalidateRect(f.i.ctrl, NIL, 1);
-			f.i.readOnly := f.readOnly; f.i.undef := f.undef
-		END;
-			f.Select
-		ELSE
-			IF WinApi.IsWindowEnabled(f.i.ctrl) # 0 THEN
-				f.isUpdate := TRUE;
-				res := WinApi.SetWindowTextW(f.i.ctrl, "");
-				f.isUpdate := FALSE;
-				res := WinApi.EnableWindow(f.i.ctrl, 0)
-			END;
-			IF WinApi.IsWindowEnabled(f.i.ud) # 0 THEN res := WinApi.EnableWindow(f.i.ud, 0) END
-		END;
-		res := WinApi.UpdateWindow(f.i.ctrl)
+		(* TODO *)
 	END Update;
 
 	PROCEDURE (f: TimeField) Restore (l, t, r, b: INTEGER);
-		VAR res, w, h: INTEGER; style: SET; s: ARRAY 20 OF CHAR; time: Dates.Time;
 	BEGIN
-		IF f.i.ctrl = 0 THEN	(* lazy allocation *)
-			f.view.context.GetSize(w, h);
-			style := {7, 16, 23, 30};	(* autohscroll, tabstop, border, child *)
-(*
-			IF f.readOnly THEN INCL(style, 11) END;	(* readonly *)
-*)
-			f.i.readOnly := f.readOnly; f.i.undef := f.undef;
-			Open(f, "EDIT", "", style, WinApi.WS_EX_CLIENTEDGE, f.i);
-			res := WinApi.SendMessageW(f.i.ctrl, WinApi.EM_LIMITTEXT, 16, 0);
-			f.Update;
-			IF f.front & ~f.disabled THEN
-				res := WinApi.SendMessageW(f.i.ctrl, WinApi.WM_SETFOCUS, 0, 0);
-				res := WinApi.SendMessageW(f.i.ctrl, WinApi.WM_KEYDOWN, 23H, 0)
-			END
-		ELSE f.Update
-		END;
-		IF f.i.wnd # 0 THEN
-			Paint(f, f.i)
-		ELSE
-			f.Get(f, time);
-			TimeToString(time, s);
-			Print(f, f.dot, 2 * Ports.point, 0, s)
-		END
+		DummyRestore(f, "TimeField", l, t, r, b)
 	END Restore;
 
 	PROCEDURE (f: TimeField) MouseDown (x, y: INTEGER; buttons: SET);
 		VAR res: INTEGER; sel: INTEGER;
 	BEGIN
-		ASSERT(~f.disabled, 100);
-		IF f.rider # NIL THEN
-			f.GetSel(f, sel);
-			IF sel = 0 THEN f.SetSel(f, 1); f.Select END;
-			HandleMouse(f.i.wnd, x DIV f.unit, y DIV f.unit, buttons);
-			res := WinApi.SendMessageW(f.i.ctrl, WinApi.EM_GETSEL, 0, 0);
-			sel := res MOD 65536 DIV 3 + 1;
-			IF sel >= lastPart THEN sel := -1 END;
-			f.cur := 0; f.SetSel(f, sel); f.Select
-		END
+		(* TODO *)
 	END MouseDown;
 
 	PROCEDURE (f: TimeField) KeyDown (ch: CHAR);
-		VAR sel, s, val, v, min, max: INTEGER; time: Dates.Time;
 	BEGIN
-		ASSERT(~f.disabled, 100);
-		f.GetSel(f, sel); s := sel;
-		IF s = -1 THEN s := lastPart END;
-		f.Get(f, time);
-		GetTimePart(time, s, val, min, max); v := val;
-		IF (ch = TAB) OR (ch = AR) THEN
-			s := s MOD lastPart + 1; f.cur := 0
-		ELSIF (ch = LTAB) OR (ch = AL) THEN
-			DEC(s); f.cur := 0;
-			IF s <= 0 THEN s := lastPart END
-		ELSIF (ch = PL) OR (ch = DL) THEN
-			s := 1; f.cur := 0
-		ELSIF (ch = PR) OR (ch = DR) THEN
-			s := lastPart; f.cur := 0
-		ELSIF (ch = DEL) OR (ch = BS) THEN
-			v := min
-		ELSIF ch = AU THEN
-			IF v < max THEN INC(v) ELSE v := min END
-		ELSIF ch = AD THEN
-			IF v > min THEN DEC(v) ELSE v := max END
-		ELSIF (ch >= "0") & (ch <= "9") & (s < 4) THEN
-			v := v * 10 MOD 100 + ORD(ch) - ORD("0");
-			IF v > max THEN v := v MOD 10 ELSIF v < min THEN v := min END
-		ELSIF s = 4 THEN
-			IF (ch = " ") OR (CAP(ch) = CAP(desig[1 - v, 0])) THEN v := 1 - v END
-		END;
-		IF s = lastPart THEN s := -1 END;
-		IF v # val THEN
-			SetTimePart(time, s, v); f.Set(f, time); f.Update
-		ELSIF s # sel THEN
-			f.SetSel(f, s); f.Select
-		END
+		(* TODO *)
 	END KeyDown;
 
 	PROCEDURE (f: TimeField) Edit (op: INTEGER; VAR v: Views.View; VAR w, h: INTEGER;
 										VAR singleton, clipboard: BOOLEAN);
-		VAR res: INTEGER;
 	BEGIN
-		IF clipboard THEN
-			IF op = Controllers.copy THEN
-				res := WinApi.SendMessageW(f.i.ctrl, WinApi.WM_COPY, 0, 0)
-			END
-		END
+		(* TODO *)
 	END Edit;
 
 	PROCEDURE (f: TimeField) Mark (on, focus: BOOLEAN);
-		VAR res: INTEGER;
 	BEGIN
-		Mark(on, f.front, f.i);
-		IF ~on & focus THEN
-			f.SetSel(f, 0); f.cur := 0;
-			res := WinApi.SendMessageW(f.i.ctrl, WinApi.EM_SETSEL, 0, 0)
-		END
+		(* TODO *)
 	END Mark;
 
 	PROCEDURE (f: TimeField) GetCursor (x, y: INTEGER; modifiers: SET; VAR cursor: INTEGER);
-		VAR res, hc: INTEGER; pt: WinApi.POINT;
 	BEGIN
-		pt.x := (x - 1) DIV f.unit + 1; pt.y := (y - 1) DIV f.unit + 1;
-		res := WinApi.ClientToScreen(f.i.wnd, pt);
-		hc := WinApi.SendMessageW(f.i.ctrl, WinApi.WM_NCHITTEST, 0, pt.x + pt.y * 65536);
-		IF hc = 1 THEN cursor := Ports.textCursor END
+		(* TODO *)
 	END GetCursor;
 
 
@@ -1532,240 +1440,56 @@ MODULE HostCFrames;
 	END DateToString;
 
 	PROCEDURE (f: DateField) Select, NEW;
-		VAR res: INTEGER; sel, a, b: INTEGER;
 	BEGIN
-		f.GetSel(f, sel);
-		IF sel = 1 THEN a := 0; b := del1
-		ELSIF sel = 2 THEN a := del1 + 1; b := del2
-		ELSE a := del2 + 1; b := del2 + 5
-		END;
-		res := WinApi.SendMessageW(f.i.ctrl, WinApi.EM_SETSEL, a, b)
+		(* TODO *)
 	END Select;
 
 	PROCEDURE (f: DateField) SetOffset (x, y: INTEGER);
 	BEGIN
+		(*
 		f.SetOffset^(x, y);
-		Adapt(f, f.i)
+		(*Adapt(f, f.i)*)
+		*)
 	END SetOffset;
 
 	PROCEDURE (f: DateField) Close;
-		VAR res: INTEGER;
 	BEGIN
-		IF f.i.wnd # 0 THEN	(* deallocate *)
-			ASSERT(f.rider # NIL, 100); ASSERT(f.rider.Base() # NIL, 101);
-			res := WinApi.DestroyWindow(f.i.wnd);
-			f.i.wnd := 0; f.i.ctrl := 0; f.i.ud := 0
-		END
-		(*f.Close^*)
+		(* TODO *)
 	END Close;
 
 	PROCEDURE (f: DateField) Update;
-		VAR res: INTEGER; s, s1: ARRAY 20 OF CHAR; date: Dates.Date; style: SET; sel: INTEGER;
 	BEGIN
-		IF ~f.disabled THEN
-			IF f.undef THEN s := ""
-			ELSE f.Get(f, date);
-				IF f.cnt > 0 THEN f.GetSel(f, sel); SetDatePart(date, sel, f.val) END;
-				DateToString(date, s)
-			END;
-			IF WinApi.IsWindowEnabled(f.i.ctrl) = 0 THEN res := WinApi.EnableWindow(f.i.ctrl, 1) END;
-			IF f.readOnly THEN
-				IF WinApi.IsWindowEnabled(f.i.ud) # 0 THEN res := WinApi.EnableWindow(f.i.ud, 0) END
-			ELSE
-				IF WinApi.IsWindowEnabled(f.i.ud) = 0 THEN res := WinApi.EnableWindow(f.i.ud, 1) END
-			END;
-			res := WinApi.GetWindowTextW(f.i.ctrl, s1, LEN(s1));
-			IF s # s1 THEN
-				f.isUpdate := TRUE;
-				res := WinApi.SetWindowTextW(f.i.ctrl, s);
-				f.isUpdate := FALSE
-			END;
-			style := BITS(WinApi.GetWindowLongW(f.i.ctrl, -16));	(* window style *)
-			IF (f.readOnly # f.i.readOnly) OR (f.undef # f.i.undef) THEN
-	(*
-				res := WinApi.SetWindowLongW(f.i.ctrl, -16, ORD(style / {11}));
-	*)
-				res := WinApi.InvalidateRect(f.i.ctrl, NIL, 1);
-				f.i.readOnly := f.readOnly; f.i.undef := f.undef
-			END;
-			f.Select
-		ELSE
-			IF WinApi.IsWindowEnabled(f.i.ctrl) # 0 THEN
-				f.isUpdate := TRUE;
-				res := WinApi.SetWindowTextW(f.i.ctrl, "");
-				f.isUpdate := FALSE;
-				res := WinApi.EnableWindow(f.i.ctrl, 0)
-			END;
-			IF WinApi.IsWindowEnabled(f.i.ud) # 0 THEN res := WinApi.EnableWindow(f.i.ud, 0) END
-		END;
-		res := WinApi.UpdateWindow(f.i.ctrl)
 	END Update;
 
 	PROCEDURE (f: DateField) Restore (l, t, r, b: INTEGER);
-		VAR res, w, h: INTEGER; style: SET; s: ARRAY 20 OF CHAR; date: Dates.Date;
 	BEGIN
-		IF f.i.ctrl = 0 THEN	(* lazy allocation *)
-			f.view.context.GetSize(w, h);
-			style := {7, 16, 23, 30};	(* autohscroll, tabstop, border, child *)
-(*
-			IF f.readOnly THEN INCL(style, 11) END;	(* readonly *)
-*)
-			f.i.readOnly := f.readOnly; f.i.undef := f.undef;
-			Open(f, "EDIT", "", style, WinApi.WS_EX_CLIENTEDGE, f.i);
-			res := WinApi.SendMessageW(f.i.ctrl, WinApi.EM_LIMITTEXT, 16, 0);
-			f.Update;
-			IF f.front & ~f.disabled THEN
-				res := WinApi.SendMessageW(f.i.ctrl, WinApi.WM_SETFOCUS, 0, 0);
-				res := WinApi.SendMessageW(f.i.ctrl, WinApi.WM_KEYDOWN, 23H, 0)
-			END
-		ELSE f.Update
-		END;
-		IF f.i.wnd # 0 THEN
-			Paint(f, f.i)
-		ELSE
-			f.Get(f, date);
-			DateToString(date, s);
-			Print(f, f.dot, 2 * Ports.point, 0, s)
-		END
+		DummyRestore(f, "DateField", l, t, r, b)
 	END Restore;
 
-	PROCEDURE ActualizeDate(f: DateField);
-		VAR sel: INTEGER; date: Dates.Date; val, min, max: INTEGER;
-	BEGIN
-		IF f.cnt > 0 THEN
-			f.GetSel(f, sel); IF sel = -1 THEN sel := 3 END;
-			f.Get(f, date);
-			IF (sel = yearPart) & (f.cnt <= 2) THEN
-				IF f.val < 50 THEN f.val := f.val + 2000
-				ELSIF f.val < 100 THEN f.val := f.val + 1900
-				END
-			END;
-			GetDatePart(date, sel, val, min, max);
-			IF (min <= f.val) & (f.val <= max) THEN
-				SetDatePart(date, sel, f.val); f.Set(f, date)
-			END;
-			f.cnt := 0;
-			f.Update
-		END
-	END ActualizeDate;
-
 	PROCEDURE (f: DateField) MouseDown (x, y: INTEGER; buttons: SET);
-		VAR res: INTEGER; sel: INTEGER;
 	BEGIN
-		ASSERT(~f.disabled, 100);
-		IF f.rider # NIL THEN
-			ActualizeDate(f);
-			f.GetSel(f, sel);
-			IF sel = 0 THEN f.SetSel(f, 1); f.Select END;
-			HandleMouse(f.i.wnd, x DIV f.unit, y DIV f.unit, buttons);
-			res := WinApi.SendMessageW(f.i.ctrl, WinApi.EM_GETSEL, 0, 0);
-			res := res MOD 65536;
-			IF res <= del1 THEN sel := 1
-			ELSIF res <= del2 THEN sel := 2
-			ELSE sel := -1
-			END;
-			f.SetSel(f, sel); f.Select
-		END
+		(* TODO *)
 	END MouseDown;
 
 	PROCEDURE (f: DateField) KeyDown (ch: CHAR);
-		VAR sel, s, val, min, max: INTEGER; date: Dates.Date;
 	BEGIN
-		ASSERT(~f.disabled, 100);
-		f.GetSel(f, sel); s := sel;
-		IF s = -1 THEN s := 3 END;
-		f.Get(f, date);
-		GetDatePart(date, s, val, min, max);
-
-		IF (ch = TAB) OR (ch = AR) THEN
-			s := s MOD 3 + 1;
-			ActualizeDate(f)
-		ELSIF ((ch = ".") OR (ch = ",")) & (f.cnt > 0) THEN
-			s := s MOD 3 + 1;
-			ActualizeDate(f)
-		ELSIF (ch = LTAB) OR (ch = AL) THEN
-			IF s = 0 THEN s := 1 END;
-			s := (s - 2) MOD 3 + 1;
-			ActualizeDate(f)
-		ELSIF (ch = PL) OR (ch = DL) THEN
-			s := 1;
-			ActualizeDate(f)
-		ELSIF (ch = PR) OR (ch = DR) THEN
-			s := 3;
-			ActualizeDate(f)
-		ELSIF (ch = DEL) OR (ch = BS) THEN
-			f.cnt := 4; f.val := min;
-			ActualizeDate(f)
-		ELSIF ch = AU THEN
-			IF f.cnt = 0 THEN f.cnt := 4; f.val := val END;
-			IF f.val < max THEN INC(f.val) ELSE f.val := min END;
-			ActualizeDate(f)
-		ELSIF ch = AD THEN
-			IF f.cnt = 0 THEN f.cnt := 4; f.val := val END;
-			IF f.val > min THEN DEC(f.val) ELSE f.val := max END;
-			ActualizeDate(f)
-		ELSIF (ch >= "0") & (ch <= "9") THEN
-			IF s = yearPart THEN
-				IF f.cnt = 0 THEN
-					f.val := ORD(ch) - ORD("0"); INC(f.cnt);
-					f.Update
-				ELSE
-					f.val := f.val * 10 + ORD(ch) - ORD("0");
-					INC(f.cnt);
-					IF f.cnt = 4 THEN ActualizeDate(f) ELSE f.Update END
-				END
-			ELSE
-				IF f.cnt = 0 THEN
-					f.val := ORD(ch) - ORD("0"); f.cnt := 1;
-					f.Update
-				ELSE
-					f.val := f.val * 10 MOD 100 + ORD(ch) - ORD("0");
-					IF (s = dayPart) & (max < f.val) & (f.val <= 31) THEN
-						INC(date.month); f.Set(f, date); max := 31
-					END;
-					IF f.val > max THEN f.val := f.val MOD 10 END;
-					ActualizeDate(f);
-					INC(s)
-				END
-			END
-		END;
-
-		IF s = 3 THEN s := -1 END;
-		IF s # sel THEN
-			f.SetSel(f, s); f.Select
-		END
+		(* TODO *)
 	END KeyDown;
 
 	PROCEDURE (f: DateField) Edit (op: INTEGER; VAR v: Views.View; VAR w, h: INTEGER;
 										VAR singleton, clipboard: BOOLEAN);
-		VAR res: INTEGER;
 	BEGIN
-		IF clipboard THEN
-			IF op = Controllers.copy THEN
-				res := WinApi.SendMessageW(f.i.ctrl, WinApi.WM_COPY, 0, 0)
-			END
-		END
+		(* TODO *)
 	END Edit;
 
 	PROCEDURE (f: DateField) Mark (on, focus: BOOLEAN);
-		VAR res: INTEGER;
 	BEGIN
-		IF ~on THEN ActualizeDate(f) END;
-
-		Mark(on, f.front, f.i);
-		IF ~on & focus THEN
-			f.SetSel(f, 0);
-			res := WinApi.SendMessageW(f.i.ctrl, WinApi.EM_SETSEL, 0, 0)
-		END
+		(* TODO *)
 	END Mark;
 
 	PROCEDURE (f: DateField) GetCursor (x, y: INTEGER; modifiers: SET; VAR cursor: INTEGER);
-		VAR res, hc: INTEGER; pt: WinApi.POINT;
 	BEGIN
-		pt.x := (x - 1) DIV f.unit + 1; pt.y := (y - 1) DIV f.unit + 1;
-		res := WinApi.ClientToScreen(f.i.wnd, pt);
-		hc := WinApi.SendMessageW(f.i.ctrl, WinApi.WM_NCHITTEST, 0, pt.x + pt.y * 65536);
-		IF hc = 1 THEN cursor := Ports.textCursor END
+		(* TODO *)
 	END GetCursor;
 
 
@@ -1774,252 +1498,176 @@ MODULE HostCFrames;
 
 	PROCEDURE (f: ColorField) SetOffset (x, y: INTEGER);
 	BEGIN
+		(*
 		f.SetOffset^(x, y);
-		Adapt(f, f.i)
+		(*Adapt(f, f.i)*)
+		*)
 	END SetOffset;
 
 	PROCEDURE (f: ColorField) Close;
-		VAR res: INTEGER;
 	BEGIN
-		IF f.i.wnd # 0 THEN	(* deallocate *)
-			ASSERT(f.rider # NIL, 100); ASSERT(f.rider.Base() # NIL, 101);
-			res := WinApi.DestroyWindow(f.i.wnd);
-			f.i.wnd := 0; f.i.ctrl := 0
-		END
-		(*f.Close^*)
+		(* TODO *)
 	END Close;
 
 	PROCEDURE (f: ColorField) Update;
-		VAR res, i, j: INTEGER; c: Ports.Color;
 	BEGIN
-		IF ~f.disabled THEN
-			IF WinApi.IsWindowEnabled(f.i.ctrl) = 0 THEN res := WinApi.EnableWindow(f.i.ctrl, 1) END;
-			IF f.undef THEN j := -1
-			ELSE
-				f.Get(f, c); j := 0;
-				WHILE (j < numColors) & (c # colors[j]) DO INC(j) END
-			END;
-			i := WinApi.SendMessageW(f.i.ctrl, WinApi.CB_GETCURSEL, 0, 0);
-			IF (i # j) OR (j = numColors) & (c # f.color) THEN
-				f.color := c;
-				res := WinApi.SendMessageW(f.i.ctrl, WinApi.CB_SETCURSEL, j, 0)
-			END
-		ELSE
-			IF WinApi.IsWindowEnabled(f.i.ctrl) # 0 THEN
-				res := WinApi.SendMessageW(f.i.ctrl, WinApi.CB_SETCURSEL, -1, 0);
-				res := WinApi.EnableWindow(f.i.ctrl, 0)
-			END
-		END;
-		IF f.readOnly # f.i.readOnly THEN
-			res := WinApi.InvalidateRect(f.i.ctrl, NIL, 1);
-			f.i.readOnly := f.readOnly
-		END;
-		res := WinApi.UpdateWindow(f.i.ctrl)
+		(* TODO *)
 	END Update;
 
 	PROCEDURE (f: ColorField) Restore (l, t, r, b: INTEGER);
-		VAR res, w, h, i: INTEGER; style: SET;
 	BEGIN
-		IF f.i.ctrl = 0 THEN	(* lazy allocation *)
-			f.view.context.GetSize(w, h);
-			f.i.dropDown := TRUE; f.i.readOnly := f.readOnly;
-			(* drop down list, auto scroll, ownerdrawn, tabstop, ver scroll, border, child *)
-			style := {0, 1, 4, 6, 16, 21, 23, 30};
-			Open(f, "COMBOBOX", "", style, WinApi.WS_EX_CLIENTEDGE, f.i); i := 0;
-			res := WinApi.SendMessageW(f.i.ctrl, WinApi.CB_SETEXTENDEDUI, 1, 0);
-			WHILE i < numColors DO
-				res := WinApi.SendMessageW(f.i.ctrl, WinApi.CB_ADDSTRING, 0, colors[i]);
-				INC(i)
-			END;
-			res := WinApi.SendMessageW(f.i.ctrl, WinApi.CB_ADDSTRING, 0, -1);
-			Adapt(f, f.i)
-		END;
-		f.Update;
-		IF f.i.wnd # 0 THEN Paint(f, f.i) ELSE Print(f, f.dot, -1, -1, "") END
+		DummyRestore(f, "ColorField", l, t, r, b)
 	END Restore;
 
 	PROCEDURE (f: ColorField) MouseDown (x, y: INTEGER; buttons: SET);
 	BEGIN
-		ASSERT(~f.disabled, 100);
-		IF f.rider # NIL THEN
-			HandleMouse(f.i.wnd, x DIV f.unit, y DIV f.unit, buttons)
-		END
+		(* TODO *)
 	END MouseDown;
 
 	PROCEDURE (f: ColorField) KeyDown (ch: CHAR);
-		VAR res: INTEGER;
 	BEGIN
-		ASSERT(~f.disabled, 100);
-		IF ch = " " THEN
-			res := WinApi.SendMessageW(f.i.ctrl, WinApi.WM_KEYDOWN, ORD(ch), 0);
-			res := WinApi.SendMessageW(f.i.ctrl, WinApi.WM_KEYUP, ORD(ch), 0)
-		ELSE SendKey(ch, f.i.ctrl)
-		END
+		(* TODO *)
 	END KeyDown;
 
 	PROCEDURE (f: ColorField) Mark (on, focus: BOOLEAN);
 	BEGIN
-		Mark(on, f.front, f.i)
+
 	END Mark;
 
 
 
 	(* ListBox *)
 
+	PROCEDURE [ccall] ListSelect (clist: Gtk.GtkCList; row, column: INTEGER; event: Gdk.GdkEventButton; user_data: INTEGER);
+		VAR f: ListBox; cur: INTEGER;
+	BEGIN
+		f := SYSTEM.VAL(ListBox, user_data);
+		IF f.list # NIL THEN
+			f.Get(f, cur);
+			row := Gtk.gtk_clist_get_row_data(clist, row);
+			IF row # cur THEN f.Set(f, row) END
+		END
+	END ListSelect;
+
 	PROCEDURE (f: ListBox) SetOffset (x, y: INTEGER);
 	BEGIN
 		f.SetOffset^(x, y);
-		Adapt(f, f.i)
+		(*Adapt(f, f.i)*)
 	END SetOffset;
 
-	PROCEDURE (f: ListBox) Close;
-		VAR res: INTEGER;
+	PROCEDURE (c: ListBox) Close;
 	BEGIN
-		IF f.i.wnd # 0 THEN	(* deallocate *)
-			ASSERT(f.rider # NIL, 100); ASSERT(f.rider.Base() # NIL, 101);
-			res := WinApi.DestroyWindow(f.i.wnd);
-			f.i.wnd := 0; f.i.ctrl := 0
-		END
-		(*f.Close^*)
+		IF c.scrlw # NIL THEN
+			Gtk.gtk_widget_unref(c.list);
+			Gtk.gtk_widget_unref(c.scrlw);
+			Gtk.gtk_container_remove(c.rider(HostPorts.Rider).port.fixed, c.scrlw);
+		END;
+		c.i := NIL; c.list := NIL; c.scrlw := NIL
 	END Close;
 
 	PROCEDURE (f: ListBox) Update;
-		VAR res, i, j: INTEGER;
+		VAR i, r: INTEGER;
 	BEGIN
-		IF ~f.disabled THEN
-			IF WinApi.IsWindowEnabled(f.i.ctrl) = 0 THEN res := WinApi.EnableWindow(f.i.ctrl, 1) END;
-			IF f.undef THEN i := -1 ELSE f.Get(f, i) END; j := i;
-			IF f.i.dropDown THEN
-				IF (i < 0) OR (i >= WinApi.SendMessageW(f.i.ctrl, WinApi.CB_GETCOUNT, 0, 0)) THEN j := -1
-				ELSIF f.sorted THEN
-					j := 0;
-					WHILE i # WinApi.SendMessageW(f.i.ctrl, WinApi.CB_GETITEMDATA, j, 0) DO INC(j) END
-				END;
-				i := WinApi.SendMessageW(f.i.ctrl, WinApi.CB_GETCURSEL, j, 0);
-				IF i # j THEN res := WinApi.SendMessageW(f.i.ctrl, WinApi.CB_SETCURSEL, j, 0) END
-			ELSE
-				IF WinApi.IsWindowEnabled(f.i.ctrl) = 0 THEN res := WinApi.EnableWindow(f.i.ctrl, 1) END;
-				IF (i < 0) OR (i >= WinApi.SendMessageW(f.i.ctrl, WinApi.LB_GETCOUNT, 0, 0)) THEN j := -1
-				ELSIF f.sorted THEN
-					j := 0;
-					WHILE i # WinApi.SendMessageW(f.i.ctrl, WinApi.LB_GETITEMDATA, j, 0) DO INC(j) END
-				END;
-				i := WinApi.SendMessageW(f.i.ctrl, WinApi.LB_GETCURSEL, j, 0);
-				IF i # j THEN res := WinApi.SendMessageW(f.i.ctrl, WinApi.LB_SETCURSEL, j, 0) END
+		IF f.disabled OR f.readOnly THEN
+			Gtk.gtk_widget_set_sensitive(f.list, off);
+			IF f.disabled THEN
+				Gtk.gtk_clist_unselect_all(f.list)
 			END
 		ELSE
-			IF WinApi.IsWindowEnabled(f.i.ctrl) # 0 THEN
-				IF f.i.dropDown THEN
-					res := WinApi.SendMessageW(f.i.ctrl, WinApi.CB_SETCURSEL, -1, 0)
-				ELSE
-					res := WinApi.SendMessageW(f.i.ctrl, WinApi.LB_SETCURSEL, -1, 0)
-				END;
-				res := WinApi.EnableWindow(f.i.ctrl, 0)
-			END
+			Gtk.gtk_widget_set_sensitive(f.list, on)
 		END;
-		IF f.readOnly # f.i.readOnly THEN
-			res := WinApi.InvalidateRect(f.i.ctrl, NIL, 1);
-			f.i.readOnly := f.readOnly
+		IF ~f.disabled THEN
+			IF f.undef THEN i := -1 ELSE f.Get(f, i) END;
+			IF i >= 0 THEN
+				r := Gtk.gtk_clist_find_row_from_data(f.list, i);
+				IF r >= 0 THEN
+					Gtk.gtk_clist_select_row(f.list, r, 0)
+				END
+			END;
+			Gtk.gtk_widget_set_sensitive(f.scrlw, on)
+		ELSE
+			Gtk.gtk_widget_set_sensitive(f.scrlw, off)
 		END;
-		res := WinApi.UpdateWindow(f.i.ctrl)
+		Gtk.gtk_widget_show_all(f.scrlw)
 	END Update;
 
-	PROCEDURE (f: ListBox) UpdateList;
-		VAR res, i: INTEGER; s: Dialog.String;
+	PROCEDURE (c: ListBox) UpdateList;
+		VAR  i, res: INTEGER; s: Dialog.String; li: Gtk.GtkWidget;
+			ss: ARRAY (LEN(Dialog.String) - 1) * Utf8.maxShortCharsPerChar + 1 OF SHORTCHAR; sa: ARRAY [untagged] 1 OF Gtk.PString;
 	BEGIN
-		IF f.i.dropDown THEN
-			res := WinApi.SendMessageW(f.i.ctrl, WinApi.CB_RESETCONTENT, 0, 0);
-			i := 0; f.GetName(f, i, s);
-			Dialog.MapString(s, s); ConvertFromUnicode(s);
-			WHILE s # "" DO
-				res := WinApi.SendMessageW(f.i.ctrl, WinApi.CB_ADDSTRING, 0, SYSTEM.ADR(s));
-				res := WinApi.SendMessageW(f.i.ctrl, WinApi.CB_SETITEMDATA, res, i);
-				INC(i); f.GetName(f, i, s); Dialog.MapString(s, s); ConvertFromUnicode(s);
-			END;
-			Adapt(f, f.i)
-		ELSE
-			res := WinApi.SendMessageW(f.i.ctrl, WinApi.LB_RESETCONTENT, 0, 0);
-			i := 0; f.GetName(f, i, s);
-			Dialog.MapString(s, s); ConvertFromUnicode(s);
-			WHILE s # "" DO
-				res := WinApi.SendMessageW(f.i.ctrl, WinApi.LB_ADDSTRING, 0, SYSTEM.ADR(s));
-				res := WinApi.SendMessageW(f.i.ctrl, WinApi.LB_SETITEMDATA, res, i);
-				INC(i); f.GetName(f, i, s); Dialog.MapString(s, s); ConvertFromUnicode(s);
-			END
+		ASSERT(c.list # NIL, 20);
+		(* make sure that no selection changes are propagated when rebuilding the list *)
+		GtkU.gtk_signal_handler_block_by_func(c.list,
+				SYSTEM.ADR(ListSelect),
+				SYSTEM.VAL(INTEGER, c));
+		Gtk.gtk_clist_unselect_all(c.list);
+		Gtk.gtk_clist_clear(c.list);
+		i := 0; c.GetName(c, i, s);
+		WHILE s # "" DO
+			Dialog.MapString(s, s);
+			Utf8.Short(s, ss);
+			sa[0] := ss;
+			Gtk.gtk_clist_append(c.list, sa);
+			Gtk.gtk_clist_set_row_data(c.list, i, i);
+			INC(i); c.GetName(c, i, s)
 		END;
-		f.Update
+		IF c.sorted THEN
+			Gtk.gtk_clist_sort(c.list)
+		END;
+		GtkU.gtk_signal_handler_unblock_by_func(c.list, SYSTEM.ADR(ListSelect), SYSTEM.VAL(INTEGER, c));
+		Gtk.gtk_clist_set_column_width(c.list, 0, Gtk.gtk_clist_optimal_column_width(c.list, 0));
+		c.Update;
 	END UpdateList;
 
-	PROCEDURE (f: ListBox) Restore (l, t, r, b: INTEGER);
-		VAR i, res, w, h: INTEGER; style: SET; s: ARRAY 512 OF CHAR;
+	PROCEDURE (c: ListBox) Restore (l, t, r, b: INTEGER);
+		VAR cx, cy, cw, ch, res: INTEGER;
 	BEGIN
-		IF f.i.ctrl = 0 THEN	(* lazy allocation *)
-			f.view.context.GetSize(w, h);
-			IF h > dropDownHeight THEN
-				f.i.dropDown := FALSE; f.i.readOnly := f.readOnly;
-				style := {0, 16, 21, 23, 30};	(* notify, tabstop, ver scroll, border, child *)
-				IF f.sorted THEN INCL(style, 1) END;	(* sort *)
-				Open(f, "LISTBOX", "", style, WinApi.WS_EX_CLIENTEDGE, f.i)
-			ELSE
-				f.i.dropDown := TRUE;
-				style := {0, 1, 6, 16, 21, 23, 30};	(* drop down list, auto scroll, tabstop, ver scroll, border, child *)
-				IF f.sorted THEN INCL(style, 8) END;	(* sort *)
-				Open(f, "COMBOBOX", "", style, WinApi.WS_EX_CLIENTEDGE, f.i);
-				res := WinApi.SendMessageW(f.i.ctrl, WinApi.CB_SETEXTENDEDUI, WinApi.TRUE, 0)
-			END;
-			f.UpdateList
+		IF c.list = NIL THEN
+			c.noRedraw := TRUE;
+			c.list := Gtk.gtk_clist_new(1);
+			Gtk.gtk_widget_ref(c.list);
+			Gtk.gtk_widget_modify_style(c.list, NewStyle(c.font));
+(*			Gtk.gtk_clist_set_selection_mode(c.list, Gtk.GTK_SELECTION_BROWSE);*)
+			Gtk.gtk_clist_set_selection_mode(c.list, Gtk.GTK_SELECTION_SINGLE);
+			res := GtkU.gtk_signal_connect(c.list, "select-row", SYSTEM.ADR(ListSelect),SYSTEM.VAL(INTEGER, c));
+			c.scrlw := Gtk.gtk_scrolled_window_new(NIL, NIL);
+			Gtk.gtk_widget_ref(c.scrlw);
+			c.i := NewInfo(c, c.scrlw, c.list);
+			c.rider(HostPorts.Rider).GetRect(cx, cy, cw, ch); cw := cw - cx; ch := ch - cy;
+			Gtk.gtk_widget_set_usize(c.scrlw, cw, ch);
+			Gtk.gtk_container_add(c.scrlw, c.list);
+			Gtk.gtk_scrolled_window_set_policy(c.scrlw, Gtk.GTK_POLICY_AUTOMATIC, Gtk.GTK_POLICY_AUTOMATIC);
+			Gtk.gtk_fixed_put(c.rider(HostPorts.Rider).port.fixed, c.scrlw, cx, cy);
+			c.UpdateList
 		ELSE
-			f.Update
+			c.Update
 		END;
-		IF f.i.wnd # 0 THEN Paint(f, f.i) 
-		ELSE
-			f.Get(f, i); f.GetName(f, i, s);
-			Print(f, f.dot, 2 * Ports.point, 0, s)
-		END
+		Paint(c.i)
 	END Restore;
 
-
 	PROCEDURE (f: ListBox) DblClickOk (x, y: INTEGER): BOOLEAN;
-		VAR res, i, j, msg: INTEGER; rect: WinApi.RECT;
 	BEGIN
-		f.Get(f, i); j := i;
-		IF f.sorted THEN
-			IF f.i.dropDown THEN msg := WinApi.CB_GETITEMDATA ELSE msg := WinApi.LB_GETITEMDATA END;
-			j := 0;
-			WHILE i # WinApi.SendMessageW(f.i.ctrl, msg, j, 0) DO INC(j) END
-		END;		
-		res := WinApi.SendMessageW(f.i.ctrl, WinApi.LB_GETITEMRECT, j, SYSTEM.ADR(rect));
-		IF res = WinApi.LB_ERR THEN RETURN FALSE END;
-		x := x DIV f.unit; y := y DIV f.unit;
-		RETURN (x >= rect.left) & (x <= rect.right) & (y >= rect.top) & (y <= rect.bottom)
+		(* TODO *)
+		RETURN FALSE
 	END DblClickOk;
 
 	PROCEDURE (f: ListBox) MouseDown (x, y: INTEGER; buttons: SET);
 	BEGIN
 		ASSERT(~f.disabled, 100);
 		IF f.rider # NIL THEN
-			HandleMouse(f.i.wnd, x DIV f.unit, y DIV f.unit, buttons)
+			HandleMouse(f.i, x DIV f.unit, y DIV f.unit, buttons)
 		END
 	END MouseDown;
 
 	PROCEDURE (f: ListBox) WheelMove (x, y: INTEGER; op, nofLines: INTEGER; VAR done: BOOLEAN);
 	BEGIN
-		ASSERT(~f.disabled, 100);
-		IF f.rider # NIL THEN
-			HandleWheel(f.i.ctrl, x DIV f.unit, y DIV f.unit, op, nofLines, done)
-		END
+		(* TODO *)
 	END WheelMove;
 
 	PROCEDURE (f: ListBox) KeyDown (ch: CHAR);
-		VAR res: INTEGER;
 	BEGIN
 		ASSERT(~f.disabled, 100);
-		IF ch = " " THEN
-			res := WinApi.SendMessageW(f.i.ctrl, WinApi.WM_KEYDOWN, ORD(ch), 0);
-			res := WinApi.SendMessageW(f.i.ctrl, WinApi.WM_KEYUP, ORD(ch), 0)
-		ELSE
-			SendKey(ch, f.i.ctrl)
-		END
+		HandleKey(f.i, ch)
 	END KeyDown;
 
 	PROCEDURE (f: ListBox) Mark (on, focus: BOOLEAN);
@@ -2031,149 +1679,161 @@ MODULE HostCFrames;
 
 	(* SelectionBox *)
 
+	PROCEDURE [ccall] SelectionBoxSelect (clist: Gtk.GtkCList; row, column: INTEGER;
+									event: Gdk.GdkEventButton; user_data: INTEGER);
+		VAR f: SelectionBox; cur: INTEGER; in: BOOLEAN;
+	BEGIN
+		f := SYSTEM.VAL(SelectionBox, user_data);
+		IF f.list # NIL THEN
+			row := Gtk.gtk_clist_get_row_data(clist, row);
+			f.Get(f, row, in);
+			IF ~in THEN f.Incl(f, row, row) END
+		END
+	END SelectionBoxSelect;
+
+	PROCEDURE [ccall] SelectionBoxUnSelect (clist: Gtk.GtkCList; row, column: INTEGER;
+									event: Gdk.GdkEventButton; user_data: INTEGER);
+		VAR f: SelectionBox; cur: INTEGER; in: BOOLEAN;
+	BEGIN
+		f := SYSTEM.VAL(SelectionBox, user_data);
+		IF f.list # NIL THEN
+			row := Gtk.gtk_clist_get_row_data(clist, row);
+			f.Get(f, row, in);
+			IF in THEN f.Excl(f, row, row)
+				;Log.String("HostCFrames.SelectionBoxUnSelect: "); Log.Int(row); Log.Ln;
+			END
+		END
+	END SelectionBoxUnSelect;
+
 	PROCEDURE (f: SelectionBox) SetOffset (x, y: INTEGER);
 	BEGIN
 		f.SetOffset^(x, y);
-		Adapt(f, f.i)
+		(*Adapt(f, f.i)*)
 	END SetOffset;
 
-	PROCEDURE (f: SelectionBox) Close;
-		VAR res: INTEGER;
+	PROCEDURE (c: SelectionBox) Close;
 	BEGIN
-		IF f.i.wnd # 0 THEN	(* deallocate *)
-			ASSERT(f.rider # NIL, 100); ASSERT(f.rider.Base() # NIL, 101);
-			res := WinApi.DestroyWindow(f.i.wnd);
-			f.i.wnd := 0; f.i.ctrl := 0
-		END
-		(*f.Close^*)
+		IF c.scrlw # NIL THEN
+			Gtk.gtk_widget_unref(c.list);
+			Gtk.gtk_widget_unref(c.scrlw);
+			Gtk.gtk_container_remove(c.rider(HostPorts.Rider).port.fixed, c.scrlw)
+		END;
+		c.i := NIL; c.list := NIL; c.scrlw := NIL
 	END Close;
 
 	PROCEDURE (f: SelectionBox) DblClickOk (x, y: INTEGER): BOOLEAN;
-		VAR res, i: INTEGER; s: Dialog.String;
-		sel: BOOLEAN; rect: WinApi.RECT;
 	BEGIN
-		i := 0; f.GetName(f, i, s); ConvertFromUnicode(s);
-		x := x DIV f.unit; y := y DIV f.unit;
-		WHILE s # "" DO
-			f.Get(f, i, sel);
-			IF sel THEN
-				res := WinApi.SendMessageW(f.i.ctrl, WinApi.LB_GETITEMRECT, i, SYSTEM.ADR(rect));
-				IF res = WinApi.LB_ERR THEN RETURN FALSE END;
-				IF (x >= rect.left) & (x <= rect.right) & (y >= rect.top) & (y <= rect.bottom) THEN RETURN TRUE END
-			END;
-			INC(i); f.GetName(f, i, s); Dialog.MapString(s, s); ConvertFromUnicode(s)
-		END;
+		(* ... *)
 		RETURN FALSE
 	END DblClickOk;
 
-	PROCEDURE (f: SelectionBox) Update;
-		VAR res, i, j, a, b: INTEGER; sel: BOOLEAN;
+	PROCEDURE (c: SelectionBox) Update;
+		VAR i, r: INTEGER; in: BOOLEAN;
 	BEGIN
-		IF ~f.disabled THEN
-			IF WinApi.IsWindowEnabled(f.i.ctrl) = 0 THEN res := WinApi.EnableWindow(f.i.ctrl, 1) END;
-			i := 0;
-			WHILE i < f.num DO j := i;
-				IF f.sorted THEN
-					j := WinApi.SendMessageW(f.i.ctrl, WinApi.LB_GETITEMDATA, i, 0)
-				END;
-				f.Get(f, j, sel);
-				IF sel & ~f.undef THEN a := 1 ELSE a := 0 END;
-				b := WinApi.SendMessageW(f.i.ctrl, WinApi.LB_GETSEL, i, 0);
-				IF a # b THEN
-					res := WinApi.SendMessageW(f.i.ctrl, WinApi.LB_SETSEL, a, i) END;
-				INC(i)
+		IF c.disabled OR c.readOnly THEN
+			Gtk.gtk_widget_set_sensitive(c.list, off);
+			IF c.disabled THEN
+				Gtk.gtk_clist_unselect_all(c.list)
 			END
 		ELSE
-			IF WinApi.IsWindowEnabled(f.i.ctrl) # 0 THEN
-				res := WinApi.SendMessageW(f.i.ctrl, WinApi.LB_SETSEL, 0, -1);
-				res := WinApi.EnableWindow(f.i.ctrl, 0)
-			END
+			Gtk.gtk_widget_set_sensitive(c.list, on)
 		END;
-		IF f.readOnly # f.i.readOnly THEN
-			res := WinApi.InvalidateRect(f.i.ctrl, NIL, 1);
-			f.i.readOnly := f.readOnly
+		IF ~c.disabled THEN
+			IF ~c.undef THEN
+				i := 0;
+				WHILE i < c.num DO
+					c.Get(c, i, in);
+					r := Gtk.gtk_clist_find_row_from_data(c.list, i);
+					IF in THEN
+						Gtk.gtk_clist_select_row(c.list, r, 0)
+					ELSE
+						Gtk.gtk_clist_unselect_row(c.list, r, 0)
+					END;
+					INC(i)
+				END
+			END;
+			Gtk.gtk_widget_set_sensitive(c.scrlw, on)
+		ELSE
+			Gtk.gtk_widget_set_sensitive(c.scrlw, off)
 		END;
-		res := WinApi.UpdateWindow(f.i.ctrl)
+		Gtk.gtk_widget_show_all(c.scrlw)
 	END Update;
 
 	PROCEDURE (f: SelectionBox) UpdateRange (op, from, to: INTEGER);
-		VAR res, i, a, b: INTEGER; sel: BOOLEAN;
 	BEGIN
-		ASSERT((from >= 0) & (from <= to) & (to < f.num), 100);
-		IF (op = Dialog.set) OR (from # to) THEN f.Update; RETURN END;
-		IF ~f.disabled THEN
-			IF WinApi.IsWindowEnabled(f.i.ctrl) = 0 THEN res := WinApi.EnableWindow(f.i.ctrl, 1) END;
-			i := from;
-			IF f.sorted THEN
-				i := 0;
-				WHILE WinApi.SendMessageW(f.i.ctrl, WinApi.LB_GETITEMDATA, i, 0) # from DO INC(i) END
-			END;
-			f.Get(f, from, sel);
-			IF sel THEN a := 1 ELSE a := 0 END;
-			b := WinApi.SendMessageW(f.i.ctrl, WinApi.LB_GETSEL, i, 0);
-			IF a # b THEN
-				res := WinApi.SendMessageW(f.i.ctrl, WinApi.LB_SETSEL, a, i) END
-		ELSE
-			IF WinApi.IsWindowEnabled(f.i.ctrl) # 0 THEN res := WinApi.EnableWindow(f.i.ctrl, 0) END
-		END
+		(* TODO *)
 	END UpdateRange;
 
-	PROCEDURE (f: SelectionBox) UpdateList;
-		VAR res, i: INTEGER; s: Dialog.String;
+	PROCEDURE (c: SelectionBox) UpdateList;
+		VAR  i, res: INTEGER; s: Dialog.String; li: Gtk.GtkWidget;
+			ss: ARRAY (LEN(Dialog.String) - 1) * Utf8.maxShortCharsPerChar + 1 OF SHORTCHAR;
+			sa: ARRAY [untagged] 1 OF Gtk.PString;
 	BEGIN
-		res := WinApi.SendMessageW(f.i.ctrl, WinApi.LB_RESETCONTENT, 0, 0);
-		i := 0; f.GetName(f, i, s); Dialog.MapString(s, s); ConvertFromUnicode(s);
+		ASSERT(c.list # NIL, 20);
+		(* make sure that no selection changes are propagated when rebuilding the list *)
+		GtkU.gtk_signal_handler_block_by_func(c.list, SYSTEM.ADR(SelectionBoxSelect), SYSTEM.VAL(INTEGER, c));
+		Gtk.gtk_clist_unselect_all(c.list);
+		Gtk.gtk_clist_clear(c.list);
+		i := 0; c.GetName(c, i, s);
 		WHILE s # "" DO
-			res := WinApi.SendMessageW(f.i.ctrl, WinApi.LB_ADDSTRING, 0, SYSTEM.ADR(s));
-			res := WinApi.SendMessageW(f.i.ctrl, WinApi.LB_SETITEMDATA, res, i);
-			INC(i); f.GetName(f, i, s); Dialog.MapString(s, s); ConvertFromUnicode(s)
+			Dialog.MapString(s, s);
+			Utf8.Short(s, ss);
+			sa[0] := ss;
+			Gtk.gtk_clist_append(c.list, sa);
+			Gtk.gtk_clist_set_row_data(c.list, i, i);
+			INC(i); c.GetName(c, i, s)
 		END;
-		f.num := i;
-		f.Update
+		c.num := i;
+		IF c.sorted THEN
+			Gtk.gtk_clist_sort(c.list)
+		END;
+		GtkU.gtk_signal_handler_unblock_by_func(c.list, SYSTEM.ADR(SelectionBoxSelect), SYSTEM.VAL(INTEGER, c));
+		Gtk.gtk_clist_set_column_width(c.list, 0, Gtk.gtk_clist_optimal_column_width(c.list, 0));
+		c.Update
 	END UpdateList;
 
-	PROCEDURE (f: SelectionBox) Restore (l, t, r, b: INTEGER);
-		VAR style: SET;
+	PROCEDURE (c: SelectionBox) Restore (l, t, r, b: INTEGER);
+		VAR cx, cy, cw, ch, res: INTEGER;
 	BEGIN
-		IF f.i.ctrl = 0 THEN	(* lazy allocation *)
-			f.i.readOnly := f.readOnly;
-			style := {0, 3, 16, 21, 23, 30} + WinApi.LBS_EXTENDEDSEL;
-				(* notify, multiple sel, tabstop, ver scroll, border, child *)
-			IF f.sorted THEN INCL(style, 1) END;	(* sort *)
-			Open(f, "LISTBOX", "", style, WinApi.WS_EX_CLIENTEDGE, f.i);
-			f.UpdateList
+		IF c.list = NIL THEN
+			c.noRedraw := TRUE;
+			c.list := Gtk.gtk_clist_new(1); 			Gtk.gtk_widget_ref(c.list);
+			Gtk.gtk_widget_modify_style(c.list, NewStyle(c.font));
+			c.scrlw := Gtk.gtk_scrolled_window_new(NIL, NIL);			Gtk.gtk_widget_ref(c.scrlw);
+			Gtk.gtk_clist_set_selection_mode(c.list, Gtk.GTK_SELECTION_EXTENDED);
+			res := GtkU.gtk_signal_connect(c.list, "select-row",SYSTEM.ADR(SelectionBoxSelect),SYSTEM.VAL(INTEGER, c));
+			res := GtkU.gtk_signal_connect(c.list, "unselect-row", SYSTEM.ADR(SelectionBoxUnSelect), SYSTEM.VAL(INTEGER, c));
+			c.i := NewInfo(c, c.scrlw, c.list);
+			c.rider(HostPorts.Rider).GetRect(cx, cy, cw, ch); cw := cw - cx; ch := ch - cy;
+			Gtk.gtk_widget_set_usize(c.scrlw, cw, ch);
+			Gtk.gtk_container_add(c.scrlw, c.list);
+			Gtk.gtk_scrolled_window_set_policy(c.scrlw,
+															Gtk.GTK_POLICY_AUTOMATIC, Gtk.GTK_POLICY_AUTOMATIC);
+			Gtk.gtk_fixed_put(c.rider(HostPorts.Rider).port.fixed, c.scrlw, cx, cy);
+			c.UpdateList
 		ELSE
-			f.Update
+			c.Update;
 		END;
-		IF f.i.wnd # 0 THEN Paint(f, f.i) ELSE Print(f, f.dot, -1, -1, "") END
+		Paint(c.i)
 	END Restore;
 
 	PROCEDURE (f: SelectionBox) MouseDown (x, y: INTEGER; buttons: SET);
 	BEGIN
 		ASSERT(~f.disabled, 100);
 		IF f.rider # NIL THEN
-			HandleMouse(f.i.wnd, x DIV f.unit, y DIV f.unit, buttons)
+			HandleMouse(f.i, x DIV f.unit, y DIV f.unit, buttons)
 		END
 	END MouseDown;
 
 	PROCEDURE (f: SelectionBox) WheelMove (x, y: INTEGER; op, nofLines: INTEGER; VAR done: BOOLEAN);
 	BEGIN
-		ASSERT(~f.disabled, 100);
-		IF f.rider # NIL THEN
-			HandleWheel(f.i.ctrl, x, y, op, nofLines, done)
-		END
+		(* TODO *)
 	END WheelMove;
 
 	PROCEDURE (f: SelectionBox) KeyDown (ch: CHAR);
-		VAR res: INTEGER;
 	BEGIN
 		ASSERT(~f.disabled, 100);
-		IF ch = " " THEN
-			res := WinApi.SendMessageW(f.i.ctrl, WinApi.WM_KEYDOWN, ORD(ch), 0);
-			res := WinApi.SendMessageW(f.i.ctrl, WinApi.WM_KEYUP, ORD(ch), 0)
-		ELSE
-			SendKey(ch, f.i.ctrl)
-		END
+		HandleKey(f.i, ch)
 	END KeyDown;
 
 	PROCEDURE (f: SelectionBox) Select (from, to: INTEGER), EMPTY;
@@ -2192,225 +1852,249 @@ MODULE HostCFrames;
 
 	(* ComboBox *)
 
+	PROCEDURE [ccall] ComboChanged (editable: Gtk.GtkWidget; user_data: INTEGER);
+		VAR s: Gtk.PString; c: ComboBox;
+	BEGIN
+		c := SYSTEM.VAL(ComboBox, user_data);
+		IF ~c.isUpdate THEN
+			s := Gtk.gtk_editable_get_chars(editable, 0, -1);
+			IF s= NIL THEN
+				c.Set(c, "");
+			ELSE
+				c.Set(c, s$);
+				GLib.g_free(SYSTEM.VAL(GLib.gpointer, s))
+			END
+		END
+	END ComboChanged;
+
 	PROCEDURE (f: ComboBox) SetOffset (x, y: INTEGER);
 	BEGIN
 		f.SetOffset^(x, y);
-		Adapt(f, f.i)
+		(*Adapt(f, f.i)*)
 	END SetOffset;
 
-	PROCEDURE (f: ComboBox) Close;
-		VAR res: INTEGER;
+	PROCEDURE (c: ComboBox) Close;
 	BEGIN
-		IF f.i.wnd # 0 THEN	(* deallocate *)
-			ASSERT(f.rider # NIL, 100); ASSERT(f.rider.Base() # NIL, 101);
-			res := WinApi.DestroyWindow(f.i.wnd);
-			f.i.wnd := 0; f.i.ctrl := 0
-		END
-		(*f.Close^*)
+		IF c.combo # NIL THEN
+			Gtk.gtk_widget_unref(c.combo);
+			Gtk.gtk_container_remove(c.rider(HostPorts.Rider).port.fixed, c.combo)
+		END;
+		c.i := NIL; c.combo := NIL
 	END Close;
 
-	PROCEDURE (f: ComboBox) Update;
-		VAR res: INTEGER; s, s1: Dialog.String;
+	PROCEDURE (c: ComboBox) Update;
+		VAR s: Dialog.String; us: GLib.PString;
 	BEGIN
-		IF ~f.disabled THEN
-			IF f.undef THEN s := "" ELSE f.Get(f, s); ConvertFromUnicode(s) END;
-			IF WinApi.IsWindowEnabled(f.i.ctrl) = 0 THEN res := WinApi.EnableWindow(f.i.ctrl, 1) END;
-			res := WinApi.GetWindowTextW(f.i.ctrl, s1, LEN(s1));
-			IF (WinApi.GetWindowTextLengthW(f.i.ctrl) >= LEN(s)) OR (s # s1) THEN
-				IF ~f.i.dropDown THEN
-					res := WinApi.SendMessageW(f.i.ctrl, WinApi.CB_FINDSTRINGEXACT, -1, SYSTEM.ADR(s));
-					res := WinApi.SendMessageW(f.i.ctrl, WinApi.CB_SETCURSEL, res, 0)
-				END;
-				res := WinApi.SetWindowTextW(f.i.ctrl, s)
+		IF c.combo = NIL THEN RETURN END;
+		IF c.combo.entry = NIL THEN RETURN END;
+		c.isUpdate := TRUE;
+		IF ~c.disabled THEN
+			c.Get(c, s); Dialog.MapString(s, s);
+			us := GLib.g_utf16_to_utf8(s, -1, NIL, NIL, NIL);
+			Gtk.gtk_entry_set_text(c.combo.entry, us);
+			GLib.g_free(SYSTEM.VAL(GLib.gpointer, us));
+			IF ~c.readOnly THEN
+				Gtk.gtk_widget_set_sensitive(c.combo, on)
+			ELSE
+				Gtk.gtk_widget_set_sensitive(c.combo, off)
 			END
 		ELSE
-			IF WinApi.IsWindowEnabled(f.i.ctrl) # 0 THEN
-				res := WinApi.SendMessageW(f.i.ctrl, WinApi.CB_SETCURSEL, -1, 0);
-				res := WinApi.SetWindowTextW(f.i.ctrl, "");
-				res := WinApi.EnableWindow(f.i.ctrl, 0)
-			END
+			Gtk.gtk_entry_set_text(c.combo.entry, "");
+			Gtk.gtk_widget_set_sensitive(c.combo, off)
 		END;
-		res := WinApi.UpdateWindow(f.i.ctrl)
+		c.isUpdate := FALSE;
+		Gtk.gtk_widget_show_all(c.combo)
+(*
+		IF ~c.disabled THEN
+			c.Get(c, value);
+			IF c.undef THEN
+			ELSIF value THEN Gtk.gtk_toggle_button_set_active(c.checkButton, 1)
+			ELSE Gtk.gtk_toggle_button_set_active(c.checkButton, 0)
+			END;
+			IF c.readOnly THEN Gtk.gtk_widget_set_sensitive(c.checkButton, 0)
+			ELSE Gtk.gtk_widget_set_sensitive(c.checkButton, 1)
+			END
+		ELSE
+			Gtk.gtk_toggle_button_set_active(c.checkButton, 0);
+			Gtk.gtk_widget_set_sensitive(c.checkButton, 0)
+		END;
+		UpdateEventMask(c.i);
+		IF c.lbl.window # NIL THEN
+			mask := Gdk.gdk_window_get_events(c.lbl.window);
+			mask := mask - Gdk.GDK_BUTTON_PRESS_MASK;
+			Gdk.gdk_window_set_events(c.lbl.window, mask)
+		END
+*)
 	END Update;
 
-	PROCEDURE (f: ComboBox) UpdateList;
-		VAR res, i: INTEGER; s: Dialog.String;
+	PROCEDURE (c: ComboBox) UpdateList;
+		VAR
+			strs: POINTER TO ARRAY OF ARRAY [untagged] (LEN(Dialog.String) - 1) * Utf8.maxShortCharsPerChar + 1 OF SHORTCHAR;
+			gl: GLib.GList; l, i: INTEGER; s: Dialog.String;
 	BEGIN
-		res := WinApi.SendMessageW(f.i.ctrl, WinApi.CB_RESETCONTENT, 0, 0);
-		i := 0; f.GetName(f, i, s); Dialog.MapString(s, s); ConvertFromUnicode(s);
-		WHILE s # "" DO
-			res := WinApi.SendMessageW(f.i.ctrl, WinApi.CB_ADDSTRING, 0, SYSTEM.ADR(s));
-			INC(i); f.GetName(f, i, s); Dialog.MapString(s, s); ConvertFromUnicode(s)
+		l := 0;
+		REPEAT c.GetName(c, l, s); INC(l) UNTIL s = "";
+		DEC(l);
+		IF l > 0 THEN
+			NEW(strs, l);
+			gl := NIL;
+			i := 0;
+			WHILE i < l DO
+				c.GetName(c, i, s); Dialog.MapString(s, s);
+				Utf8.Short(s, strs[i]);
+				gl := GLib.g_list_append(gl, SYSTEM.VAL(GLib.gpointer, SYSTEM.ADR(strs[i])));
+				INC(i);
+			END;
+			Gtk.gtk_combo_set_popdown_strings(c.combo, gl)
 		END;
-		Adapt(f, f.i);
-		f.Update
+		c.Update
 	END UpdateList;
 
-	PROCEDURE (f: ComboBox) Restore (l, t, r, b: INTEGER);
-		VAR res, w, h: INTEGER; s: Dialog.String;
-			style: SET; pt: WinApi.POINT;
+	PROCEDURE (c: ComboBox) Restore (l, t, r, b: INTEGER);
+		VAR w, h, cx, cy, cw, ch, res: INTEGER;
 	BEGIN
-		IF f.i.ctrl = 0 THEN	(* lazy allocation *)
-			f.Get(f, s); ConvertFromUnicode(s); f.view.context.GetSize(w, h);
-			style := {6, 16, 21, 23, 30};	(* auto scroll, tabstop, ver scroll, border, child *)
-			IF f.sorted THEN INCL(style, 8) END;	(* sort *)
-			f.i.dropDown := h <= dropDownHeight;
-			IF f.i.dropDown THEN INCL(style, 1) ELSE INCL(style, 0) END;	(* dropdown / simple *)
-			Open(f, "COMBOBOX", s, style, WinApi.WS_EX_CLIENTEDGE, f.i);
-			pt.x := 4; pt.y := 4;
-			f.edit := WinApi.ChildWindowFromPoint(f.i.ctrl, pt);	(* hack found in win api manual ! *)
-			res := WinApi.SendMessageW(f.i.ctrl, WinApi.CB_SETEXTENDEDUI, 1, 0);
-			res := WinApi.SendMessageW(f.i.ctrl, WinApi.CB_LIMITTEXT, 255, 0);
-			f.UpdateList
-		ELSE
-			f.Update
+		IF c.combo = NIL THEN
+			c.noRedraw := TRUE;
+			c.combo := Gtk.gtk_combo_new(); 	Gtk.gtk_widget_ref(c.combo);
+			res := GtkU.gtk_signal_connect(c.combo.entry, "changed", SYSTEM.ADR(ComboChanged),SYSTEM.VAL(INTEGER, c));
+			c.i := NewInfo(c, c.combo, c.combo);
+
+			(* make sure all contained widgets also have the right signals connected *)
+			res := GtkU.gtk_signal_connect(c.combo.entry, "button_press_event", SYSTEM.ADR(MouseHandler),SYSTEM.VAL(INTEGER, c.i));
+			res := GtkU.gtk_signal_connect_after(c.combo.entry, "button-release-event", SYSTEM.ADR(MouseRelease),SYSTEM.VAL(INTEGER, c.i));
+			res := GtkU.gtk_signal_connect(c.combo.entry, "key-press-event", SYSTEM.ADR(KeyHandler),SYSTEM.VAL(INTEGER, c.i));
+
+			c.rider(HostPorts.Rider).GetRect(cx, cy, cw, ch); cw := cw - cx; ch := ch - cy;
+			Gtk.gtk_widget_set_usize(c.combo, cw, ch);
+			Gtk.gtk_fixed_put(c.rider(HostPorts.Rider).port.fixed, c.combo, cx, cy);
+			c.UpdateList
 		END;
-		IF f.i.wnd # 0 THEN Paint(f, f.i) ELSE Print(f, f.dot, -1, -1, "") END
+		c.Update;
+		Paint(c.i)
 	END Restore;
 
 	PROCEDURE (f: ComboBox) MouseDown (x, y: INTEGER; buttons: SET);
 	BEGIN
 		ASSERT(~f.disabled, 100);
 		IF f.rider # NIL THEN
-			HandleMouse(f.i.wnd, x DIV f.unit, y DIV f.unit, buttons)
+			HandleMouse(f.i, x DIV f.unit, y DIV f.unit, buttons)
 		END
 	END MouseDown;
 
 	PROCEDURE (f: ComboBox) KeyDown (ch: CHAR);
 	BEGIN
 		ASSERT(~f.disabled, 100);
-		SendKey(ch, f.edit)
+		HandleKey(f.i, ch)
 	END KeyDown;
 
 	PROCEDURE (f: ComboBox) Edit (op: INTEGER;
 		VAR v: Views.View; VAR w, h: INTEGER; VAR singleton, clipboard: BOOLEAN
 	);
-		VAR res: INTEGER;
 	BEGIN
-		IF clipboard THEN
-			IF op = Controllers.cut THEN
-				res := WinApi.SendMessageW(f.edit, WinApi.WM_CUT, 0, 0)
-			ELSIF op = Controllers.copy THEN
-				res := WinApi.SendMessageW(f.edit, WinApi.WM_COPY, 0, 0)
-			ELSIF op = Controllers.paste THEN
-				res := WinApi.SendMessageW(f.edit, WinApi.WM_PASTE, 0, 0)
-			END
-		END
+		(* TODO *)
 	END Edit;
 
 	PROCEDURE (f: ComboBox) Idle, EMPTY;
 
 	PROCEDURE (f: ComboBox) Select (from, to: INTEGER);
-		VAR res: INTEGER;
 	BEGIN
-		IF to > 32767 THEN to := -1 END;
-		IF from < 0 THEN res := WinApi.SendMessageW(f.i.ctrl, WinApi.CB_SETEDITSEL, 0, 65535)
-		ELSE res := WinApi.SendMessageW(f.i.ctrl, WinApi.CB_SETEDITSEL, 0, from MOD 65536 + to * 65536)
-		END
+		IF to = MAX(INTEGER) THEN to := -1 END;
+		Gtk.gtk_editable_select_region(f.combo.entry, from, to)
 	END Select;
 
 	PROCEDURE (f: ComboBox) GetSelection (OUT from, to: INTEGER);
-		VAR res: INTEGER;
+		VAR e: Gtk.GtkOldEditable;
 	BEGIN
-		res := WinApi.SendMessageW(f.i.ctrl, WinApi.CB_GETEDITSEL, SYSTEM.ADR(from), SYSTEM.ADR(to));
-		IF from = -1 THEN to := -1 ELSIF to = -1 THEN to := MAX(INTEGER) END
+		(*
+		e := f.combo.entry(Gtk.GtkOldEditable);
+		IF 0 IN e.has_selection (* testing bit field *) THEN
+			from := e.selection_start_pos; to := e.selection_end_pos
+		ELSE
+		*)
+			from := -1; to := -1
+		(*
+		END
+		*)
 	END GetSelection;
 
 	PROCEDURE (f: ComboBox) Mark (on, focus: BOOLEAN);
-		VAR res: INTEGER;
 	BEGIN
-		IF f.front THEN
-			IF on THEN
-				IF ~f.i.hasFocus THEN
-					res := WinApi.SendMessageW(f.edit, WinApi.WM_SETFOCUS, 0, 0);
-					f.i.hasFocus := TRUE
-				END
-			ELSE
-				IF f.i.hasFocus THEN
-					res := WinApi.SendMessageW(f.edit, WinApi.WM_KILLFOCUS, 0, 0);
-					f.i.hasFocus := FALSE
-				END
-			END
-		END
+		Mark(on, f.front, f.i)
 	END Mark;
 
 	PROCEDURE (f: ComboBox) Length (): INTEGER;
-		VAR res: INTEGER;
 	BEGIN
-		res := WinApi.GetWindowTextLengthW(f.i.ctrl);
-		RETURN res
+		RETURN EditableTextLen(f.combo)
 	END Length;
 
-	PROCEDURE (f: ComboBox) GetCursor (x, y: INTEGER; modifiers: SET; VAR cursor: INTEGER);
-		VAR res, hc: INTEGER; pt: WinApi.POINT;
-	BEGIN
-		pt.x := (x - 1) DIV f.unit + 1; pt.y := (y - 1) DIV f.unit + 1;
-		res := WinApi.ClientToScreen(f.i.wnd, pt);
-		hc := WinApi.SendMessageW(f.edit, WinApi.WM_NCHITTEST, 0, pt.x + pt.y * 65536);
-		IF hc = 1 THEN cursor := Ports.textCursor END
 (*
-		u := f.unit; pt.x := x DIV u - 1; pt.y := y DIV u - 1;
-		wnd := WinApi.ChildWindowFromPoint(f.i.ctrl, pt);
-		IF wnd = f.edit THEN cursor := Ports.textCursor
-		ELSE cursor := Ports.arrowCursor
-		END
-
-		u := f.unit; pt.x := x DIV u; pt.y := y DIV u;
-		res := WinApi.ClientToScreen(f.i.wnd, pt);
-		ChildWindowAt(f.i.wnd, pt, wnd, hc);
-		res := WinApi.ScreenToClient(wnd, pt);
-		res := WinApi.SendMessageW(wnd, WinApi.WMSetCursor, wnd, hc + WinApi.WMMouseMove * 65536);
-		cursor := -1
-*)
+	PROCEDURE (f: ComboBox) GetCursor (x, y: INTEGER; modifiers: SET; VAR cursor: INTEGER);
+	BEGIN
 	END GetCursor;
+*)
 
 
 
 	(* Caption *)
 
+	PROCEDURE SetAlign(w: Gtk.GtkMisc; isLeft, isRight: BOOLEAN);
+		VAR align: INTEGER;
+	BEGIN
+		(*	TODO: Justification does not seem to work.
+				Is it necessary to pack the label into a GtkHBox to align it correctly? *)
+		IF isRight & ~isLeft THEN
+			Gtk.gtk_misc_set_alignment(w, 1, 1);
+			(*	Gtk.gtk_label_set_justify(l, Gtk.GTK_JUSTIFY_RIGHT)	*)
+		ELSIF ~isLeft THEN
+			(*	Gtk.gtk_misc_set_alignment(l, 0.5, 0.5);*)
+			Gtk.gtk_misc_set_alignment(w, 0.5, 0.5);
+		ELSE
+			(*	Gtk.gtk_label_set_justify(l, Gtk.GTK_JUSTIFY_LEFT) *)
+			Gtk.gtk_misc_set_alignment(w, 0, 0);
+		END
+	END SetAlign;
+
 	PROCEDURE (f: Caption) SetOffset (x, y: INTEGER);
 	BEGIN
 		f.SetOffset^(x, y);
-		Adapt(f, f.i)
+		(*Adapt(f, f.i)*)
 	END SetOffset;
 
-	PROCEDURE (f: Caption) Close;
-		VAR res: INTEGER;
+	PROCEDURE (c: Caption) Close;
 	BEGIN
-		IF f.i.wnd # 0 THEN	(* deallocate *)
-			ASSERT(f.rider # NIL, 100); ASSERT(f.rider.Base() # NIL, 101);
-			res := WinApi.DestroyWindow(f.i.wnd);
-			f.i.wnd := 0; f.i.ctrl := 0
-		END
-		(*f.Close^*)
+		IF c.labelWidget # NIL THEN
+			Gtk.gtk_widget_unref(c.labelWidget);
+			Gtk.gtk_widget_unref(c.ebox);
+			Gtk.gtk_container_remove(c.rider(HostPorts.Rider).port.fixed, c.ebox)
+		END;
+		c.i := NIL; c.labelWidget := NIL; c.ebox := NIL
 	END Close;
 
-	PROCEDURE (f:Caption ) Update;
-		VAR res: INTEGER;
+	PROCEDURE (c: Caption) Update;
 	BEGIN
-		IF ~f.disabled THEN
-			IF WinApi.IsWindowEnabled(f.i.ctrl) = 0 THEN res := WinApi.EnableWindow(f.i.ctrl, 1) END
-		ELSE
-			IF WinApi.IsWindowEnabled(f.i.ctrl) # 0 THEN res := WinApi.EnableWindow(f.i.ctrl, 0) END
-		END;
-		CheckLabel(f.label, f.i.ctrl);
-		res := WinApi.UpdateWindow(f.i.ctrl)
+		IF c.disabled THEN Gtk.gtk_widget_set_sensitive(c.labelWidget, off)
+		ELSE Gtk.gtk_widget_set_sensitive(c.labelWidget, on)
+		END
 	END Update;
 
-	PROCEDURE (f: Caption) Restore (l, t, r, b: INTEGER);
-		VAR lbl: Dialog.String; style: SET;
+	PROCEDURE (c: Caption) Restore (l, t, r, b: INTEGER);
+		VAR w, h, cx, cy, cw, ch, res: INTEGER;
 	BEGIN
-		SetLabel(f.label, lbl);
-		IF f.i.ctrl = 0 THEN	(* lazy allocation *)
-			style := {30};
-			IF f.left THEN style := style + WinApi.SS_LEFT
-			ELSIF f.right THEN style := style + WinApi.SS_RIGHT
-			ELSE style := style + WinApi.SS_CENTER
-			END;
-			Open(f, "STATIC", lbl, style, {}, f.i)	(* left, child *)
+		IF c.labelWidget = NIL THEN
+			c.noRedraw := TRUE;
+			c.labelWidget := NewLabel(c.label,NewStyle(c.font));
+			SetAlign(c.labelWidget, c.left, c.right);
+			c.ebox := Gtk.gtk_event_box_new();
+			Gtk.gtk_widget_ref(c.ebox);
+			c.i := NewInfo(c, c.ebox, c.ebox);
+			c.rider(HostPorts.Rider).GetRect(cx, cy, cw, ch); cw := cw - cx; ch := ch - cy;
+			Gtk.gtk_widget_set_usize(c.ebox, cw, ch);
+			Gtk.gtk_container_add(c.ebox, c.labelWidget);
+			Gtk.gtk_label_set_line_wrap(c.labelWidget, 0);
+			Gtk.gtk_fixed_put(c.rider(HostPorts.Rider).port.fixed, c.ebox, cx, cy);
 		END;
-		f.Update;
-		IF f.i.wnd # 0 THEN Paint(f, f.i) ELSE Print(f, 0, 2 * Ports.point, 0, lbl) END
+		c.Update;
+		Paint(c.i)
 	END Restore;
 
 
@@ -2419,302 +2103,211 @@ MODULE HostCFrames;
 
 	PROCEDURE (f: Group) SetOffset (x, y: INTEGER);
 	BEGIN
+		(*
 		f.SetOffset^(x, y);
-		Adapt(f, f.i)
+		(*Adapt(f, f.i)*)
+		*)
 	END SetOffset;
 
 	PROCEDURE (f: Group) Close;
-		VAR res: INTEGER;
 	BEGIN
-		IF f.i.wnd # 0 THEN	(* deallocate *)
-			ASSERT(f.rider # NIL, 100); ASSERT(f.rider.Base() # NIL, 101);
-			res := WinApi.DestroyWindow(f.i.wnd);
-			f.i.wnd := 0; f.i.ctrl := 0
-		END
-		(*f.Close^*)
+		(* TODO *)
 	END Close;
 
 	PROCEDURE (f: Group) Update;
-		VAR res: INTEGER;
 	BEGIN
-		IF ~f.disabled THEN
-			IF WinApi.IsWindowEnabled(f.i.ctrl) = 0 THEN res := WinApi.EnableWindow(f.i.ctrl, 1) END
-		ELSE
-			IF WinApi.IsWindowEnabled(f.i.ctrl) # 0 THEN res := WinApi.EnableWindow(f.i.ctrl, 0) END
-		END;
-		CheckLabel(f.label, f.i.ctrl);
-		res := WinApi.UpdateWindow(f.i.ctrl)
+		(* TODO *)
 	END Update;
 
-	PROCEDURE (f: Group) Restore (l, t, r, b: INTEGER);
-		VAR lbl: Dialog.String;
+	PROCEDURE (c: Group) Restore (l, t, r, b: INTEGER);
+		VAR w, h, asc, dsc, sw: INTEGER; s: Dialog.String; col: Ports.Color;
 	BEGIN
-		SetLabel(f.label, lbl);
-		IF f.i.ctrl = 0 THEN	(* lazy allocation *)
-			Open(f, "BUTTON", lbl, {0, 1, 2, 30}, {}, f.i)	(* group box, child *)
-		END;
-		f.Update;
-		IF f.i.wnd # 0 THEN Paint(f, f.i) ELSE Print(f, -3, 2 * Ports.point, 0, lbl) END
+		c.view.context.GetSize(w, h);
+		Dialog.MapString(c.label, s); AmpersandToUline(s);
+		HostFonts.dlgFont.GetBounds(asc, dsc, sw);
+		sw := HostFonts.dlgFont.StringWidth(s);
+		IF c.disabled THEN col := Ports.grey50 ELSE col := Ports.black END;
+		c.DrawRect(Ports.point, asc DIV 2, w - Ports.point, h - Ports.point, Ports.point, col);
+		c.DrawRect(Ports.mm, 0, Ports.mm + sw, asc + dsc, Ports.fill, Ports.dialogBackground);
+		c.DrawString(Ports.mm, asc + dsc, col, s, HostFonts.dlgFont)
 	END Restore;
 
 
 	(* TreeFrame *)
 
+	PROCEDURE [ccall] TreeSelect (ctree: Gtk.GtkCTree; node: Gtk.GtkCTreeNode; column: INTEGER; user_data: INTEGER);
+		VAR tn: Dialog.TreeNode; c: TreeFrame;
+	BEGIN
+		tn := SYSTEM.VAL(Dialog.TreeNode, Gtk.gtk_ctree_node_get_row_data(ctree, node));
+		c := SYSTEM.VAL(TreeFrame, user_data);
+		IF tn # c.Selected(c) THEN c.Select(c, tn) END
+	END TreeSelect;
+
+	PROCEDURE LoadTreeIcons (window: Gdk.GdkWindow);
+		VAR loc: HostFiles.Locator; s: ARRAY LEN(HostFiles.FullName) OF SHORTCHAR;
+	BEGIN
+		IF (tree_closed = NIL) & (window # NIL) THEN
+			loc := Files.dir.This("")(HostFiles.Locator);
+			(* TODO: UTF-8 ? *)
+			s := SHORT(loc.path) + "/Win/Rsrc/folder.xpm";
+			tree_closed := Gdk.gdk_pixmap_create_from_xpm (window, tree_closed_mask, NIL, s);
+			s := SHORT(loc.path) + "/Win/Rsrc/openfold.xpm";
+			tree_open := Gdk.gdk_pixmap_create_from_xpm (window, tree_open_mask, NIL, s);
+			s := SHORT(loc.path) + "/Win/Rsrc/file.xpm";
+			tree_leaf := Gdk.gdk_pixmap_create_from_xpm (window, tree_leaf_mask, NIL, s)
+		END
+	END LoadTreeIcons;
+
 	PROCEDURE (f: TreeFrame) SetOffset (x, y: INTEGER);
 	BEGIN
+		(*
 		f.SetOffset^(x, y);
-		Adapt(f, f.i)
+		(*Adapt(f, f.i)*)
+		*)
 	END SetOffset;
 
-	PROCEDURE (f: TreeFrame) Close;
-		VAR res: INTEGER;
+	PROCEDURE (c: TreeFrame) Close;
 	BEGIN
-		IF f.i.wnd # 0 THEN	(* deallocate *)
-			ASSERT(f.rider # NIL, 100); ASSERT(f.rider.Base() # NIL, 101);
-			res := WinApi.DestroyWindow(f.i.wnd);
-			f.i.wnd := 0; f.i.ctrl := 0
+		IF c.ctree # NIL THEN
+			Gtk.gtk_widget_unref(c.ctree);
+			Gtk.gtk_widget_unref(c.scrlw);
+			Gtk.gtk_container_remove(c.rider(HostPorts.Rider).port.fixed, c.scrlw)
 		END;
-		IF f.himl # NIL THEN res := WinCtl.ImageList_Destroy(f.himl) END
+		c.ctree := NIL; c.scrlw := NIL; c.i := NIL;
 	END Close;
 
-	PROCEDURE (f: TreeFrame) Recreate (), NEW;
-		VAR res: INTEGER; style: SET;
-			icex: WinCtl.INITCOMMONCONTROLSEX; ok: WinApi.BOOL; hbmp: WinApi.HANDLE;
-	BEGIN
-		f.Close(); f.i.readOnly := f.readOnly;
-		icex.dwSize := SIZE(WinCtl.INITCOMMONCONTROLSEX);
-		icex.dwICC := WinCtl.ICC_TREEVIEW_CLASSES;
-		ok := WinCtl.InitCommonControlsEx(icex);
-		style := WinApi.WS_VISIBLE + WinApi.WS_CHILD + WinApi.WS_BORDER + WinCtl.TVS_SHOWSELALWAYS
-				+ WinCtl.TVS_DISABLEDRAGDROP;
-		IF f.haslines THEN style := style + WinCtl.TVS_HASLINES END;
-		IF f.hasbuttons THEN style := style + WinCtl.TVS_HASBUTTONS END;
-		IF f.atroot THEN style := style + WinCtl.TVS_LINESATROOT END;
-		Open(f, WinCtl.WC_TREEVIEWW, "", style, {}, f.i);	(* 3 *)
-		res := WinApi.SendMessageW(f.i.ctrl, WinCtl.TV_FIRST + 033, 100, 0); (* TVM_SETSCROLLTIME*)
-		IF f.foldericons THEN
-			(* Create an imagelist and associate it with the control *)
-			IF f.himl # NIL THEN ok := WinCtl.ImageList_Destroy(f.himl) END;
-			f.himl := WinCtl.ImageList_Create(16, 16, {}, 3, 0);
-			IF f.himl # NIL THEN
-				hbmp := WinApi.LoadImageW(
-					instance, "#6", WinApi.IMAGE_ICON, 16, 16, ORD(WinApi.LR_LOADTRANSPARENT));
-				f.folderimg := WinCtl.ImageList_ReplaceIcon(f.himl, -1, hbmp);
-				ok := WinApi.DestroyIcon(hbmp);
-				hbmp := WinApi.LoadImageW(
-					instance, "#7", WinApi.IMAGE_ICON, 16, 16, ORD(WinApi.LR_LOADTRANSPARENT));
-				f.openimg := WinCtl.ImageList_ReplaceIcon(f.himl, -1, hbmp);
-				ok := WinApi.DestroyIcon(hbmp);
-				hbmp := WinApi.LoadImageW(
-					instance, "#8", WinApi.IMAGE_ICON, 16, 16, ORD(WinApi.LR_LOADTRANSPARENT));
-				f.leafimg := WinCtl.ImageList_ReplaceIcon(f.himl, -1, hbmp);
-				ok := WinApi.DestroyIcon(hbmp);
-				res := WinApi.SendMessageW(
-					f.i.ctrl, WinCtl.TVM_SETIMAGELIST, WinCtl.TVSIL_NORMAL, SYSTEM.VAL(INTEGER, f.himl))
-			END
-		END
-	END Recreate;
-
-	PROCEDURE (f: TreeFrame) UpdateNT4, NEW;
-		VAR res: INTEGER;
-	BEGIN
-		IF ~f.disabled THEN
-			IF WinApi.IsWindowEnabled(f.i.ctrl) = 0 THEN
-				res := WinApi.EnableWindow(f.i.ctrl, 1)
-			END
-		ELSE
-			IF WinApi.IsWindowEnabled(f.i.ctrl) # 0 THEN
-				res := WinApi.EnableWindow(f.i.ctrl, 0)
-			END
-		END;
-		res := WinApi.UpdateWindow(f.i.ctrl);
-		IF ~f.disabled & (f.readOnly # f.i.readOnly) THEN
-			IF f.readOnly OR ~f.i.hasFocus THEN res := WinApi.SendMessageW(f.i.ctrl, WinApi.WM_KILLFOCUS, 0, 0)
-			END;
-			f.i.readOnly := f.readOnly
-		END
-	END UpdateNT4;
-
 	PROCEDURE (f: TreeFrame) Update;
-		VAR res: INTEGER;
+		VAR tn: Dialog.TreeNode; r: INTEGER;
 	BEGIN
-		IF Dialog.platform = Dialog.windowsNT4 THEN f.UpdateNT4; RETURN END;
-		IF ~f.disabled & ~f.readOnly THEN
-			res := WinApi.SendMessageW(f.i.ctrl, WinCtl.TV_FIRST + 029, 0, -1); (* TVM_SETBKCOLOR *)
-			IF WinApi.IsWindowEnabled(f.i.ctrl) = 0 THEN
-				res := WinApi.EnableWindow(f.i.ctrl, 1)
-			END
-		ELSIF ~f.disabled & f.readOnly THEN
-			res := WinApi.SendMessageW(
-				f.i.ctrl, WinCtl.TV_FIRST + 029, 0, Ports.dialogBackground); (* TVM_SETBKCOLOR *)
-			IF WinApi.IsWindowEnabled(f.i.ctrl) = 0 THEN
-				res := WinApi.EnableWindow(f.i.ctrl, 1)
+		UpdateEventMask(f.i);
+		IF f.disabled OR f.readOnly THEN
+			Gtk.gtk_widget_set_sensitive(f.ctree, off);
+			IF f.disabled THEN
+				Gtk.gtk_clist_unselect_all(f.ctree)
 			END
 		ELSE
-			res := WinApi.SendMessageW(
-				f.i.ctrl, WinCtl.TV_FIRST + 029, 0, Ports.dialogBackground); (* TVM_SETBKCOLOR *)
-			IF WinApi.IsWindowEnabled(f.i.ctrl) # 0 THEN
-				res := WinApi.EnableWindow(f.i.ctrl, 0)
-			END
+			Gtk.gtk_widget_set_sensitive(f.ctree, on)
 		END;
-		res := WinApi.UpdateWindow(f.i.ctrl);
-		IF ~f.disabled & (f.readOnly # f.i.readOnly) THEN
-			IF f.readOnly THEN
-				(* Selection has to be focused since it won't be visible on a gray backround otherwise *)
-				res := WinApi.SendMessageW(f.i.ctrl, WinApi.WM_SETFOCUS, 0, 0)
-			ELSE
-				IF ~f.i.hasFocus THEN res := WinApi.SendMessageW(f.i.ctrl, WinApi.WM_KILLFOCUS, 0, 0) END
+		IF ~f.disabled THEN
+			tn := f.Selected(f);
+			IF tn # NIL THEN
+				r := Gtk.gtk_clist_find_row_from_data(f.ctree, SYSTEM.VAL(INTEGER, tn));
+				IF r >= 0 THEN
+					Gtk.gtk_clist_select_row(f.ctree, r, 0)
+				END
 			END;
-			f.i.readOnly := f.readOnly
+			Gtk.gtk_widget_set_sensitive(f.scrlw, on)
+		ELSE
+			Gtk.gtk_widget_set_sensitive(f.scrlw, off)
 		END;
-		res := WinApi.SendMessageW(f.i.ctrl, WinApi.WM_SETFOCUS, 0, 0)
+		Gtk.gtk_widget_show_all(f.scrlw)
 	END Update;
 
-	PROCEDURE (f: TreeFrame) WinInsertItem (
-		VAR tn: Dialog.TreeNode; pWndAdr: INTEGER; OUT wndAdr: INTEGER
-	), NEW;
-		VAR res: INTEGER; p: Dialog.TreeNode; s: Dialog.String;
-			tvi: WinCtl.TVITEMW; tvins: WinCtl.TVINSERTSTRUCTW;
+	PROCEDURE (f: TreeFrame) RealInsert (tn: Dialog.TreeNode; parent: Gtk.GtkCTreeNode;
+														OUT newNode: Gtk.GtkCTreeNode), NEW;
+		VAR
+			name: Dialog.String; leaf, expanded: INTEGER;
+			ss: ARRAY (LEN(Dialog.String) - 1) * Utf8.maxShortCharsPerChar + 1 OF SHORTCHAR; sa: ARRAY [untagged] 1 OF Gtk.PString;
 	BEGIN
 		ASSERT(tn # NIL, 20);
-		f.treeArray[f.curindex].tn := tn;
-		p := f.Parent(f, tn);
-		tvi.mask := WinCtl.TVIF_TEXT + WinCtl.TVIF_PARAM + WinCtl.TVIF_IMAGE + WinCtl.TVIF_SELECTEDIMAGE;
-		tn.GetName(s); Dialog.MapString(s, s); ConvertFromUnicode(s);
-		tvi.pszText := s; tvi.cchTextMax := LEN(s); tvi.lParam := f.curindex;
-		IF tn.IsFolder() THEN
-			IF tn.IsExpanded() THEN tvi.iImage := f.openimg
-			ELSE tvi.iImage := f.folderimg
+		tn.GetName(name); Utf8.Short(name, ss);
+		sa[0] := ss;
+		IF tn.IsFolder() THEN leaf := 0 ELSE leaf := 1 END;
+		IF tn.IsExpanded() THEN expanded := 1 ELSE expanded := 0 END;
+		IF f.foldericons THEN
+			IF tn.IsFolder() THEN
+				newNode:= Gtk.gtk_ctree_insert_node(f.ctree, parent, NIL,
+								sa, 0,
+								tree_closed, tree_closed_mask, tree_open, tree_open_mask, leaf, expanded);
+			ELSE
+				newNode:= Gtk.gtk_ctree_insert_node(f.ctree, parent, NIL,
+								sa, 0,
+								tree_leaf, tree_leaf_mask, NIL, NIL, leaf, expanded);
 			END
 		ELSE
-			tvi.iImage := f.leafimg
+			newNode:= Gtk.gtk_ctree_insert_node(f.ctree, parent, NIL, sa, 0,
+							NIL, NIL, NIL, NIL, leaf, expanded);
 		END;
-		tvi.iSelectedImage := tvi.iImage; tvins.item := tvi;
-		tvins.hParent := SYSTEM.VAL(WinCtl.Ptr_TREEITEM, pWndAdr);
-		IF f.sorted THEN tvins.hInsertAfter := SYSTEM.VAL(WinCtl.Ptr_TREEITEM, WinCtl.TVI_SORT)
-		ELSE tvins.hInsertAfter := SYSTEM.VAL(WinCtl.Ptr_TREEITEM, WinCtl.TVI_LAST)
-		END;
-		wndAdr := WinApi.SendMessageW(f.i.ctrl, WinCtl.TVM_INSERTITEMW, 0, SYSTEM.ADR(tvins));
-		f.treeArray[f.curindex].wndAdr := wndAdr;
-		IF p # NIL THEN
-			IF p.IsExpanded() THEN
-				res := WinApi.SendMessageW(f.i.ctrl, WinCtl.TVM_EXPAND, WinCtl.TVE_EXPAND, pWndAdr)
-			ELSE
-				res := WinApi.SendMessageW(f.i.ctrl, WinCtl.TVM_EXPAND, WinCtl.TVE_COLLAPSE, pWndAdr)
-			END
-		END;
-		INC(f.curindex)
-	END WinInsertItem;
+		Gtk.gtk_ctree_node_set_row_data(f.ctree, newNode, SYSTEM.VAL(INTEGER, tn))
+	END RealInsert;
 
-	PROCEDURE (f: TreeFrame) InsertNode(tn: Dialog.TreeNode; pWndAdr: INTEGER), NEW;
-		VAR wndAdr: INTEGER;
+	PROCEDURE (f: TreeFrame) InsertNode (tn: Dialog.TreeNode; parent: Gtk.GtkCTreeNode), NEW;
+		VAR newNode: Gtk.GtkCTreeNode;
 	BEGIN
 		IF tn # NIL THEN
-			f.WinInsertItem(tn, pWndAdr, wndAdr);
-			f.InsertNode(f.Child(f, tn), wndAdr);
-			f.InsertNode(f.Next(f, tn), pWndAdr)
+			f.RealInsert(tn, parent, newNode);
+			f.InsertNode(f.Child(f, tn), newNode);
+			f.InsertNode(f.Next(f, tn), parent)
 		END
 	END InsertNode;
 
 	PROCEDURE (f: TreeFrame) UpdateList;
-		VAR res, len, i: INTEGER; done: BOOLEAN; sel: Dialog.TreeNode;
+		VAR
+			node: Dialog.TreeNode; name: Dialog.String; cnode: Gtk.GtkWidget;
+			ss: ARRAY LEN(Dialog.String) OF SHORTCHAR; sa: ARRAY [untagged] 1 OF Gtk.PString;
 	BEGIN
-		f.inUpdateList := TRUE;
-		len := 0; f.curindex := 0; sel := f.Selected(f);
-		len := f.NofNodes(f); IF len > 0 THEN NEW(f.treeArray, len) END;
-		(* Throw away the old windows control and create a new one *)
-		f.Recreate();
-		(* Go through the tree and insert new nodes into the treeview *)
-		f.InsertNode(f.Child(f, NIL), WinCtl.TVI_ROOT);
-		(* Select the node that is selected *)
-		IF sel = NIL THEN
-			res := WinApi.SendMessageW(f.i.ctrl, WinCtl.TVM_SELECTITEM, WinCtl.TVGN_CARET, 0)
-		ELSE
-			i := 0; done := FALSE;
-			WHILE (i < len) & (~done) DO
-				IF sel = f.treeArray[i].tn THEN
-					res := WinApi.SendMessageW(
-						f.i.ctrl, WinCtl.TVM_SELECTITEM, WinCtl.TVGN_CARET, f.treeArray[i].wndAdr);
-					done := TRUE
-				END;
-				INC(i)
-			END
+		LoadTreeIcons(f.ctree.window);
+		Gtk.gtk_clist_clear(f.ctree);
+		Gtk.gtk_clist_freeze(f.ctree);
+		f.InsertNode(f.Child(f, NIL), NIL);
+		Gtk.gtk_clist_thaw(f.ctree);
+		IF f.sorted THEN
+			Gtk.gtk_clist_sort(f.ctree)
 		END;
-		f.Select(f, sel);
-		f.Update;
-		IF f.i.hasFocus THEN res := WinApi.SendMessageW(f.i.ctrl, WinApi.WM_SETFOCUS, 0, 0) END;
-		f.inUpdateList := FALSE
+		f.Update
 	END UpdateList;
-
+(**)
 	PROCEDURE (f: TreeFrame) ExpandCollapse(index, action: INTEGER), NEW;
-		VAR res: INTEGER; tn: Dialog.TreeNode; tvi: WinCtl.TVITEMW;
 	BEGIN
-		tn := f.treeArray[index].tn;
-		IF action = WinCtl.TVE_COLLAPSE THEN
-			f.SetExpansion(f, tn, FALSE)
-		ELSIF action = WinCtl.TVE_EXPAND THEN
-			f.SetExpansion(f, tn, TRUE)
-		ELSIF action = WinCtl.TVE_TOGGLE THEN
-			f.SetExpansion(f, tn, ~tn.IsExpanded())
-		END;
-		tvi.mask := WinCtl.TVIF_IMAGE + WinCtl.TVIF_SELECTEDIMAGE;
-		tvi.hItem := SYSTEM.VAL(WinCtl.Ptr_TREEITEM, f.treeArray[index].wndAdr);
-		IF tn.IsExpanded() THEN
-			tvi.iImage := f.openimg; tvi.iSelectedImage := f.openimg
-		ELSE
-			tvi.iImage := f.folderimg; tvi.iSelectedImage := f.folderimg
-		END;
-		res := WinApi.SendMessageW(f.i.ctrl, WinCtl.TVM_SETITEMW, 0, SYSTEM.ADR(tvi))
 	END ExpandCollapse;
-
+(**)
 	PROCEDURE (f: TreeFrame) DblClickOk (x, y: INTEGER): BOOLEAN;
-		VAR res: INTEGER; hinf: WinCtl.TVHITTESTINFO;
 	BEGIN
-		hinf.pt.x := x DIV f.unit; hinf.pt.y := y DIV f.unit;
-		res := WinApi.SendMessageW(f.i.ctrl, WinCtl.TVM_HITTEST, 0, SYSTEM.ADR(hinf));
-		IF hinf.hItem = NIL THEN
-			RETURN FALSE
-		ELSE
-			RETURN SYSTEM.VAL(INTEGER, hinf.hItem) = f.treeArray[f.selIndex].wndAdr
-		END
+		(* TODO *)
+		RETURN FALSE
 	END DblClickOk;
 
 	PROCEDURE (f: TreeFrame) MouseDown (x, y: INTEGER; buttons: SET);
 	BEGIN
 		ASSERT(~f.disabled, 100);
 		IF f.rider # NIL THEN
-			HandleMouse(f.i.wnd, x DIV f.unit, y DIV f.unit, buttons)
+			HandleMouse(f.i, x DIV f.unit, y DIV f.unit, buttons)
 		END
 	END MouseDown;
 
 	PROCEDURE (f: TreeFrame) WheelMove (x, y: INTEGER; op, nofLines: INTEGER; VAR done: BOOLEAN);
 	BEGIN
-		ASSERT(~f.disabled, 100);
-		IF f.rider # NIL THEN
-			HandleWheel(f.i.ctrl, x, y, op, nofLines, done)
-		END
+		(* TODO *)
 	END WheelMove;
 
-	PROCEDURE (f: TreeFrame) Restore (l, t, r, b: INTEGER);
+	PROCEDURE (c: TreeFrame) Restore (l, t, r, b: INTEGER);
+		VAR w, h, cx, cy, cw, ch, res: INTEGER;
 	BEGIN
-		IF f.i.ctrl = 0 THEN	(* lazy allocation *)
-			f.UpdateList
+		IF c.ctree = NIL THEN
+			c.noRedraw := TRUE;
+			c.rider(HostPorts.Rider).GetRect(cx, cy, cw, ch);
+			cw := cw - cx; ch := ch - cy;
+			c.ctree := Gtk.gtk_ctree_new(1, 0);			Gtk.gtk_widget_ref(c.ctree);
+			Gtk.gtk_widget_modify_style(c.ctree, NewStyle(c.font));
+			res := GtkU.gtk_signal_connect(c.ctree, "tree-select-row", SYSTEM.ADR(TreeSelect), SYSTEM.VAL(INTEGER, c));
+			c.scrlw := Gtk.gtk_scrolled_window_new(NIL, NIL);
+			Gtk.gtk_widget_ref(c.scrlw);
+			c.i := NewInfo(c, c.scrlw, c.ctree);
+			Gtk.gtk_widget_set_usize(c.scrlw, cw, ch);
+			Gtk.gtk_container_add(c.scrlw, c.ctree);
+			Gtk.gtk_scrolled_window_set_policy(c.scrlw, Gtk.GTK_POLICY_AUTOMATIC, Gtk.GTK_POLICY_AUTOMATIC);
+			Gtk.gtk_fixed_put(c.rider(HostPorts.Rider).port.fixed, c.scrlw, cx, cy);
+			c.UpdateList
 		ELSE
-			f.Update
+			c.Update
 		END;
-		IF f.i.wnd # 0 THEN PaintRect(f, f.i, l, t, r, b) ELSE Print(f, f.dot, -1, -1, "") END
+		Paint(c.i)
 	END Restore;
 
 	PROCEDURE (f: TreeFrame) KeyDown (ch: CHAR);
-		VAR res: INTEGER;
 	BEGIN
 		ASSERT(~f.disabled, 100);
-		IF ch = " " THEN
-			res := WinApi.SendMessageW(f.i.ctrl, WinApi.WM_KEYDOWN, ORD(ch), 0);
-			res := WinApi.SendMessageW(f.i.ctrl, WinApi.WM_KEYUP, ORD(ch), 0)
-		ELSE
-			SendKey(ch, f.i.ctrl)
-		END
+		HandleKey(f.i, ch)
 	END KeyDown;
 
 	PROCEDURE (f: TreeFrame) Mark (on, focus: BOOLEAN);
@@ -2723,10 +2316,8 @@ MODULE HostCFrames;
 	END Mark;
 
 	PROCEDURE (f: TreeFrame) GetSize (OUT w, h: INTEGER);
-		VAR rect: WinApi.RECT; res: INTEGER;
 	BEGIN
-		res := WinApi.GetWindowRect(f.i.wnd, rect);
-		w := (rect.right - rect.left) * f.unit; h := (rect.bottom - rect.top) * f.unit
+		w := 0; h := 0 (* FIXME *)
 	END GetSize;
 
 
@@ -2735,7 +2326,7 @@ MODULE HostCFrames;
 	PROCEDURE (d: Directory) GetPushButtonSize (VAR w, h: INTEGER);
 	BEGIN
 		IF w = Views.undefined THEN w := 56 * Ports.point END;
-		IF h = Views.undefined THEN h := 18 * Ports.point END
+		IF h = Views.undefined THEN h := 28 * Ports.point END; (* 18 points in Windows OS *)
 	END GetPushButtonSize;
 
 	PROCEDURE (d: Directory) GetCheckBoxSize (VAR w, h: INTEGER);
@@ -2917,355 +2508,9 @@ MODULE HostCFrames;
 	PROCEDURE (d: Directory) NewTreeFrame (): StdCFrames.TreeFrame;
 		VAR f: TreeFrame;
 	BEGIN
-		NEW(f); f.inUpdateList := FALSE; RETURN f
+		NEW(f); RETURN f
 	END NewTreeFrame;
 
-	(* control window class *)
-
-	(* Used for common controls, not standard controls *)
-	PROCEDURE HandleNotifyMsg (wnd: WinApi.HANDLE; lParam, out: INTEGER);
-		VAR
-			c: StdCFrames.Frame; ret: INTEGER;
-			pnmhdr: WinApi.PtrNMHDR; pnmtv: WinCtl.PtrNMTREEVIEWW;
-	BEGIN
-		ret := WinApi.FALSE;
-		c := SYSTEM.VAL(StdCFrames.Frame, WinApi.GetWindowLongW(wnd, dlgWindowExtra));
-		pnmhdr := SYSTEM.VAL(WinApi.PtrNMHDR, lParam);
-		WITH c: TreeFrame DO
-			IF c.i.ctrl # 0 THEN
-				IF ~c.inUpdateList & c.readOnly & (pnmhdr.code = WinCtl.TVN_SELCHANGINGW) THEN
-					ret := WinApi.TRUE
-				ELSIF pnmhdr.code = WinCtl.TVN_SELCHANGEDW THEN
-					pnmtv := SYSTEM.VAL(WinCtl.PtrNMTREEVIEWW, lParam);
-					c.selIndex := pnmtv.itemNew.lParam;
-					c.Select(c, c.treeArray[c.selIndex].tn)
-				ELSIF pnmhdr.code = WinCtl.TVN_ITEMEXPANDEDW THEN
-					pnmtv := SYSTEM.VAL(WinCtl.PtrNMTREEVIEWW, lParam);
-					c.ExpandCollapse(pnmtv.itemNew.lParam, pnmtv.action)
-				END
-			END
-		ELSE
-		END;
-		SYSTEM.PUT(out, ret)
-	END HandleNotifyMsg;
-
-	PROCEDURE HandleCommand (wnd: WinApi.HANDLE; wParam, lParam: INTEGER);
-		VAR res, nc, i, j: INTEGER; c: StdCFrames.Frame; s: ARRAY 512 OF CHAR;
-			ps: POINTER TO ARRAY OF CHAR; b: BOOLEAN;
-	BEGIN
-		c := SYSTEM.VAL(StdCFrames.Frame, WinApi.GetWindowLongW(wnd, dlgWindowExtra));
-		nc := wParam DIV 65536;
-		WITH c: PushButton DO
-			IF c.i.ctrl # 0 THEN
-				IF nc = WinApi.BN_CLICKED THEN Execute(c)
-				END
-			END
-		| c: CheckBox DO
-			IF c.i.ctrl # 0 THEN
-				IF nc = WinApi.BN_CLICKED THEN
-					i := WinApi.SendMessageW(c.i.ctrl, WinApi.BM_GETCHECK, 0, 0);
-					IF i = 0 THEN i := 1 ELSE i := 0 END;
-					res := WinApi.SendMessageW(c.i.ctrl, WinApi.BM_SETCHECK, i, 0);
-					c.undef := FALSE; c.Set(c, i = 1)
-(*
-					c.undef := res = 2;
-					c.Set(c, res = 1)
-*)
-				END
-			END
-		| c: RadioButton DO
-			IF c.i.ctrl # 0 THEN
-				IF nc = WinApi.BN_CLICKED THEN
-					res := WinApi.SendMessageW(c.i.ctrl, WinApi.BM_GETCHECK, 0, 0);
-					c.Set(c, res # 0)
-				END
-			END
-		| c: Field DO
-			IF c.i.ctrl # 0 THEN
-				IF (nc = WinApi.EN_CHANGE) & ~c.isUpdate THEN
-					IF ~c.left THEN (* right center alignment implies multiline which sends two update messages *)
-						IF c.maxLen > 255 THEN
-							NEW(ps, 2 * c.maxLen + 1);
-							res := WinApi.GetWindowTextW(c.i.ctrl, ps^, LEN(ps^));
-							IF c.multiLine THEN DelLF(ps^) END;
-							ConvertToUnicode(ps^);
-							IF c.del OR (ps$ # "") THEN c.Set(c, ps^) END
-						ELSE
-							res := WinApi.GetWindowTextW(c.i.ctrl, s, LEN(s));
-							IF c.multiLine THEN DelLF(s) END;
-							ConvertToUnicode(s);
-							IF c.del OR (s$ # "") THEN c.Set(c, s) END
-						END
-					ELSE
-						IF c.maxLen > 255 THEN
-							NEW(ps, 2 * c.maxLen + 1);
-							res := WinApi.GetWindowTextW(c.i.ctrl, ps^, LEN(ps^));
-							IF c.multiLine THEN DelLF(ps^) END;
-							ConvertToUnicode(ps^);
-							c.Set(c, ps^)
-						ELSE
-							res := WinApi.GetWindowTextW(c.i.ctrl, s, LEN(s));
-							IF c.multiLine THEN DelLF(s) END;
-							ConvertToUnicode(s);
-							c.Set(c, s)
-						END
-					END
-				END
-			END
-		| c: UpDownField DO
-			IF c.i.ctrl # 0 THEN
-				IF (nc = WinApi.EN_CHANGE) & ~c.isUpdate THEN
-					res := WinApi.GetWindowTextW(c.i.ctrl, s, LEN(s));
-					Strings.StringToInt(s, c.val, res);
-					c.Set(c, c.val)
-				END
-			END
-		| c: ColorField DO
-			IF c.i.ctrl # 0 THEN
-				IF nc = WinApi.CBN_SELCHANGE THEN
-					i := WinApi.SendMessageW(c.i.ctrl, WinApi.CB_GETCURSEL, 0, 0);
-					IF i = numColors THEN
-						Dialog.GetColor(c.color, i, b);
-						IF b THEN c.Set(c, i); c.Update END
-					ELSIF i >= 0 THEN
-						c.color := colors[i]; c.Set(c, c.color)
-					END
-				END
-			END
-		| c: ListBox DO
-			IF c.i.ctrl # 0 THEN
-				IF c.i.dropDown THEN
-					IF nc = WinApi.CBN_SELCHANGE THEN
-						i := WinApi.SendMessageW(c.i.ctrl, WinApi.CB_GETCURSEL, 0, 0);
-						IF c.sorted THEN i := WinApi.SendMessageW(c.i.ctrl, WinApi.CB_GETITEMDATA, i, 0) END;
-						IF i >= 0 THEN c.Set(c, i) END
-					END
-				ELSE
-					IF nc = WinApi.LBN_SELCHANGE THEN
-						i := WinApi.SendMessageW(c.i.ctrl, WinApi.LB_GETCURSEL, 0, 0);
-						IF c.sorted THEN i := WinApi.SendMessageW(c.i.ctrl, WinApi.LB_GETITEMDATA, i, 0) END;
-						IF i >= 0 THEN c.Set(c, i) END
-					END
-				END
-			END
-		| c: SelectionBox DO
-			IF c.i.ctrl # 0 THEN
-				IF nc = WinApi.LBN_SELCHANGE THEN
-(*
-					i := WinApi.SendMessageW(c.i.ctrl, WinApi.LBGetAnchorIndex, 0, 0);
-					j := WinApi.SendMessageW(c.i.ctrl, WinApi.LBGetCaretIndex, 0, 0);
-					res := WinApi.SendMessageW(c.i.ctrl, WinApi.LBGetSel, i, 0);
-					IF c.sorted THEN
-						i := WinApi.SendMessageW(c.i.ctrl, WinApi.LBGetItemData, i, 0);
-						j := WinApi.SendMessageW(c.i.ctrl, WinApi.LBGetItemData, j, 0)
-					END;
-					IF (i >= 0) & (i < c.num) THEN
-						Log.Int(i); Log.Int(j); Log.Ln; Log.Int(wParam); Log.Int(lParam); Log.Int(res); Log.Ln;
-						IF (res # 0) THEN c.Incl(c, i, i) ELSE c.Excl(c, i, i) END
-					END
-*)
-					i := 0;
-					WHILE i < c.num DO
-						j := i;
-						res := WinApi.SendMessageW(c.i.ctrl, WinApi.LB_GETSEL, j, 0);
-						IF c.sorted THEN j := WinApi.SendMessageW(c.i.ctrl, WinApi.LB_GETITEMDATA, j, 0) END;
-						c.Get(c, j, b);
-						IF (res # 0) & ~b THEN c.Incl(c, j, j)
-						ELSIF (res = 0) & b THEN c.Excl(c, j, j)
-						END;
-						INC(i)
-					END
-				END
-			END
-		| c: ComboBox DO
-			IF c.i.ctrl # 0 THEN
-				IF nc = WinApi.CBN_EDITCHANGE THEN
-					res := WinApi.GetWindowTextW(c.i.ctrl, s, LEN(s));
-					c.Set(c, s)
-				ELSIF nc = WinApi.CBN_SELCHANGE THEN
-					i := WinApi.SendMessageW(c.i.ctrl, WinApi.CB_GETCURSEL, 0, 0);
-					IF i >= 0 THEN
-						res := WinApi.SendMessageW(c.i.ctrl, WinApi.CB_GETLBTEXT, i, SYSTEM.ADR(s));
-						c.Set(c, s)
-					END
-				END
-			END
-		ELSE
-		END
-	END HandleCommand;
-
-	PROCEDURE HandleScroll (wnd: WinApi.HANDLE; wParam, lParam: INTEGER);
-		VAR nc, size, sect, pos: INTEGER; c: StdCFrames.Frame; arrows: BOOLEAN;
-	BEGIN
-		arrows := FALSE;
-		c := SYSTEM.VAL(StdCFrames.Frame, WinApi.GetWindowLongW(wnd, dlgWindowExtra));
-		WITH c: ScrollBar DO
-			IF c.i.ctrl # 0 THEN
-				Views.ValidateRoot(Views.RootOf(c));
-				nc := wParam MOD 65536; c.Get(c, size, sect, pos);
-				IF (nc = WinApi.SB_THUMBPOSITION) OR
-					HostWindows.visualScroll & (nc = WinApi.SB_THUMBTRACK) THEN
-						c.Set(c, WinApi.MulDiv(wParam DIV 65536, size - sect, scrollRange))
-				ELSIF nc = WinApi.SB_LINEUP THEN c.Track(c, StdCFrames.lineUp, pos)
-				ELSIF nc = WinApi.SB_LINEDOWN THEN c.Track(c, StdCFrames.lineDown, pos)
-				ELSIF nc = WinApi.SB_PAGEUP THEN c.Track(c, StdCFrames.pageUp, pos)
-				ELSIF nc = WinApi.SB_PAGEDOWN THEN c.Track(c, StdCFrames.pageDown, pos)
-				END;
-				c.Update
-			END
-		| c: UpDownField DO
-			IF c.i.ctrl # 0 THEN arrows := TRUE END
-		| c: TimeField DO
-			IF c.i.ctrl # 0 THEN arrows := TRUE END
-		| c: DateField DO
-			IF c.i.ctrl # 0 THEN arrows := TRUE END
-		ELSE
-		END;
-		IF arrows THEN
-			nc := wParam MOD 65536;
-			IF nc = WinApi.SB_THUMBPOSITION THEN
-				IF wParam DIV 65536 # 0 THEN c.KeyDown(AU)
-				ELSE c.KeyDown(AD)
-				END
-			END
-		END
-	END HandleScroll;
-
-	PROCEDURE HandleDraw (wnd: WinApi.HANDLE; wParam, lParam: INTEGER);
-		VAR res: INTEGER; c: StdCFrames.Frame; p: WinApi.PtrDRAWITEMSTRUCT;
-			brush: WinApi.HANDLE; rect: WinApi.RECT; col: Ports.Color;
-	BEGIN
-		c := SYSTEM.VAL(StdCFrames.Frame, WinApi.GetWindowLongW(wnd, dlgWindowExtra));
-		p := SYSTEM.VAL(WinApi.PtrDRAWITEMSTRUCT, lParam);
-		WITH c: ColorField DO
-			IF 0 IN p.itemState THEN
-				rect := p.rcItem;
-				brush := WinApi.CreateSolidBrush(HostPorts.selBackground);
-				res := WinApi.FillRect(p.hDC, rect, brush);
-				res := WinApi.DeleteObject(brush);
-				INC(rect.left); INC(rect.top); DEC(rect.right); DEC(rect.bottom);
-				brush := WinApi.CreateSolidBrush(Ports.background);
-				res := WinApi.FillRect(p.hDC, rect, brush);
-				res := WinApi.DeleteObject(brush)
-			ELSE
-				IF c.disabled OR c.readOnly THEN
-					brush := WinApi.CreateSolidBrush(Ports.dialogBackground)
-				ELSE
-					brush := WinApi.CreateSolidBrush(Ports.background)
-				END;
-				res := WinApi.FillRect(p.hDC, p.rcItem, brush);
-				res := WinApi.DeleteObject(brush)
-			END;
-			IF (p.itemID = numColors) & (p.rcItem.top > 20) THEN
-				brush := WinApi.CreateSolidBrush(HostPorts.textCol);
-				rect.top := p.rcItem.bottom - 6; rect.bottom := rect.top + 2;
-				rect.left := p.rcItem.left + 4; rect.right := rect.left + 2;
-				res := WinApi.FillRect(p.hDC, rect, brush);
-				rect.left := p.rcItem.left + 8; rect.right := rect.left + 2;
-				res := WinApi.FillRect(p.hDC, rect, brush);
-				rect.left := p.rcItem.left + 12; rect.right := rect.left + 2;
-				res := WinApi.FillRect(p.hDC, rect, brush)
-			ELSIF p.itemID >= 0 THEN
-				rect := p.rcItem; INC(rect.left, 2); INC(rect.top, 2); DEC(rect.right, 2); DEC(rect.bottom, 2);
-				IF p.itemID = numColors THEN col := c.color
-				ELSIF (p.itemID >= 0) & (p.itemID < LEN(colors)) THEN col := colors[p.itemID]
-				ELSE col := HostPorts.textCol
-				END;
-				brush := WinApi.CreateSolidBrush(col);
-				res := WinApi.FillRect(p.hDC, rect, brush);
-				res := WinApi.DeleteObject(brush)
-			END
-		END
-	END HandleDraw;
-
-	PROCEDURE ColorBrush (col: Ports.Color): WinApi.HANDLE;
-		VAR p: BrushCache;
-	BEGIN
-		IF col = Ports.white THEN RETURN WinApi.GetStockObject(WinApi.WHITE_BRUSH)
-		ELSIF col = Ports.dialogBackground THEN RETURN HostPorts.dialogBrush
-		ELSE
-			p := brushes;
-			WHILE (p # NIL) & (p.col # col) DO p := p.next END;
-			IF p # NIL THEN RETURN p.brush
-			ELSE
-				NEW(p); p.col := col; p.brush := WinApi.CreateSolidBrush(col); p.next := brushes; brushes := p;
-				RETURN p.brush
-			END
-		END
-	END ColorBrush;
-
-	PROCEDURE [2] CtrlHandler (wnd: WinApi.HANDLE; message, wParam, lParam: INTEGER): INTEGER;
-		VAR res: INTEGER; c: StdCFrames.Frame; p: WinApi.PtrMEASUREITEMSTRUCT;
-	BEGIN
-		IF message = WinApi.WM_COMMAND THEN
-			Kernel.Try(HandleCommand, wnd, wParam, lParam);
-			RETURN 0
-		ELSIF message = WinApi.WM_NOTIFY THEN
-			res := -1;
-			Kernel.Try(HandleNotifyMsg, wnd, lParam, SYSTEM.ADR(res));
-			IF res # -1 THEN RETURN res ELSE RETURN 0 END
-		ELSIF (message = WinApi.WM_HSCROLL) OR (message = WinApi.WM_VSCROLL) THEN
-			Kernel.Try(HandleScroll, wnd, wParam, lParam);
-			RETURN 0
-		ELSIF message = WinApi.WM_DRAWITEM THEN
-			Kernel.Try(HandleDraw, wnd, wParam, lParam);
-			RETURN 1
-		ELSIF message = WinApi.WM_MEASUREITEM THEN
-			c := SYSTEM.VAL(StdCFrames.Frame, WinApi.GetWindowLongW(wnd, dlgWindowExtra));
-			WITH c: ColorField DO
-				p := SYSTEM.VAL(WinApi.PtrMEASUREITEMSTRUCT, lParam);
-				IF p.itemID = -1 THEN p.itemHeight := 11 * Ports.point DIV c.unit + 1
-				ELSE p.itemHeight := 11 * Ports.point DIV c.unit - 1
-				END;
-				RETURN 1
-			ELSE
-			END
-		ELSIF (message >= WinApi.WM_CTLCOLORMSGBOX) & (message <= WinApi.WM_CTLCOLORSTATIC) THEN
-			c := SYSTEM.VAL(StdCFrames.Frame, WinApi.GetWindowLongW(wnd, dlgWindowExtra));
-			IF ((c IS Field) OR (c IS UpDownField) OR (c IS TimeField) OR (c IS DateField)
-					OR (c IS ListBox) OR (c IS SelectionBox) OR (c IS ColorField))
-					& (c.disabled OR c.readOnly) THEN
-				res := WinApi.SetBkColor(wParam, Ports.dialogBackground);
-				res := WinApi.SetBkMode(wParam, 2);	(* opaque *)
-				RETURN HostPorts.dialogBrush
-			ELSIF (c IS TreeFrame) & (c.disabled OR c.readOnly) & (Dialog.platform # Dialog.windowsNT4) THEN
-				res := WinApi.SetBkColor(wParam, Ports.dialogBackground);
-				res := WinApi.SetBkMode(wParam, 2);	(* opaque *)
-				RETURN HostPorts.dialogBrush
-			ELSIF ((c IS Field) OR (c IS UpDownField) OR (c IS TimeField) OR (c IS DateField))
-					& ~c.disabled & c.undef THEN
-				res := WinApi.SetBkMode(wParam, 1); (* transparent *)
-				res := WinApi.SetTextColor(wParam, 0C0C0C0H);
-				RETURN HostPorts.dim50Brush
-			ELSIF c IS Caption THEN
-				res := WinApi.SetTextColor(wParam, HostPorts.dialogTextCol);
-				res := WinApi.SetBkColor(wParam, c(Caption).i.bkgnd);
-				res := WinApi.SetBkMode(wParam, 2);	(* opaque *)
-				RETURN ColorBrush(c(Caption).i.bkgnd)
-			ELSIF CtlColor # NIL THEN
-				res := CtlColor(message, wParam, lParam);
-				IF res # 0 THEN RETURN res END
-			ELSIF c IS CheckBox THEN
-				res := WinApi.SetTextColor(wParam, HostPorts.dialogTextCol);
-				res := WinApi.SetBkColor(wParam, c(CheckBox).i.bkgnd);
-				res := WinApi.SetBkMode(wParam, 2);	(* opaque *)
-				RETURN ColorBrush(c(CheckBox).i.bkgnd)
-			ELSIF c IS RadioButton THEN
-				res := WinApi.SetTextColor(wParam, HostPorts.dialogTextCol);
-				res := WinApi.SetBkColor(wParam, c(RadioButton).i.bkgnd);
-				res := WinApi.SetBkMode(wParam, 2);	(* opaque *)
-				RETURN ColorBrush(c(RadioButton).i.bkgnd)
-			ELSIF c IS Group THEN
-				res := WinApi.SetTextColor(wParam, HostPorts.dialogTextCol);
-				res := WinApi.SetBkColor(wParam, c(Group).i.bkgnd);
-				res := WinApi.SetBkMode(wParam, 2);	(* opaque *)
-				RETURN ColorBrush(c(Group).i.bkgnd)
-			END
-		ELSIF message = WinApi.WM_ERASEBKGND THEN
-			RETURN 1
-		END;
-		RETURN WinApi.DefWindowProcW(wnd, message, wParam, lParam)
-	END CtrlHandler;
 
 
 	PROCEDURE SetDefFonts*;
@@ -3281,67 +2526,19 @@ MODULE HostCFrames;
 		NEW(dir); StdCFrames.SetDir(dir)
 	END Install;
 
-	PROCEDURE InitClass;
-		VAR res: INTEGER; class: WinApi.WNDCLASSW;
-	BEGIN
-		class.hCursor := WinApi.LoadCursorW(0, SYSTEM.VAL(WinApi.PtrWSTR, WinApi.IDC_ARROW));
-		class.hIcon := WinApi.LoadIconW(instance, SYSTEM.VAL(WinApi.PtrWSTR, 1));
-		class.lpszMenuName := NIL;
-		class.lpszClassName := "Oberon Ctrl";
-		class.hbrBackground := 0;	(* no background *)
-		class.style := {};
-		class.hInstance := instance;
-		class.lpfnWndProc := CtrlHandler;
-		class.cbClsExtra := 0;
-		class.cbWndExtra := dlgWindowExtra + 4;
-		res := WinApi.RegisterClassW(class)
-	END InitClass;
-
+(*
 	PROCEDURE InitNationalInfo;
-		VAR res: INTEGER; str: ARRAY 8 OF CHAR;
 	BEGIN
-		res := WinApi.GetLocaleInfoW(HostRegistry.localeId, WinApi.LOCALE_SDATE, str, LEN(str));
-		dateSep := str[0];
-		res := WinApi.GetLocaleInfoW(HostRegistry.localeId, WinApi.LOCALE_STIME, str, LEN(str));
-		timeSep := str[0];
-		res := WinApi.GetLocaleInfoW(HostRegistry.localeId, WinApi.LOCALE_IDATE, str, LEN(str));
-		IF str = "1" THEN dayPart := 1; monthPart := 2; yearPart := 3; del1 := 2; del2 := 5
-		ELSIF str = "2" THEN yearPart := 1; monthPart := 2; dayPart := 3; del1 := 4; del2 := 7
-		ELSE monthPart := 1; dayPart := 2; yearPart := 3; del1 := 2; del2 := 5
-		END;
-		res := WinApi.GetLocaleInfoW(HostRegistry.localeId, WinApi.LOCALE_ITIME, str, LEN(str));
-		IF str = "1" THEN
-			lastPart := 3
-		ELSE
-			lastPart := 4;
-			res := WinApi.GetLocaleInfoW(HostRegistry.localeId, WinApi.LOCALE_S1159, str, LEN(str));
-			desig[0] := str$;
-			res := WinApi.GetLocaleInfoW(HostRegistry.localeId, WinApi.LOCALE_S2359, str, LEN(str));
-			desig[1] := str$
-		END
 	END InitNationalInfo;
-
-	PROCEDURE InitColors;
-	BEGIN
-		colors[0] := 000000FFH;
-		colors[1] := 0000FF00H;
-		colors[2] := 00FF0000H;
-		colors[3] := 0000FFFFH;
-		colors[4] := 00FFFF00H;
-		colors[5] := 00FF00FFH;
-		colors[6] := 00000000H
-	END InitColors;
+*)
 
 	PROCEDURE Init;
+		VAR dir: Directory;
 	BEGIN
 		StdCFrames.setFocus := TRUE;
 		SetDefFonts;
-		scW := WinApi.GetSystemMetrics(0);	(* screen width *)
-		scH := WinApi.GetSystemMetrics(1);	(* screen height *)
-		instance := WinApi.GetModuleHandleW(NIL);
-		InitClass;
-		InitNationalInfo;
-		InitColors;
+		(*InitNationalInfo;*)
+		NEW(mouseDelayer);
 		Install
 	END Init;
 
