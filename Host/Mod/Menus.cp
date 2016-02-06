@@ -51,6 +51,8 @@ MODULE HostMenus;
 			maxId: INTEGER;
 		END;
 
+		ShowPopupMenu = POINTER TO RECORD (Services.Action) END;
+
 	VAR
 		(* active menu bar state *)
 		menus-: Menu;
@@ -442,6 +444,13 @@ MODULE HostMenus;
 	END Exit;
 
 	PROCEDURE PopupMenu*;
+	VAR a: ShowPopupMenu;
+	BEGIN
+		NEW(a);
+		Services.DoLater(a, Services.now)
+	END PopupMenu;
+
+	PROCEDURE (a: ShowPopupMenu) Do;
 		VAR f: Views.Frame;
 			menu: Menu; gmenu:Gtk.GtkMenu;
 	BEGIN
@@ -462,7 +471,7 @@ MODULE HostMenus;
 				Gtk.gtk_widget_show_all(gmenu)
 			END;
 		END
-	END PopupMenu;
+	END Do;
 
 	PROCEDURE SetFocus;
 		VAR c: Containers.Controller; f: Views.Frame; v, s: Views.View;
