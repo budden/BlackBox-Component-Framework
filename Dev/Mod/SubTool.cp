@@ -144,7 +144,7 @@ MODULE DevSubTool;
 		END;
 		v := TextViews.dir.New(t);
 		Views.Open(v, new, "List", NIL);
-		IF t.Length() > 0 THEN Views.RegisterView(v, new, "List") END
+		IF t.Length() > 0 THEN Views.RegisterView(v, new, "List") END	(* wieso wird geoeffnetes File in neuem Window aufgemacht, statt bereits offenes Fenster nach oben geholt? *)
 	END TranslateSubsystem;
 
 	PROCEDURE Len (s: ARRAY OF CHAR): INTEGER;

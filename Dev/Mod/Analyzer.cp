@@ -384,7 +384,7 @@ MODULE DevAnalyzer;
 						CASE obj.num OF
 						| clean: DumpObj(obj); err2(neverUsed, obj.adr) 
 						(* | used: DumpObj(obj); err2(neverSet, obj.adr) *)
-						| used: IF obj.name[0] # "@" THEN DumpObj(obj); err2(neverSet, obj.adr) END
+						| used: IF obj.name[0] # "@" THEN DumpObj(obj); err2(neverSet, obj.adr) END (* BJ: tmp variables always set *)
 						| usedSet: IF obj.mode # Fld THEN DumpObj(obj); err2(usedBSet, obj.adr) END
 						| set: DumpObj(obj); err2(setBNUsed, obj.adr);
 						| setUsedP: IF options.varpar & (obj.mode # Fld) THEN DumpObj(obj); err2(usedVarPar, obj.adr); END
@@ -1217,7 +1217,7 @@ MODULE DevAnalyzer;
 			qualident(id);
 			pos := CPM.curpos;	(*<<*)
 			x := CPB.NewLeaf(id); 
-			UseObj(x.obj, SelUseBSet, pos);
+			UseObj(x.obj, SelUseBSet, pos); (* BJ: Added, so that variables are marked as used when a type bound procedure is called *)
 			selector(x);
 			IF (x.class = Nfield) & (x.obj.mode = TProc) & (x.obj.link.mode = VarPar) & (x.obj.link.typ.comp = Record) THEN	
 				(*<< receiver is var parameter and record *)
@@ -1439,6 +1439,7 @@ MODULE DevAnalyzer;
 				ASSERT(CPT.topScope # NIL);
 				GetAttributes(proc, baseProc, recTyp);
 				
+				(* BJ: If it is an abstract or empty procedure, its parameters should be marked as used, to avoid irrelevant warnings. *)
 				IF ((absAttr IN proc.conval.setval) OR (empAttr IN proc.conval.setval)) & (proc.link.link # NIL) THEN
 					o := proc.link.link;
 					WHILE o # NIL DO o.num := setUsed; o := o.link END;

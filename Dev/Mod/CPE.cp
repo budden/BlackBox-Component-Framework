@@ -1,4 +1,5 @@
 MODULE DevCPE;
+(* code file emiter *)
 (**
 	project	= "BlackBox"
 	organization	= "www.oberon.ch"

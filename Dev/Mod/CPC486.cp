@@ -1,4 +1,5 @@
 MODULE DevCPC486;
+(* code generator for i386 *)
 (**
 	project	= "BlackBox"
 	organization	= "www.oberon.ch"
