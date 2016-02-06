@@ -1,12 +1,12 @@
 MODULE HostMenus;
 
-	IMPORT SYSTEM, Kernel,    
+	IMPORT SYSTEM, Kernel,
 		GLib := LibsGlib, Gdk := LibsGdk, Gtk := LibsGtk,
 		GtkU := Gtk2Util, Key := Gtk2Keysyms,
 		StdInterpreter,
 		HostPorts, HostWindows, HostClipboard,
-		Files, Dialog, Strings, Services, Properties, 
-		Controllers, Views, Stores, Containers, Windows, Documents, Converters, 
+		Files, Dialog, Strings, Services, Properties,
+		Controllers, Views, Stores, Containers, Windows, Documents, Converters,
 		StdDialog, Log, StdCmds, HostCmds,
 		HostCFrames, HostMechanisms, (*HostDates,*) HostTabFrames, HostTextConv (*, HostConsole*);
 
@@ -18,22 +18,22 @@ MODULE HostMenus;
 		impAll = 0;	(* can import all file types *)
 
 		iClose = 100; (* known in HostWindows *)
-		iOpen = 102; 
-		iExit = 110; iUpdateMenus = 111; iUndo = 112; iCut = 114; iCopy = 115; iPaste = 116;	
-		iObject = 120; 
+		iOpen = 102;
+		iExit = 110; iUpdateMenus = 111; iUndo = 112; iCut = 114; iCopy = 115; iPaste = 116;
+		iObject = 120;
 		iPopup = 160; iObjEdit = 161; iObjOpen = 162; iProperties = 163;
 		(* custom menus *)
 		firstId = 300;
 
 		(* File for specifying command line options *)
-		cmdLinePath = "System/Rsrc"; 
+		cmdLinePath = "System/Rsrc";
 		cmdLineFile = "CommandLine.txt";
 
-		off=0; on=1;			
+		off=0; on=1;
 
 	TYPE
 		Item* = POINTER TO RECORD (StdDialog.Item)
-			code-: INTEGER; 
+			code-: INTEGER;
 			shift-, ctrl-, alt: BOOLEAN;
 			del: BOOLEAN;
 			mi: Gtk.GtkCheckMenuItem
@@ -73,21 +73,21 @@ MODULE HostMenus;
 	(* menu dispatching *)
 
 	PROCEDURE PrepareMenu (menua, notUsed1, notUsed2: INTEGER);
-	(* this procedure is called after the user has clicked into the menu bar, but before showing the menu; 
+	(* this procedure is called after the user has clicked into the menu bar, but before showing the menu;
 			to prepare item enabling/disabling, check marks, etc. *)
 	CONST miMark=0;
-	VAR res: INTEGER; failed, ok: BOOLEAN; 
-			m: Menu; 	par: Dialog.Par; i: StdDialog.Item; str: Dialog.String; 
+	VAR res: INTEGER; failed, ok: BOOLEAN;
+			m: Menu; 	par: Dialog.Par; i: StdDialog.Item; str: Dialog.String;
 			us: GLib.PString;
 	BEGIN
 		m := menus;
 		WHILE (m # NIL) & (m.submenu # SYSTEM.VAL(Gtk.GtkMenu, menua)) DO m := m.next END;
 		IF m # NIL THEN
-			i := m.firstItem; 
+			i := m.firstItem;
 			WHILE i # NIL DO
 				IF i.item^ # "" THEN
 					WITH i: Item DO
-						IF i.filter^ = "" THEN 
+						IF i.filter^ = "" THEN
 							EXCL(i.mi.cmi_flags,miMark)
 						ELSE (* custom menu item with custom guard *)
 							StdDialog.CheckFilter(i, failed, ok, par);
@@ -121,7 +121,7 @@ MODULE HostMenus;
 						END
 					END
 				END;
-				i := i.next; 
+				i := i.next;
 			END
 		END
 	END PrepareMenu;
@@ -132,12 +132,12 @@ MODULE HostMenus;
 	PROCEDURE [ccall] MenuActivate (item: Gtk.GtkItem; menua: INTEGER);
 	BEGIN
 		Controllers.SetCurrentPath(Controllers.frontPath);
-		Kernel.Try(PrepareMenu, menua, 0, 0); 
+		Kernel.Try(PrepareMenu, menua, 0, 0);
 		Controllers.ResetCurrentPath()
 	END MenuActivate;
 
 	PROCEDURE [ccall] MenuSelect (item: Gtk.GtkItem; itema: INTEGER);
-		VAR i: Item; 
+		VAR i: Item;
 	BEGIN
 		DEC(gc);
 		i := SYSTEM.VAL(Item, itema);
@@ -151,10 +151,10 @@ MODULE HostMenus;
 	PROCEDURE SetShortcut (VAR item: Item);
 		VAR j, n: INTEGER; ch, nch: CHAR;
 	BEGIN
-		item.code := 0; item.shift := FALSE; item.ctrl := FALSE; item.alt := FALSE;  
-		j := 0; 
+		item.code := 0; item.shift := FALSE; item.ctrl := FALSE; item.alt := FALSE;
+		j := 0;
 		ch := item.shortcut[0];
-		WHILE (ch # 0X) & (item.code = 0) DO 
+		WHILE (ch # 0X) & (item.code = 0) DO
 			INC(j);
 			IF (ch >= "a") & (ch <= "z") THEN ch := CAP(ch) END;
 			nch := item.shortcut[j];
@@ -188,7 +188,7 @@ MODULE HostMenus;
 	BEGIN
 (*		WHILE USER32.RemoveMenu(menuBar, 0, {USER32.MFByPosition}) # 0 DO END;*)
 		firstMenu := NIL; lastMenu := NIL; curMenu := NIL;
- 	newWinMenu := NIL;
+		newWinMenu := NIL;
 		newPopMenu := NIL;
 		nextId := firstId
 	END DeleteAll;
@@ -249,42 +249,42 @@ MODULE HostMenus;
 	END AmpersandToUline;
 
 	PROCEDURE NewMenuItem (title: ARRAY OF CHAR; OUT mi: Gtk.GtkMenuItem);
-	VAR us: GLib.PString; 
+	VAR us: GLib.PString;
 	BEGIN
 		AmpersandToUline(title);
 		us:=GLib.g_utf16_to_utf8(title,-1,NIL,NIL,NIL);
 		mi := Gtk.gtk_menu_item_new_with_mnemonic(us);
-		GLib.g_free(SYSTEM.VAL(GLib.gpointer, us)) 
+		GLib.g_free(SYSTEM.VAL(GLib.gpointer, us))
 	END NewMenuItem;
 
 	PROCEDURE NewMenuCheckItem (title: ARRAY OF CHAR; OUT mi: Gtk.GtkCheckMenuItem);
-	VAR us: GLib.PString; 
+	VAR us: GLib.PString;
 	BEGIN
 		AmpersandToUline(title);
 		us:=GLib.g_utf16_to_utf8(title,-1,NIL,NIL,NIL);
 		mi := Gtk.gtk_check_menu_item_new_with_mnemonic(us);
-		GLib.g_free(SYSTEM.VAL(GLib.gpointer, us)) 
+		GLib.g_free(SYSTEM.VAL(GLib.gpointer, us))
 		(* Gtk.gtk_check_menu_item_set_active(mi, off);
 		Gtk.gtk_check_menu_item_set_show_toggle(mi,off); *)
 	END NewMenuCheckItem;
 
 	PROCEDURE Close*;
-		VAR 
-			res: INTEGER; item: StdDialog.Item; 
-			title: Dialog.String; 
-			mask: SET; 
-			accGroup: Gtk.GtkAccelGroup; 
+		VAR
+			res: INTEGER; item: StdDialog.Item;
+			title: Dialog.String;
+			mask: SET;
+			accGroup: Gtk.GtkAccelGroup;
 	BEGIN
 		ASSERT(curMenu # NIL, 20);
-		item := curMenu.firstItem; 
+		item := curMenu.firstItem;
 		accGroup := Gtk.gtk_accel_group_new();
 		Gtk.gtk_window_add_accel_group(HostWindows.main, accGroup);
 		(*	Gtk.gtk_accel_group_unlock(accGroup);  *)
 		WHILE item # NIL DO
 			WITH item: Item DO
 				IF item.item^ # "" THEN
-					SetShortcut(item); 
-					Dialog.MapString(item.item, title); 
+					SetShortcut(item);
+					Dialog.MapString(item.item, title);
 					NewMenuCheckItem(title, item.mi);
 					Gtk.gtk_menu_shell_append(curMenu.submenu, item.mi);
 					res := GtkU.gtk_signal_connect(item.mi, "activate", SYSTEM.ADR(MenuSelect),SYSTEM.VAL(INTEGER, item));
@@ -293,20 +293,20 @@ MODULE HostMenus;
 						IF item.ctrl THEN INCL(mask, Gdk.GDK_CONTROL_BIT) END;
 						IF item.shift THEN INCL(mask, Gdk.GDK_SHIFT_BIT) END;
 						IF item.alt THEN INCL(mask, Gdk.GDK_MOD1_BIT) END;
-						Gtk.gtk_widget_add_accelerator(item.mi, "activate", accGroup, item.code, mask, {Gtk.GTK_ACCEL_VISIBLE}); 
+						Gtk.gtk_widget_add_accelerator(item.mi, "activate", accGroup, item.code, mask, {Gtk.GTK_ACCEL_VISIBLE});
 					END
 				ELSIF item.next # NIL THEN
 					Gtk.gtk_menu_shell_append(curMenu.submenu, Gtk.gtk_separator_menu_item_new())
 				END
 			END;
-			item := item.next; 
+			item := item.next;
 		END;
 		IF curMenu.menu = "*" THEN curMenu.isPopup := TRUE END;
-		IF curMenu.type = "WindowMenu" THEN 
-			curMenu.isWinMenu := TRUE; 
-			curMenu.type := "" 
+		IF curMenu.type = "WindowMenu" THEN
+			curMenu.isWinMenu := TRUE;
+			curMenu.type := ""
 		END;
-		IF curMenu.isWinMenu THEN newWinMenu := curMenu.submenu END; 
+		IF curMenu.isWinMenu THEN newWinMenu := curMenu.submenu END;
 		IF curMenu.type = "PopupMenu" THEN newPopMenu := curMenu.submenu END;
 		IF lastMenu = NIL THEN firstMenu := curMenu ELSE lastMenu.next := curMenu END;
 		lastMenu := curMenu; curMenu := NIL;
@@ -314,8 +314,8 @@ MODULE HostMenus;
 	END Close;
 
 	PROCEDURE InitMenus*;
-		VAR m,  old: Menu; 
-			res, i: INTEGER; 
+		VAR m,  old: Menu;
+			res, i: INTEGER;
 			used: SET; oldBar: Gtk.GtkWidget;
 	BEGIN
 		ASSERT(curMenu = NIL, 20);
@@ -359,7 +359,7 @@ MODULE HostMenus;
 		VAR res: INTEGER; m: Menu;
 		oldBar: Gtk.GtkWidget;
 	BEGIN
-		oldBar := menuBar; menuBar := Gtk.gtk_menu_bar_new(); 
+		oldBar := menuBar; menuBar := Gtk.gtk_menu_bar_new();
 		m := menus;
 		WHILE m # NIL DO
 			IF ((m.type = "") OR (m.type = currType)) & ~m.isPopup THEN
@@ -375,7 +375,7 @@ MODULE HostMenus;
 				END;
 				Gtk.gtk_menu_shell_append(menuBar, m.mi)
 			ELSE
-				Gtk.gtk_object_ref( m.submenu); 
+				Gtk.gtk_object_ref( m.submenu);
 				(* TODO: Where should the unref be done? *)
 				m.mi := Gtk.gtk_menu_get_attach_widget(m.submenu)(Gtk.GtkMenuItem);
 				IF m.mi # NIL THEN Gtk.gtk_menu_detach(m.submenu) END
@@ -402,7 +402,7 @@ MODULE HostMenus;
 			UpdateMenus
 		END;
 		Controllers.ResetCurrentPath()
-	END TimerTick;		
+	END TimerTick;
 
 	PROCEDURE [ccall] DoTimerTick (data: INTEGER): INTEGER;
 		VAR ops: Controllers.PollOpsMsg;
@@ -411,7 +411,7 @@ MODULE HostMenus;
 		Kernel.Try(TimerTick, 0, 0, 0);
 		Controllers.ResetCurrentPath();
 		RETURN 1
-	END DoTimerTick;		
+	END DoTimerTick;
 
 	PROCEDURE HandleVerb (n: INTEGER);
 		VAR v: Views.View; dvm: Properties.DoVerbMsg;
@@ -443,24 +443,24 @@ MODULE HostMenus;
 
 	PROCEDURE PopupMenu*;
 		VAR f: Views.Frame;
-			menu: Menu; gmenu:Gtk.GtkMenu; 
+			menu: Menu; gmenu:Gtk.GtkMenu;
 	BEGIN
 		f := Controllers.FocusFrame();
 		IF (f # NIL) & f.front THEN
 			menu := menus;
-			WHILE (menu # NIL) & (~menu.isPopup OR (menu.type # "") & (menu.type # currType)) DO 
-				menu := menu.next 
+			WHILE (menu # NIL) & (~menu.isPopup OR (menu.type # "") & (menu.type # currType)) DO
+				menu := menu.next
 			END;
-			IF menu # NIL THEN 
-				gmenu := menu.submenu 
-			ELSE 
-				gmenu := popMenu; Dialog.Beep 
+			IF menu # NIL THEN
+				gmenu := menu.submenu
+			ELSE
+				gmenu := popMenu; Dialog.Beep
 			END;
-			IF gmenu # NIL THEN 
+			IF gmenu # NIL THEN
 				Kernel.Try(PrepareMenu, SYSTEM.ADR(gmenu^), 0, 0);
-				Gtk.gtk_menu_popup(gmenu, NIL, NIL, 0, 0, 0, Gdk.GDK_CURRENT_TIME); 
+				Gtk.gtk_menu_popup(gmenu, NIL, NIL, 0, 0, 0, Gdk.GDK_CURRENT_TIME);
 				Gtk.gtk_widget_show_all(gmenu)
-			END; 
+			END;
 		END
 	END PopupMenu;
 
@@ -496,10 +496,10 @@ MODULE HostMenus;
 			END
 		ELSE
 		END
-	END OpenWindow;		
+	END OpenWindow;
 
 	PROCEDURE DispatchSpecialShortCuts (id: INTEGER);
-		VAR res: INTEGER; 
+		VAR res: INTEGER;
 	BEGIN
 		Dialog.ShowStatus("");
 		DEC(gc);
@@ -517,13 +517,13 @@ MODULE HostMenus;
 		| iObjEdit: SetFocus
 		| iObjOpen: OpenWindow
 		ELSE
-(*	
+(*
 			(* TODO: Can this ELSE be removed? *)
 			IF id < firstId THEN HandleVerb(id - iVerb0)
 			ELSE
 				HandleCustomMenu(id)
-			END		
-*)		
+			END
+*)
 		END;
 		Properties.IncEra;
 	END DispatchSpecialShortCuts;
@@ -531,21 +531,21 @@ MODULE HostMenus;
 	(* Gtk.GtkKeySnoopFunc *)
 	(* RETURN TRUE -> remove event, RETURN FALSE -> let Gtk handle the event *)
 
-	PROCEDURE [ccall] TranslateAccelerators  (widget: Gtk.GtkWidget; event: Gdk.GdkEventKey; 
+	PROCEDURE [ccall] TranslateAccelerators  (widget: Gtk.GtkWidget; event: Gdk.GdkEventKey;
 																	user_data: INTEGER): INTEGER;
-		VAR m: Menu; item: Item; id, code: INTEGER; 
+		VAR m: Menu; item: Item; id, code: INTEGER;
 				ctrl, shift, alt, done: BOOLEAN; ch: CHAR;
-				failed, ok: BOOLEAN; par: Dialog.Par; 
+				failed, ok: BOOLEAN; par: Dialog.Par;
 				filter: SET;
 	BEGIN
 		done := FALSE;
 		filter := {0..5};
 		IF event.type # Gdk.GDK_KEY_PRESS THEN RETURN 0 END;
-		code := event.keyval; 
+		code := event.keyval;
 		id := 0; ch := 0X;
-		shift := Gdk.GDK_SHIFT_BIT IN event.state; 
+		shift := Gdk.GDK_SHIFT_BIT IN event.state;
 		ctrl := Gdk.GDK_CONTROL_BIT IN event.state;
-		alt := Gdk.GDK_MOD1_BIT IN event.state;   
+		alt := Gdk.GDK_MOD1_BIT IN event.state;
 
 		IF shift & (code = Key.GDK_F10 ) THEN id := iPopup	(* shift F10 *)
 		ELSIF alt & (code = Key.GDK_BackSpace)  THEN id := iUndo	(* alt bs *)
@@ -553,7 +553,7 @@ MODULE HostMenus;
 		ELSIF shift & (code = Key.GDK_Insert) THEN	id := iPaste	(* shift insert *)
 		ELSIF shift & (code = Key.GDK_Delete) THEN	id := iCut	(* shift delete *)
 		ELSIF alt &  (code = Key.GDK_Return)  THEN id := iProperties	(* alt enter *)
-	(*			
+	(*
 		ELSIF ctrl & shift & (code = Key.GDK_space) THEN event.keyval := Key.GDK_nobreakspace
 		ELSIF alt  & shift & (code = Key.GDK_space)  THEN event.keyval := Key.GDK_digitspace
 		ELSIF ctrl & ~shift & (code = Key.GDK_minus) THEN event.keyval := Key.GDK_hyphen
@@ -571,7 +571,7 @@ MODULE HostMenus;
 			done := TRUE
 		END;
 		IF ~done THEN
-			ch := CHR(code); 
+			ch := CHR(code);
 			IF (ch >= "a") & (ch <= "z") THEN ch := CAP(ch) END;
 			code := ORD(ch);
 			IF ~alt & (ctrl OR (code >= Key.GDK_F1) & (code <= Key.GDK_F12)) THEN
@@ -579,15 +579,15 @@ MODULE HostMenus;
 				WHILE (m # NIL) & ~done DO
 					IF ((m.type = "") OR (m.type = currType)) & ~m.isPopup & (m.class IN filter) THEN
 						item := m.firstItem;
-						LOOP 
+						LOOP
 							IF item = NIL THEN EXIT END;
-							IF (item.code = code) & (item.ctrl = ctrl) & (item.shift = shift) & (item.alt = alt) THEN 
+							IF (item.code = code) & (item.ctrl = ctrl) & (item.shift = shift) & (item.alt = alt) THEN
 								IF item.filter^ # "" THEN StdDialog.CheckFilter(item, failed, ok , par) END;
-								IF (item.filter^ = "") OR ~failed & ~par.disabled THEN 
+								IF (item.filter^ = "") OR ~failed & ~par.disabled THEN
 									Gtk.gtk_menu_item_activate(item.mi)
 								END;
 								done := TRUE;
-								EXIT 
+								EXIT
 							END;
 							IF item.next = NIL THEN EXIT END;
 							item := item.next(Item);
@@ -624,8 +624,8 @@ MODULE HostMenus;
 	END PathToSpec;
 
 	PROCEDURE OpenFile (VAR name: ARRAY OF CHAR; l, t, r, b: INTEGER; VAR ok: BOOLEAN);
-		VAR res: INTEGER; loc: Files.Locator; 
-			file: Files.Name; v: Views.View; 
+		VAR res: INTEGER; loc: Files.Locator;
+			file: Files.Name; v: Views.View;
 			conv: Converters.Converter; f: Files.File;
 	BEGIN
 		ok := FALSE;
@@ -651,7 +651,7 @@ MODULE HostMenus;
 	END OpenFile;
 
 	PROCEDURE IncludingFileCommandLine(IN line: ARRAY OF CHAR): POINTER TO ARRAY OF CHAR;
-		VAR f: Files.File; r: Files.Reader; i, len: INTEGER; 
+		VAR f: Files.File; r: Files.Reader; i, len: INTEGER;
 			header: ARRAY 12 OF BYTE; keyword: ARRAY 12 OF CHAR;
 			b: POINTER TO ARRAY OF BYTE;
 			l2: POINTER TO ARRAY OF CHAR;
@@ -670,7 +670,7 @@ MODULE HostMenus;
 				RETURN l2
 			END
 		END;
-		NEW(l2, len); 
+		NEW(l2, len);
 		FOR i := 0 TO len - 1 DO l2[i] := line[i] END;
 		RETURN l2
 	END IncludingFileCommandLine;
@@ -719,7 +719,7 @@ MODULE HostMenus;
 				HostWindows.noClientScroll := TRUE
 			ELSIF opt = "/FULLSIZE" THEN
 				HostWindows.fullSize := TRUE
-	*)	
+	*)
 			ELSIF opt = "/LTRB" THEN	(* window position *)
 				CopyName; ln := name$; Strings.StringToInt(ln, l, res);
 				CopyName; ln := name$; Strings.StringToInt(ln, t, res);
@@ -727,9 +727,9 @@ MODULE HostMenus;
 				CopyName; ln := name$; Strings.StringToInt(ln, b, res)
 			ELSIF opt = "/LANG" THEN
 				CopyName; ln := name$;
-				IF LEN(ln$) = 2 THEN 
-					Strings.ToLower(ln, ln); 
-					Dialog.SetLanguage(ln$, Dialog.nonPersistent) 
+				IF LEN(ln$) = 2 THEN
+					Strings.ToLower(ln, ln);
+					Dialog.SetLanguage(ln$, Dialog.nonPersistent)
 				END
 			ELSIF opt = "/O" THEN	(* open file *)
 				CopyName; (*openUsed := TRUE;*)
@@ -765,7 +765,7 @@ MODULE HostMenus;
 			(*	HostWindows.SaveWindowState; TODO: implement*)
 			Controllers.ResetCurrentPath();
 			RETURN 0
-		ELSE 
+		ELSE
 			gc := 0;
 			Controllers.ResetCurrentPath();
 			RETURN 1
@@ -778,7 +778,7 @@ MODULE HostMenus;
 	END StyleSet;
 
 	PROCEDURE OpenApp*;
-		VAR res: INTEGER; 
+		VAR res: INTEGER;
 	BEGIN
 		HostWindows.CreateMainWindows;
 		res := GtkU.gtk_signal_connect(HostWindows.main, "destroy", SYSTEM.ADR(Quit), 0);
@@ -810,7 +810,7 @@ MODULE HostMenus;
 		WHILE ~quit DO
 			Services.actionHook.Loop;
 			INC(n);
-			IF (n > num) OR (~Gtk.gtk_events_pending()) THEN 
+			IF (n > num) OR (~Gtk.gtk_events_pending()) THEN
 				Windows.dir.Update(NIL); n := 0;
 			ELSE
 				res := Gtk.gtk_main_iteration()
@@ -835,7 +835,7 @@ MODULE HostMenus;
 		WHILE ~quit DO
 			Services.actionHook.Loop;
 			INC(n);
-			IF (n > num) OR (~Gtk.gtk_events_pending()) THEN 
+			IF (n > num) OR (~Gtk.gtk_events_pending()) THEN
 				Windows.dir.Update(NIL); n := 0;
 			ELSE
 				res := Gtk.gtk_main_iteration()
