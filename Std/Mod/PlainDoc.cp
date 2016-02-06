@@ -8,7 +8,7 @@ MODULE StdPlainDoc;
 	*)
 
 	IMPORT
-		SYSTEM, Kernel, Utils, Services, Views, Files, Converters, Windows, Stores, Dialog, StdDialog;
+		SYSTEM, Kernel, Services, Views, Files, Converters, Windows, Stores, Dialog, StdDialog;
 
 	CONST
 		plainTyp = 'cp';
@@ -106,7 +106,7 @@ MODULE StdPlainDoc;
 			i:=0;
 			WHILE (name[i] # 0X) & (name[i] # ".") DO INC(i) END;
 			IF name[i] = "." THEN name[i]:=0X END;
-			Utils.MakeFileName(name, plainTyp);
+			Kernel.MakeFileName(name, plainTyp);
 		END FixName;
 
 	BEGIN
@@ -123,7 +123,7 @@ MODULE StdPlainDoc;
 			converter := utf8conv;
 			NEW(a)
 		ELSE
-			Utils.MakeFileName(name, "");
+			Kernel.MakeFileName(name, "");
 			converter := conv
 		END;
 		s := NIL;
@@ -153,7 +153,7 @@ MODULE StdPlainDoc;
 	PROCEDURE (h: ViewHook) RegisterView (v: Views.View; loc: Files.Locator; name: Files.Name; conv: Converters.Converter);
 	BEGIN
 		ASSERT(v # NIL, 20); ASSERT(loc # NIL, 21); ASSERT(name # "", 22);
-		Utils.MakeFileName(name, "");
+		Kernel.MakeFileName(name, "");
 		Converters.Export(loc, name, conv, v)
 	END RegisterView;
 
