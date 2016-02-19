@@ -20,7 +20,7 @@ MODULE HostPorts;
 **)
 
 	IMPORT
-		SYSTEM, WinApi, Kernel, Fonts, Ports, Dialog, Services, HostFonts, CairoApi, CairoApiWin32;
+		SYSTEM, WinApi, Kernel, Fonts, Ports, Dialog, Services, HostFonts, CairoApi := LibsCairo, CairoApiWin32 := LibsCairoWin32;
 
 	CONST
 		resizeHCursor* = 16; resizeVCursor* = 17; resizeLCursor* = 18; resizeRCursor* = 19; resizeCursor* = 20;
@@ -244,14 +244,16 @@ MODULE HostPorts;
 			res := WinApi.SelectObject(dc, oldb);
 			res := WinApi.DeleteObject(WinApi.SelectObject(dc, oldp))
 		END;
-		IF p.wnd = 0 THEN res := WinApi.RestoreDC(dc, -1) END;
+		IF p.wnd = 0 THEN res := WinApi.RestoreDC(dc, -1) END
 		;IF debug THEN Wait END
 	END DrawRect;
 
 	PROCEDURE (rd: Rider) DrawOval* (l, t, r, b, s: INTEGER; col: Ports.Color);
 		VAR
 			res, h: INTEGER; p: Port; oldb, oldp, dc: WinApi.HANDLE; pt: WinApi.POINT; rect: WinApi.RECT;
-			surface: CairoApi.cairo_surface_t; ctx: CairoApi.cairo_t; rad : INTEGER;
+			surface: CairoApi.cairo_surface_t;
+			ctx: CairoApi.cairo_t;
+			rad : INTEGER;
 	BEGIN
 		ASSERT(rd.port # NIL, 100);
 		p := rd.port; dc := p.dc;
@@ -284,7 +286,8 @@ MODULE HostPorts;
 
 	PROCEDURE (rd: Rider) DrawLine* (x0, y0, x1, y1, s: INTEGER; col: Ports.Color);
 		VAR res: INTEGER; pt: WinApi.POINT; p: Port; dc, oldb, oldp: WinApi.HANDLE;
-			surface: CairoApi.cairo_surface_t; ctx: CairoApi.cairo_t;
+			surface: CairoApi.cairo_surface_t;
+			ctx: CairoApi.cairo_t;
 	BEGIN
 		ASSERT(s >= 0, 20);
 		ASSERT(rd.port # NIL, 100);
@@ -293,6 +296,7 @@ MODULE HostPorts;
 		ELSE res := WinApi.SelectClipRgn(dc, 0);
 		END;
 		res := WinApi.IntersectClipRect(dc, rd.l, rd.t, rd.r, rd.b);
+		IF col = Ports.defaultColor THEN col := textCol END;
 		IF s <= 0 THEN s := 1 END;
 		surface := CairoApiWin32.cairo_win32_surface_create(dc);
 		ctx := CairoApi.cairo_create(surface);
@@ -319,7 +323,8 @@ MODULE HostPorts;
 			res, i, j, k: INTEGER; p: Port; dc, oldp, oldb: WinApi.HANDLE;
 			pap: PAP; pt: WinApi.POINT; poly: ARRAY 256 OF WinApi.POINT;
 			polyPtr: POINTER TO ARRAY OF Ports.Point; polyLen: INTEGER;
-			surface: CairoApi.cairo_surface_t; ctx: CairoApi.cairo_t;
+			surface: CairoApi.cairo_surface_t;
+			ctx: CairoApi.cairo_t;
 		PROCEDURE Bezier(x0, y0, xd0, yd0, x1, y1, xd1, yd1: INTEGER);
 			VAR x, y, xd, yd, i: INTEGER;
 		BEGIN
@@ -353,6 +358,7 @@ MODULE HostPorts;
 		ELSE res := WinApi.SelectClipRgn(dc, 0);
 		END;
 		res := WinApi.IntersectClipRect(dc, rd.l, rd.t, rd.r, rd.b);
+		IF col = Ports.defaultColor THEN col := textCol END;
 		pap := SYSTEM.VAL(PAP, SYSTEM.ADR(pts));
 
 		surface := CairoApiWin32.cairo_win32_surface_create(dc);
@@ -430,7 +436,6 @@ MODULE HostPorts;
 				res := WinApi.DeleteObject(WinApi.SelectObject(dc, oldp))
 			END;
 		END;
-
 
 		CairoApi.cairo_destroy(ctx);
 		CairoApi.cairo_surface_destroy(surface);
