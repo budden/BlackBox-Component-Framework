@@ -302,8 +302,8 @@ MODULE HostPorts;
 		ctx := CairoApi.cairo_create(surface);
 		CairoApi.cairo_set_source_rgb(ctx, (col MOD 65536) MOD 256 / 256,
 			(col MOD 65536) DIV 256 / 256, col DIV 65536 / 256);
-		CairoApi.cairo_move_to(ctx, x0, y0);
-          CairoApi.cairo_line_to(ctx, x1, y1);
+		CairoApi.cairo_move_to(ctx, x0 + 0.5, y0 + 0.5);
+          CairoApi.cairo_line_to(ctx, x1 + 0.5, y1 + 0.5);
 		CairoApi.cairo_set_line_width(ctx, s);
 		CairoApi.cairo_stroke(ctx);
 		CairoApi.cairo_destroy(ctx);
