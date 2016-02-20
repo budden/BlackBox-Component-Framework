@@ -7,8 +7,7 @@ MODULE DevSelectors;
 	copyright	= "System/Rsrc/About"
 	license	= "Docu/BB-License"
 	changes	= "
-	- 20120530, Oleg-N-Cher, Fixed error hat occurs when saving a document after copying of a selector.
-			The error was found by Eugene Temirgaleev.
+	- 200709, ie, Fixed error that occurs when saving a document after copying of a selector.
 	"
 	issues	= ""
 
