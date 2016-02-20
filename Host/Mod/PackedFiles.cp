@@ -241,11 +241,13 @@ MODULE HostPackedFiles;
 	END Delete;
 
 	PROCEDURE (d: Directory) FileList (floc: Files.Locator): Files.FileInfo;
-		VAR pi, fi, tfi, nfi, last: Files.FileInfo; diff: INTEGER; caseSens: BOOLEAN;
+		VAR pi, fi, tfi, nfi, last: Files.FileInfo; firstRes, diff: INTEGER; caseSens: BOOLEAN;
 	BEGIN
 		ASSERT(floc IS HostFiles.Locator, 20);
 		fi := orgdir.FileList(floc); (* Gives an alphabetically sorted list of files. *)
+		firstRes := floc.res;
 		pi := packedDir.FileList(floc); (* Gives an alphabetically sorted list of files. *)
+		IF floc.res = 2 THEN floc.res := firstRes END;
 		nfi := NIL; last := NIL; tfi := NIL;
 		(* Both fi and l are alphabetically sorted. And the returned list also has to be alphabetically sorted. *)
 		caseSens := floc(HostFiles.Locator).caseSens;
@@ -276,10 +278,12 @@ MODULE HostPackedFiles;
 	END GetFileName;
 
 	PROCEDURE (d: Directory) LocList (floc: Files.Locator): Files.LocInfo;
-		VAR pi, li, nli, last: Files.LocInfo; diff: INTEGER; caseSens: BOOLEAN;
+		VAR pi, li, nli, last: Files.LocInfo; firstRes, diff: INTEGER; caseSens: BOOLEAN;
 	BEGIN
 		li := orgdir.LocList(floc);
+		firstRes := floc.res;
 		pi := packedDir.LocList(floc);
+		IF floc.res = 2 THEN floc.res := firstRes END;
 		caseSens := floc(HostFiles.Locator).caseSens;
 		nli := NIL;
 		(* Both pi and li are alphabetically ordered. *)

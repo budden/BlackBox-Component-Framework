@@ -1907,8 +1907,8 @@ MODULE Kernel;
 				S.PUTREG(SP, S.VAL(INTEGER, estFrame) + 12);
 				IF err = 137 THEN	(* retrigger stack overflow *)
 					TrapCleanup; DefaultTrapViewer;
-					res := WinApi.VirtualProtect(FPageWord(8), 1024, {2, 8}, old);
-					IF res = 0 THEN res := WinApi.VirtualProtect(FPageWord(8), 1024, {0}, old) END
+					res := WinApi.VirtualProtect(FPageWord(8), 1024+4096, {2, 8}, old);
+					IF res = 0 THEN res := WinApi.VirtualProtect(FPageWord(8), 1024+4096, {0}, old) END
 				END;
 				PopSI; PopDI; PopBX; PopFP;
 				ReturnCX(WinApi.E_UNEXPECTED)
@@ -1919,8 +1919,8 @@ MODULE Kernel;
 				S.PUTREG(SP, res - 4);	(* restore stack *)
 				IF err = 137 THEN	(* retrigger stack overflow *)
 					TrapCleanup; DefaultTrapViewer;
-					res := WinApi.VirtualProtect(FPageWord(8), 1024, {2, 8}, old);
-					IF res = 0 THEN res := WinApi.VirtualProtect(FPageWord(8), 1024, {0}, old) END
+					res := WinApi.VirtualProtect(FPageWord(8), 1024+4096, {2, 8}, old);
+					IF res = 0 THEN res := WinApi.VirtualProtect(FPageWord(8), 1024+4096, {0}, old) END
 				END;
 				PopBX;
 				RETURN 0	(* return from Try *)
@@ -1929,8 +1929,8 @@ MODULE Kernel;
 				S.PUTREG(SP, baseStack);	(* restore stack *)
 				IF err = 137 THEN	(* retrigger stack overflow *)
 					TrapCleanup; DefaultTrapViewer;
-					res := WinApi.VirtualProtect(FPageWord(8), 1024, {2, 8}, old);
-					IF res = 0 THEN res := WinApi.VirtualProtect(FPageWord(8), 1024, {0}, old) END
+					res := WinApi.VirtualProtect(FPageWord(8), 1024+4096, {2, 8}, old);
+					IF res = 0 THEN res := WinApi.VirtualProtect(FPageWord(8), 1024+4096, {0}, old) END
 				END;
 				restart();
 				Quit(1)

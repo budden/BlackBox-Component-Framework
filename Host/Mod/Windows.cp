@@ -1740,7 +1740,7 @@ MODULE HostWindows;
 		IF (w # NIL) & ~w.trapped THEN
 			w.trapped := TRUE;
 			IF w.frame # NIL THEN
-				tick.tick := WinApi.GetTickCount();
+				tick.tick := Services.Ticks();
 				w.ForwardCtrlMsg(tick)
 			END;
 			w.trapped := FALSE
@@ -1909,7 +1909,7 @@ MODULE HostWindows;
 		class.lpszMenuName := NIL;
 		class.lpszClassName := "Oberon App";
 		class.hbrBackground := 0; (* 12 + 1; *)	(* application workspace color *)
-		class.style := {3, 5};	(* doubleclicks, privat dc *)
+		class.style := WinApi.CS_VREDRAW + WinApi.CS_HREDRAW + WinApi.CS_DBLCLKS + WinApi.CS_OWNDC;
 		class.hInstance := instance;
 		class.lpfnWndProc := Handler;
 		class.cbClsExtra := 0;

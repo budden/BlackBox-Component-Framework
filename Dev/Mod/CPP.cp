@@ -113,7 +113,10 @@ MODULE DevCPP;
 	
 	PROCEDURE IncompleteType (typ: DevCPT.Struct): BOOLEAN;
 	BEGIN
-		IF typ.form = Pointer THEN typ := typ.BaseTyp END;
+		IF typ.form = Pointer THEN
+			IF typ = DevCPT.sysptrtyp THEN RETURN FALSE END;
+			typ := typ.BaseTyp
+		END;
 		RETURN (typ = DevCPT.undftyp) OR (typ.comp = Record) & (typ.BaseTyp = DevCPT.undftyp)
 	END IncompleteType;
 	

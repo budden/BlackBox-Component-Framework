@@ -917,8 +917,8 @@ MODULE HostMenus;
 				RETURN l2
 			END
 		END;
-		NEW(l2, len); 
-		FOR i := 0 TO len - 1 DO l2[i] := line[i] END;
+		NEW(l2, len + 1);
+		l2^ := line$;
 		RETURN l2
 	END IncludingFileCommandLine;
 	

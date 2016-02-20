@@ -63,19 +63,25 @@ MODULE SqlOdbc;
 		This is cumbersome and difficult to test exhaustively. *)
 
 	CONST
+		(* results for driver open and methods *)
 		outOfTables = 5;
 		notExecutable = 6;
 		cannotOpenDB = 7;
 		wrongIdentification = 8;
 		tooManyBlobs = 9;
-		(* not public *)
-		invalidTransaction = 10;
 
+		(* results  as in SqlDB, 0 = ok *)
+		converted = 1;
 		truncated = 2;
 		overflow = 3;
 		incompatible = 4;
 		noData = 5;
 
+		(* internal result codes *)
+		invalidTransaction = 10;
+		moreData = 11;	(* like truncated but remaining data needs to be read in order to avoid a deadlock *)
+
+		(* driver states *)
 		connecting = 1;
 		connected = 2;
 		preparing = 3;
@@ -121,7 +127,7 @@ MODULE SqlOdbc;
 			IF d # NIL THEN dbc := d.dbc ELSE dbc := 0 END;
 			res := WinSql.SQLErrorW(environment, dbc, stmt, state, err, msg, LEN(msg), len);
 			IF debug THEN Log.String(msg$); Log.Ln END;
-			IF state = "01004" THEN res := truncated ELSE res := 0 END
+			IF state = "01004" THEN res := moreData ELSE res := 0 END
 		| WinSql.SQL_ERROR:
 			IF d # NIL THEN dbc := d.dbc ELSE dbc := 0 END;
 			res := WinSql.SQLErrorW(environment, dbc, stmt, state, err, msg, LEN(msg), len);
@@ -437,7 +443,7 @@ MODULE SqlOdbc;
 			Check(WinSql.SQLDescribeColW(t.stmt, SHORT(column + 1), str, LEN(str), a, b, i, scale, c), NIL, t.stmt, res);
 			IF scale < 0 THEN scale := 0 END;
 			Check(WinSql.SQLGetData(t.stmt, SHORT(column + 1), WinSql.SQL_C_WCHAR,
-														SYSTEM.ADR(str), LEN(str), len),
+														SYSTEM.ADR(str), LEN(str) * SIZE(CHAR), len),
 					NIL, t.stmt, res);
 			IF len # WinSql.SQL_NULL_DATA THEN
 				x := 0; i := 0;
@@ -462,6 +468,7 @@ MODULE SqlOdbc;
 
 	PROCEDURE (t: Table) ReadString (row, column: INTEGER; OUT str: ARRAY OF CHAR);
 		VAR res, len: INTEGER;
+			dummy: ARRAY 256 OF CHAR;
 	BEGIN
 		ASSERT(row >= 0, 20); ASSERT(row < t.rows, 21);
 		ASSERT(column >= 0, 22); ASSERT(column < t.columns, 23);
@@ -469,11 +476,17 @@ MODULE SqlOdbc;
 		SetPos(t, row, column, res);
 		IF res = 0 THEN
 			Check(WinSql.SQLGetData(t.stmt, SHORT(column + 1), WinSql.SQL_C_WCHAR,
-														SYSTEM.ADR(str), LEN(str), len),
+														SYSTEM.ADR(str), LEN(str) * SIZE(CHAR), len),
 					NIL, t.stmt, res);
-			IF (len = 0) OR (len = WinSql.SQL_NULL_DATA) THEN str := "" END
+			IF (len = 0) OR (len = WinSql.SQL_NULL_DATA) THEN str := "" END;
+			IF res = moreData THEN t.res := truncated ELSE t.res := res END;
+			WHILE res = moreData DO	(* skip rest of string but don't change t.res *)
+				Check(WinSql.SQLGetData(t.stmt, SHORT(column + 1), WinSql.SQL_C_WCHAR, 
+														SYSTEM.ADR(dummy), LEN(dummy) * SIZE(CHAR), len),
+						NIL, t.stmt, res);
+			END;
+		ELSE t.res := res
 		END;
-		t.res := res
 	END ReadString;
 
 	PROCEDURE (t: Table) ReadVarString (row, column: INTEGER; OUT str: SqlDrivers.String);
@@ -485,7 +498,7 @@ MODULE SqlOdbc;
 		SetPos(t, row, column, res);
 		IF res = 0 THEN
 			Check(WinSql.SQLGetData(t.stmt, SHORT(column + 1), WinSql.SQL_C_WCHAR,
-														SYSTEM.ADR(s), LEN(s), len),
+														SYSTEM.ADR(s), LEN(s) * SIZE(CHAR), len),
 					NIL, t.stmt, res);
 			IF res # noData THEN
 				IF (len = 0) OR (len = WinSql.SQL_NULL_DATA) THEN
@@ -496,11 +509,14 @@ MODULE SqlOdbc;
 					IF (str = NIL) OR (LEN(str^) < LEN(s)) THEN NEW(str, LEN(s)) END;
 					str^ := s$
 				ELSE
+					ASSERT(len MOD SIZE(CHAR) = 0, 100); len := len DIV SIZE(CHAR);
 					IF (str = NIL) OR (LEN(str^) < len + 1) THEN NEW(str, len + 1) END;
 					IF len >= LEN(s) THEN
 						str^ := s$;
 						Check(WinSql.SQLGetData(t.stmt, SHORT(column + 1), WinSql.SQL_C_WCHAR,
-												SYSTEM.ADR(str^) + (LEN(s) - 1), LEN(str^) - (LEN(s) - 1), len), NIL, t.stmt, res);
+												SYSTEM.ADR(str^) + (LEN(s) - 1) * SIZE(CHAR), 
+												(LEN(str^) - (LEN(s) - 1)) * SIZE(CHAR), len), 
+								NIL, t.stmt, res);
 					ELSE
 						str^ := s$
 					END
