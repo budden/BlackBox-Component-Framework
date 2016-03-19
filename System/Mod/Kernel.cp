@@ -469,14 +469,15 @@ MODULE Kernel;
 	PROCEDURE SplitName* (name: ARRAY OF CHAR; VAR head, tail: ARRAY OF CHAR);
 		(* portable *)
 		VAR i, j: INTEGER; ch, lch: CHAR;
+        CONST codeAgrave = CHR(0C0H); codetimes = CHR(0D7H); codeTHORN = CHR(0DEH);
 	BEGIN
 		i := 0; ch := name[0];
 		IF ch # 0X THEN
 			REPEAT
 				head[i] := ch; lch := ch; INC(i); ch := name[i]
 			UNTIL (ch = 0X)
-				OR ((ch >= "A") & (ch <= "Z") OR (ch >= "À") & (ch # "×") & (ch <= "Þ"))
-					& ((lch < "A") OR (lch > "Z") & (lch < "À") OR (lch = "×") OR (lch > "Þ"));
+				OR ((ch >= "A") & (ch <= "Z") OR (ch >= codeAgrave) & (ch <= codeTHORN) & (ch # codetimes))
+					& ((lch < "A") OR (lch > "Z") & (lch < codeAgrave) OR (lch = codetimes) OR (lch > codeTHORN));
 			head[i] := 0X; j := 0;
 			WHILE ch # 0X DO tail[j] := ch; INC(i); INC(j); ch := name[i] END;
 			tail[j] := 0X;
