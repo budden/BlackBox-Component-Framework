@@ -289,27 +289,27 @@ MODULE Kernel;
 
 	(* code procedures for exception handling *)
 
-	PROCEDURE [1] PushFP 055H;
-	PROCEDURE [1] PopFP 05DH;
-	PROCEDURE [1] PushBX 053H;
-	PROCEDURE [1] PopBX 05BH;
-	PROCEDURE [1] PushSI 056H;
-	PROCEDURE [1] PopSI 05EH;
-	PROCEDURE [1] PushDI 057H;
-	PROCEDURE [1] PopDI 05FH;
-	PROCEDURE [1] LdSP8 08DH, 065H, 0F8H;
-	PROCEDURE [1] Return0 (ret: INTEGER) 0C3H;
-	PROCEDURE [1] ReturnCX (ret: INTEGER) 05AH, 001H, 0CCH, 0FFH, 0E2H;
+	PROCEDURE [code] PushFP 055H;
+	PROCEDURE [code] PopFP 05DH;
+	PROCEDURE [code] PushBX 053H;
+	PROCEDURE [code] PopBX 05BH;
+	PROCEDURE [code] PushSI 056H;
+	PROCEDURE [code] PopSI 05EH;
+	PROCEDURE [code] PushDI 057H;
+	PROCEDURE [code] PopDI 05FH;
+	PROCEDURE [code] LdSP8 08DH, 065H, 0F8H;
+	PROCEDURE [code] Return0 (ret: INTEGER) 0C3H;
+	PROCEDURE [code] ReturnCX (ret: INTEGER) 05AH, 001H, 0CCH, 0FFH, 0E2H;
 		(* POP DX; ADD SP,CX; JP DX *)
-	PROCEDURE [1] FPageWord (offs: INTEGER): INTEGER 64H, 8BH, 0H;	(* MOV EAX,FS:[EAX] *)
-	PROCEDURE [1] InstallExcp* (VAR e: ExcpFrame) 64H, 8BH, 0DH, 0, 0, 0, 0, 89H, 8, 64H, 0A3H, 0, 0, 0, 0;
-	PROCEDURE [1] RemoveExcp* (VAR e: ExcpFrame) 8BH, 0, 64H, 0A3H, 0, 0, 0, 0;
+	PROCEDURE [code] FPageWord (offs: INTEGER): INTEGER 64H, 8BH, 0H;	(* MOV EAX,FS:[EAX] *)
+	PROCEDURE [code] InstallExcp* (VAR e: ExcpFrame) 64H, 8BH, 0DH, 0, 0, 0, 0, 89H, 8, 64H, 0A3H, 0, 0, 0, 0;
+	PROCEDURE [code] RemoveExcp* (VAR e: ExcpFrame) 8BH, 0, 64H, 0A3H, 0, 0, 0, 0;
 
 	(* code procedures for fpu *)
 
-	PROCEDURE [1] FINIT 0DBH, 0E3H;
-	PROCEDURE [1] FLDCW 0D9H, 06DH, 0FCH;	(* -4, FP *)
-	PROCEDURE [1] FSTCW 0D9H, 07DH, 0FCH;	(* -4, FP *)
+	PROCEDURE [code] FINIT 0DBH, 0E3H;
+	PROCEDURE [code] FLDCW 0D9H, 06DH, 0FCH;	(* -4, FP *)
+	PROCEDURE [code] FSTCW 0D9H, 07DH, 0FCH;	(* -4, FP *)
 
 	(* code procedure for memory erase *)
 
@@ -1080,10 +1080,10 @@ MODULE Kernel;
 
 	(* -------------------- dynamic procedure call --------------------- *)	(* COMPILER DEPENDENT *)
 
-	PROCEDURE [1] PUSH (p: INTEGER) 050H;	(* push AX *)
-	PROCEDURE [1] CALL (a: INTEGER) 0FFH, 0D0H;	(* call AX *)
-	PROCEDURE [1] RETI (): LONGINT;
-	PROCEDURE [1] RETR (): REAL;
+	PROCEDURE [code] PUSH (p: INTEGER) 050H;	(* push AX *)
+	PROCEDURE [code] CALL (a: INTEGER) 0FFH, 0D0H;	(* call AX *)
+	PROCEDURE [code] RETI (): LONGINT;
+	PROCEDURE [code] RETR (): REAL;
 
 	(*
 		type			par
