@@ -1227,9 +1227,8 @@ MODULE Kernel;
 	PROCEDURE LoadDll* (IN name: ARRAY OF SHORTCHAR; VAR ok: BOOLEAN);
 		VAR h: WinApi.HANDLE;
 	BEGIN
-		ok := FALSE;
 		h := WinApi.LoadLibraryA(name);
-		IF h # 0 THEN ok := TRUE END
+		ok := (h # WinApi.NULL)
 	END LoadDll;
 
 	PROCEDURE ThisDllObj* (mode, fprint: INTEGER; IN dll, name: ARRAY OF SHORTCHAR): INTEGER;
