@@ -1586,8 +1586,36 @@ MODULE Kernel;
 		RETURN b
 	END LastBlock;
 
+	PROCEDURE AllocateHeapBlock (size: INTEGER): FreeBlock;
+		VAR b: FreeBlock; new, c: Cluster;
+	BEGIN
+		AllocHeapMem(size + 12, new);
+		IF new # NIL THEN
+			IF (root = NIL) OR (S.VAL(INTEGER, new) < S.VAL(INTEGER, root)) THEN
+				new.next := root; root := new
+			ELSE
+				c := root;
+				WHILE (c.next # NIL) & (S.VAL(INTEGER, new) > S.VAL(INTEGER, c.next)) DO c := c.next END;
+				new.next := c.next; c.next := new
+			END;
+			b := S.VAL(FreeBlock, S.VAL(INTEGER, new) + 12);
+			b.size := (new.size - 12) DIV 16 * 16 - 4;
+			RETURN b
+		ELSE
+			RETURN NIL
+		END
+	END AllocateHeapBlock;
+
 	PROCEDURE NewBlock (size: INTEGER): Block;
-		VAR tsize, a, s: INTEGER; b: FreeBlock; new, c: Cluster; r: Reducer;
+		VAR tsize, a, s: INTEGER; b: FreeBlock; new, c: Cluster;
+
+		PROCEDURE ApplyReducers (full: BOOLEAN);
+			VAR r: Reducer;
+		BEGIN
+			r := reducers; reducers := NIL;
+			WHILE r # NIL DO r.Reduce(full); r := r.next END
+		END ApplyReducers;
+
 	BEGIN
 		ASSERT(size >= 0, 20);
 		IF size > MAX(INTEGER) - 19 THEN RETURN NIL END;
@@ -1599,30 +1627,15 @@ MODULE Kernel;
 				IF b = NIL THEN
 					Collect; b := OldBlock(tsize);	(* 2a) fully collect *)
 				END;
-				IF b = NIL THEN
-					AllocHeapMem(tsize + 12, new);	(* 3) allocate new cluster *)
-					IF new # NIL THEN
-						IF (root = NIL) OR (S.VAL(INTEGER, new) < S.VAL(INTEGER, root)) THEN
-							new.next := root; root := new
-						ELSE
-							c := root;
-							WHILE (c.next # NIL) & (S.VAL(INTEGER, new) > S.VAL(INTEGER, c.next)) DO c := c.next END;
-							new.next := c.next; c.next := new
-						END;
-						b := S.VAL(FreeBlock, S.VAL(INTEGER, new) + 12);
-						b.size := (new.size - 12) DIV 16 * 16 - 4
-					ELSE
-						RETURN NIL	(* 4) give up *)
-					END
-				END
+				IF b = NIL THEN b := AllocateHeapBlock(tsize) END;	(* 3) allocate new cluster *)
+				IF b = NIL THEN RETURN NIL END	(* 4) give up *)
 			ELSE
 				FastCollect; b := OldBlock(tsize);	(* 2) collect *)
 				IF b = NIL THEN
 					Collect; b := OldBlock(tsize);	(* 2a) fully collect *)
 				END;
 				IF (b = NIL) & HeapFull(tsize) & (reducers # NIL) THEN	(* 3) little space => reduce once *)
-					r := reducers; reducers := NIL;
-					WHILE r # NIL DO r.Reduce(FALSE); r := r.next END;
+					ApplyReducers(FALSE);
 					Collect
 				END;
 				IF b = NIL THEN
@@ -1651,8 +1664,7 @@ MODULE Kernel;
 								b.size := (root.size - a) DIV 16 * 16 - 4
 							END
 						ELSIF reducers # NIL THEN	(* 5) no space => fully reduce *)
-							r := reducers; reducers := NIL;
-							WHILE r # NIL DO r.Reduce(TRUE); r := r.next END;
+							ApplyReducers(TRUE);
 							Collect
 						END
 					END
